@@ -8,7 +8,7 @@ class SocketService {
 
     constructor() {
         // تأكد من أن العنوان صحيح - استخدم localhost:3000
-        this.socket = io("http://localhost:3000");
+        this.socket = io("https://secret-society-server.onrender.com");
 
         this.socket.on("game_started", (data: any) => {
             console.log("Game started:", data);
