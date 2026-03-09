@@ -20,6 +20,10 @@ const config: Phaser.Types.Core.GameConfig = {
     height: window.innerHeight,
     backgroundColor: "#0f0f1a",
     parent: "game",
+    scale: {
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+    },
     scene: [
         BootScene,
         LobbyScene,
