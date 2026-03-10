@@ -52,9 +52,8 @@ export default class GameScene extends Phaser.Scene {
 
     // ─── تخطيط ───
     private readonly TOPBAR_H  = 58;
-    private PLAYERS_W = 220;
-    private CHAT_W    = 280;
-    private isMobile  = false;
+    private readonly PLAYERS_W = 220;
+    private readonly CHAT_W    = 280;
     private W!: number;
     private H!: number;
     private CONTENT_H!: number;
@@ -89,28 +88,16 @@ export default class GameScene extends Phaser.Scene {
 
         this.W         = this.scale.width;
         this.H         = this.scale.height;
-
-        // ── Mobile Detection ──
-        this.isMobile  = this.W < 768;
-        if (this.isMobile) {
-            this.PLAYERS_W = 0;   // نخفي panel اللاعبين
-            this.CHAT_W    = 0;   // نخفي الـ chat panel
-        } else {
-            this.PLAYERS_W = 220;
-            this.CHAT_W    = 280;
-        }
-
         this.CONTENT_H = this.H - this.TOPBAR_H;
         this.EVENTS_W  = this.W - this.PLAYERS_W - this.CHAT_W;
 
         this.cleanupHTML();
         this.cameras.main.fadeIn(600, 10, 13, 19);
         this.drawBackground();
-        if (!this.isMobile) this.drawPanels();
+        this.drawPanels();
         this.drawTopBar();
-        if (!this.isMobile) this.drawSectionHeaders();
+        this.drawSectionHeaders();
         this.createChatInput();
-        this.createMobileLayout();
         if (this.isAdmin) this.createAdminDrawer();
         this.setupSocketListeners();
         socketService.socket.emit("request_room_state");
@@ -268,8 +255,6 @@ export default class GameScene extends Phaser.Scene {
         );
         this.playerRows = [];
         this.currentPlayers = players;
-        this.updateMobilePlayers(players, phase);
-        if (this.isMobile) return; // على الموبايل نكتفي بالـ HTML
         const startY  = this.TOPBAR_H + 50;
         const isNight = phase === "NIGHT";
         // BUG FIX #2: المشاهد ما يشوف أزرار الأكشن
@@ -368,8 +353,8 @@ export default class GameScene extends Phaser.Scene {
 
         // العنوان
         const titleTxt = this.add.text(this.W / 2, 78, "VOTE TO ELIMINATE", {
-            fontSize: "32px", color: "#f1f5f9",
-            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 8
+            fontSize: this.W < 900 ? "22px" : "32px", color: "#f1f5f9",
+            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: this.W < 900 ? 4 : 8
         }).setOrigin(0.5);
 
         const subTxt = this.add.text(this.W / 2, 120, "Choose who threatens the community", {
@@ -396,10 +381,12 @@ export default class GameScene extends Phaser.Scene {
         overlay.add([titleTxt, subTxt, divG]);
 
         // حساب positions البطاقات
-        const cardW  = 148;
-        const cardH  = 196;
-        const gap    = 16;
-        const perRow = Math.min(alivePlayers.length, 4);
+        // Mobile: نصغّر الـ cards
+        const isMobile = this.W < 900;
+        const perRow = isMobile ? Math.min(alivePlayers.length, 3) : Math.min(alivePlayers.length, 4);
+        const gap    = isMobile ? 10 : 16;
+        const cardW  = isMobile ? Math.min(110, (this.W - 40) / perRow - gap) : 148;
+        const cardH  = isMobile ? 160 : 196;
         const rows   = Math.ceil(alivePlayers.length / perRow);
         const totalW = perRow * cardW + (perRow - 1) * gap;
         const startX = this.W / 2 - totalW / 2 + cardW / 2;
@@ -643,7 +630,7 @@ export default class GameScene extends Phaser.Scene {
             rows.push({ icon: "🔍", label: "Night victim",  value: victim ? victim.username : "Nobody died tonight", color: victim ? "#f87171" : "#4ade80" });
         }
 
-        const panelW = 340;
+        const panelW = Math.min(340, this.W - 40);
         const panelH = 64 + rows.length * 46 + 24;
         const c = this.add.container(this.W / 2, this.H / 2 - 50).setDepth(48).setAlpha(0);
 
@@ -728,6 +715,28 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
+    
+    // ── تحويل Phaser coords لـ CSS pixels (مهم للموبايل مع FIT scale) ──
+    private toCSS(phaserPx: number): string {
+        const zoom = this.scale.displayScale.x;
+        const canvasRect = this.game.canvas.getBoundingClientRect();
+        return `${phaserPx * zoom + (phaserPx < 100 ? 0 : canvasRect.left)}px`;
+    }
+    private toCSSX(phaserX: number): string {
+        const zoom = this.scale.displayScale.x;
+        const canvasRect = this.game.canvas.getBoundingClientRect();
+        return `${phaserX * zoom + canvasRect.left}px`;
+    }
+    private toCSSY(phaserY: number): string {
+        const zoom = this.scale.displayScale.y;
+        const canvasRect = this.game.canvas.getBoundingClientRect();
+        return `${phaserY * zoom + canvasRect.top}px`;
+    }
+    private toCSSDim(phaserSize: number): string {
+        const zoom = this.scale.displayScale.x;
+        return `${phaserSize * zoom}px`;
+    }
+
     private createChatInput() {
         const chatX = this.PLAYERS_W + this.EVENTS_W;
 
@@ -735,8 +744,8 @@ export default class GameScene extends Phaser.Scene {
         this.chatInput.placeholder = "Message...";
         this.chatInput.maxLength = 120;
         Object.assign(this.chatInput.style, {
-            position: "absolute", left: this.isMobile ? "10px" : `${chatX + 12}px`, bottom: "14px",
-            width: this.isMobile ? `${this.W - 60}px` : `${this.CHAT_W - 60}px`, padding: "9px 14px",
+            position: "fixed", left: this.toCSSX(chatX + 12), bottom: "14px",
+            width: this.toCSSDim(this.CHAT_W - 60), padding: "9px 14px",
             fontSize: "13px", fontFamily: "'Courier New', monospace",
             border: "1px solid #1e2d45", borderRadius: "4px",
             backgroundColor: "#0a0d13", color: "#f1f5f9",
@@ -749,7 +758,7 @@ export default class GameScene extends Phaser.Scene {
         this.sendBtn = document.createElement("button");
         this.sendBtn.textContent = "➤";
         Object.assign(this.sendBtn.style, {
-            position: "absolute", left: `${chatX + this.CHAT_W - 44}px`, bottom: "14px",
+            position: "fixed", left: this.toCSSX(chatX + this.CHAT_W - 44), bottom: "14px",
             width: "36px", height: "36px", fontSize: "14px",
             border: "1px solid #1e2d45", borderRadius: "4px",
             backgroundColor: "#3b82f6", color: "#fff",
@@ -773,8 +782,6 @@ export default class GameScene extends Phaser.Scene {
 
     // BUG FIX #4: alive قد يكون undefined — معاملته كـ true
     private addChatMessage(username: string, message: string, alive?: boolean) {
-        this.addMobileChatMessage(username, message, alive !== false);
-        if (this.isMobile) return;
         const chatX  = this.PLAYERS_W + this.EVENTS_W;
         const baseY  = this.TOPBAR_H + 50;
         const lineH  = 22;
@@ -815,8 +822,6 @@ export default class GameScene extends Phaser.Scene {
     //  Event Log
     // ══════════════════════════════════════
     private addEventLog(msg: string, color: string) {
-        this.addMobileEventLog(msg);
-        if (this.isMobile) return;
         const ex    = this.PLAYERS_W + 16;
         const baseY = this.TOPBAR_H + 50;
         const lineH = 26;
@@ -974,7 +979,7 @@ export default class GameScene extends Phaser.Scene {
         this.adminToggleBtn.id = "admin-toggle-btn";
         this.adminToggleBtn.innerHTML = "⚙  CONTROL PANEL";
         Object.assign(this.adminToggleBtn.style, {
-            position: "absolute", right: "16px", top: "10px",
+            position: "fixed", right: "16px", top: "10px",
             padding: "8px 20px", fontSize: "12px",
             fontFamily: "'Courier New', monospace",
             fontWeight: "bold", letterSpacing: "2px",
@@ -998,8 +1003,8 @@ export default class GameScene extends Phaser.Scene {
         const drawer = document.createElement("div");
         drawer.id = "admin-drawer";
         Object.assign(drawer.style, {
-            position: "fixed", top: "0", right: "-520px",
-            width: "500px", height: "100vh",
+            position: "fixed", top: "0", right: "-105vw",
+            width: "min(500px, 100vw)", height: "100vh",
             backgroundColor: "#080c12",
             borderLeft: "1px solid rgba(245,158,11,0.25)",
             boxShadow: "-8px 0 40px rgba(0,0,0,0.6)",
@@ -1331,7 +1336,6 @@ export default class GameScene extends Phaser.Scene {
     //  Cleanup
     // ══════════════════════════════════════
     private cleanupHTML() {
-        this.cleanupMobileLayout();
         document.getElementById("lobby-username")?.remove();
         document.getElementById("admin-toggle-btn")?.remove();
         document.getElementById("admin-drawer")?.remove();
@@ -1353,137 +1357,4 @@ export default class GameScene extends Phaser.Scene {
         evts.forEach(e => socketService.socket.off(e));
         this.tweens.killAll();
     }
-    // ══════════════════════════════════════
-    //  Mobile Layout (HTML Overlay)
-    // ══════════════════════════════════════
-    private mobilePanel?: HTMLDivElement;
-
-    private createMobileLayout() {
-        if (!this.isMobile) return;
-
-        const panel = document.createElement("div");
-        panel.id = "mobile-game-panel";
-        Object.assign(panel.style, {
-            position: "fixed",
-            top: "58px",
-            left: "0",
-            right: "0",
-            bottom: "0",
-            zIndex: "500",
-            display: "flex",
-            flexDirection: "column",
-            backgroundColor: "transparent",
-            pointerEvents: "none",
-        });
-        document.body.appendChild(panel);
-        this.mobilePanel = panel;
-
-        // ── Players List (top strip) ──
-        const playersStrip = document.createElement("div");
-        playersStrip.id = "mobile-players-strip";
-        Object.assign(playersStrip.style, {
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "6px",
-            padding: "8px 10px",
-            backgroundColor: "rgba(17,24,39,0.95)",
-            borderBottom: "1px solid #1e2d45",
-            pointerEvents: "auto",
-            maxHeight: "80px",
-            overflowY: "auto",
-        });
-        panel.appendChild(playersStrip);
-
-        // ── Event Log (middle) ──
-        const eventLog = document.createElement("div");
-        eventLog.id = "mobile-event-log";
-        Object.assign(eventLog.style, {
-            flex: "1",
-            padding: "8px 10px",
-            overflowY: "auto",
-            fontSize: "12px",
-            fontFamily: "'Courier New', monospace",
-            color: "#94a3b8",
-            backgroundColor: "transparent",
-            pointerEvents: "none",
-        });
-        panel.appendChild(eventLog);
-
-        // ── Chat Area ──
-        const chatArea = document.createElement("div");
-        chatArea.id = "mobile-chat-area";
-        Object.assign(chatArea.style, {
-            maxHeight: "140px",
-            overflowY: "auto",
-            padding: "6px 10px",
-            backgroundColor: "rgba(17,24,39,0.95)",
-            borderTop: "1px solid #1e2d45",
-            display: "flex",
-            flexDirection: "column",
-            gap: "3px",
-            pointerEvents: "none",
-        });
-        panel.appendChild(chatArea);
-    }
-
-    private updateMobilePlayers(players: any[], phase: string) {
-        if (!this.isMobile) return;
-        const strip = document.getElementById("mobile-players-strip");
-        if (!strip) return;
-        strip.innerHTML = "";
-        players.forEach(p => {
-            const chip = document.createElement("div");
-            const isMe = p.id === socketService.socket.id;
-            chip.textContent = `${p.alive ? "●" : "○"} ${p.username}${isMe ? " [YOU]" : ""}`;
-            Object.assign(chip.style, {
-                fontSize: "11px",
-                fontFamily: "'Courier New', monospace",
-                color: !p.alive ? "#4b5563" : isMe ? "#f1f5f9" : "#94a3b8",
-                padding: "2px 6px",
-                backgroundColor: "rgba(30,45,69,0.6)",
-                borderRadius: "3px",
-                border: isMe ? "1px solid #3b82f6" : "1px solid transparent",
-            });
-            strip.appendChild(chip);
-        });
-    }
-
-    private addMobileChatMessage(username: string, message: string, alive: boolean) {
-        if (!this.isMobile) return;
-        const area = document.getElementById("mobile-chat-area");
-        if (!area) return;
-        const el = document.createElement("div");
-        el.textContent = `${alive ? "" : "☠ "}${username}: ${message}`;
-        Object.assign(el.style, {
-            fontSize: "11px",
-            fontFamily: "'Courier New', monospace",
-            color: alive ? "#94a3b8" : "#4b5563",
-            wordBreak: "break-word",
-        });
-        area.appendChild(el);
-        area.scrollTop = area.scrollHeight;
-        while (area.children.length > 20) area.removeChild(area.firstChild!);
-    }
-
-    private addMobileEventLog(text: string) {
-        if (!this.isMobile) return;
-        const log = document.getElementById("mobile-event-log");
-        if (!log) return;
-        const el = document.createElement("div");
-        el.textContent = `> ${text}`;
-        Object.assign(el.style, {
-            marginBottom: "4px",
-            opacity: "0",
-            transition: "opacity 0.3s",
-        });
-        log.appendChild(el);
-        requestAnimationFrame(() => { el.style.opacity = "1"; });
-        log.scrollTop = log.scrollHeight;
-    }
-
-    private cleanupMobileLayout() {
-        document.getElementById("mobile-game-panel")?.remove();
-    }
-
-
 }

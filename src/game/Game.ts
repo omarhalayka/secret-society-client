@@ -6,23 +6,27 @@ import MafiaNightScene from "./scenes/MafiaNightScene";
 import DoctorNightScene from "./scenes/DoctorNightScene";
 import DetectiveNightScene from "./scenes/DetectiveNightScene";
 
-console.log("📦 Loading Game.ts");
-console.log("  - BootScene:", BootScene ? "✅" : "❌");
-console.log("  - LobbyScene:", LobbyScene ? "✅" : "❌");
-console.log("  - GameScene:", GameScene ? "✅" : "❌");
-console.log("  - MafiaNightScene:", MafiaNightScene ? "✅" : "❌");
-console.log("  - DoctorNightScene:", DoctorNightScene ? "✅" : "❌");
-console.log("  - DetectiveNightScene:", DetectiveNightScene ? "✅" : "❌");
+// ── الحجم الأساسي للتصميم (Desktop) ──
+const BASE_W = 1280;
+const BASE_H = 720;
+
+// ── نحسب أصغر نسبة تناسب الشاشة ──
+const scaleX = window.innerWidth  / BASE_W;
+const scaleY = window.innerHeight / BASE_H;
+const zoom   = Math.min(scaleX, scaleY); // zoom out ليناسب الشاشة
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
-    width: window.innerWidth,
-    height: window.innerHeight,
-    backgroundColor: "#0f0f1a",
+    width:  BASE_W,
+    height: BASE_H,
+    backgroundColor: "#0a0d13",
     parent: "game",
+    zoom: zoom,
     scale: {
-        mode: Phaser.Scale.RESIZE,
+        mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: BASE_W,
+        height: BASE_H,
     },
     scene: [
         BootScene,
@@ -35,5 +39,4 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 const game = new Phaser.Game(config);
-console.log("🎮 Game created");
 export default game;
