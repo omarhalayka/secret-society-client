@@ -11,7 +11,6 @@ export default class GameScene extends Phaser.Scene {
     private currentPlayers: any[] = [];
     private actionUsed: boolean = false;
     private isNightSceneActive: boolean = false;
-    private isTransitioning: boolean = false; // حماية من double scene.start
 
     // ─── عناصر Phaser ───
     private phaseText!: Phaser.GameObjects.Text;
@@ -53,8 +52,9 @@ export default class GameScene extends Phaser.Scene {
 
     // ─── تخطيط ───
     private readonly TOPBAR_H  = 58;
-    private readonly PLAYERS_W = 220;
-    private readonly CHAT_W    = 280;
+    private PLAYERS_W = 220;
+    private CHAT_W    = 280;
+    private isMobile  = false;
     private W!: number;
     private H!: number;
     private CONTENT_H!: number;
@@ -75,13 +75,11 @@ export default class GameScene extends Phaser.Scene {
     constructor() { super("GameScene"); }
 
     init(data: any) {
-        this.role            = data.role;
-        this.roomId          = data.roomId;
-        this.userType        = data.userType || "PLAYER";
-        this.isAdmin         = this.role === "ADMIN";
-        this.myVote          = null;
-        this.isTransitioning = false;
-        this.isNightSceneActive = false;
+        this.role      = data.role;
+        this.roomId    = data.roomId;
+        this.userType  = data.userType || "PLAYER";
+        this.isAdmin   = this.role === "ADMIN";
+        this.myVote    = null;
         this.votingCards.clear();
         if (this.isAdmin) socketService.isAdmin = true;
     }
@@ -91,16 +89,28 @@ export default class GameScene extends Phaser.Scene {
 
         this.W         = this.scale.width;
         this.H         = this.scale.height;
+
+        // ── Mobile Detection ──
+        this.isMobile  = this.W < 768;
+        if (this.isMobile) {
+            this.PLAYERS_W = 0;   // نخفي panel اللاعبين
+            this.CHAT_W    = 0;   // نخفي الـ chat panel
+        } else {
+            this.PLAYERS_W = 220;
+            this.CHAT_W    = 280;
+        }
+
         this.CONTENT_H = this.H - this.TOPBAR_H;
         this.EVENTS_W  = this.W - this.PLAYERS_W - this.CHAT_W;
 
         this.cleanupHTML();
         this.cameras.main.fadeIn(600, 10, 13, 19);
         this.drawBackground();
-        this.drawPanels();
+        if (!this.isMobile) this.drawPanels();
         this.drawTopBar();
-        this.drawSectionHeaders();
+        if (!this.isMobile) this.drawSectionHeaders();
         this.createChatInput();
+        this.createMobileLayout();
         if (this.isAdmin) this.createAdminDrawer();
         this.setupSocketListeners();
         socketService.socket.emit("request_room_state");
@@ -258,6 +268,8 @@ export default class GameScene extends Phaser.Scene {
         );
         this.playerRows = [];
         this.currentPlayers = players;
+        this.updateMobilePlayers(players, phase);
+        if (this.isMobile) return; // على الموبايل نكتفي بالـ HTML
         const startY  = this.TOPBAR_H + 50;
         const isNight = phase === "NIGHT";
         // BUG FIX #2: المشاهد ما يشوف أزرار الأكشن
@@ -723,8 +735,8 @@ export default class GameScene extends Phaser.Scene {
         this.chatInput.placeholder = "Message...";
         this.chatInput.maxLength = 120;
         Object.assign(this.chatInput.style, {
-            position: "absolute", left: `${chatX + 12}px`, bottom: "14px",
-            width: `${this.CHAT_W - 60}px`, padding: "9px 14px",
+            position: "absolute", left: this.isMobile ? "10px" : `${chatX + 12}px`, bottom: "14px",
+            width: this.isMobile ? `${this.W - 60}px` : `${this.CHAT_W - 60}px`, padding: "9px 14px",
             fontSize: "13px", fontFamily: "'Courier New', monospace",
             border: "1px solid #1e2d45", borderRadius: "4px",
             backgroundColor: "#0a0d13", color: "#f1f5f9",
@@ -761,6 +773,8 @@ export default class GameScene extends Phaser.Scene {
 
     // BUG FIX #4: alive قد يكون undefined — معاملته كـ true
     private addChatMessage(username: string, message: string, alive?: boolean) {
+        this.addMobileChatMessage(username, message, alive !== false);
+        if (this.isMobile) return;
         const chatX  = this.PLAYERS_W + this.EVENTS_W;
         const baseY  = this.TOPBAR_H + 50;
         const lineH  = 22;
@@ -801,6 +815,8 @@ export default class GameScene extends Phaser.Scene {
     //  Event Log
     // ══════════════════════════════════════
     private addEventLog(msg: string, color: string) {
+        this.addMobileEventLog(msg);
+        if (this.isMobile) return;
         const ex    = this.PLAYERS_W + 16;
         const baseY = this.TOPBAR_H + 50;
         const lineH = 26;
@@ -930,42 +946,20 @@ export default class GameScene extends Phaser.Scene {
         const hex     = isMafia ? "#f87171" : "#4ade80";
         const c = this.add.container(this.W / 2, this.H / 2).setDepth(100).setAlpha(0);
         const dimBg = this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.75).setOrigin(0.5);
-        const panel = this.add.rectangle(0, 0, 500, 360, isMafia ? 0x0f0505 : 0x050f05);
+        const panel = this.add.rectangle(0, 0, 500, 320, isMafia ? 0x0f0505 : 0x050f05);
         panel.setStrokeStyle(2, color);
-        const titleText = this.add.text(0, -120,
+        const titleText = this.add.text(0, -100,
             `${isMafia ? "🔪" : "👑"}  ${isMafia ? "MAFIA WINS" : "CITIZENS WIN"}  ${isMafia ? "🔪" : "👑"}`,
             { fontSize: "38px", color: hex, fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 6 }
         ).setOrigin(0.5);
         const rolesStr = data.roles
             ? data.roles.map((r: any) => `${r.username}  →  ${r.role}`).join("\n")
             : "";
-        const rolesText = this.add.text(0, 10, rolesStr, {
+        const rolesText = this.add.text(0, 30, rolesStr, {
             fontSize: "14px", color: "#94a3b8",
             fontFamily: "'Courier New', monospace", align: "center", lineSpacing: 8
         }).setOrigin(0.5);
-
-        // ─── زر PLAY AGAIN (للأدمن فقط) ───
-        if (this.isAdmin) {
-            const btnBg = this.add.rectangle(0, 140, 220, 40, 0x0a0d13);
-            btnBg.setStrokeStyle(2, 0x3b82f6);
-            const btnLbl = this.add.text(0, 140, "🔄  RESTART GAME", {
-                fontSize: "13px", color: "#3b82f6",
-                fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 2
-            }).setOrigin(0.5);
-            btnBg.setInteractive({ useHandCursor: true });
-            btnBg.on("pointerover", () => { btnBg.setFillStyle(0x0f1a30); btnLbl.setColor("#60a5fa"); });
-            btnBg.on("pointerout",  () => { btnBg.setFillStyle(0x0a0d13); btnLbl.setColor("#3b82f6"); });
-            btnBg.on("pointerdown", () => {
-                socketService.socket.emit("restart_game");
-                this.tweens.add({ targets: c, alpha: 0, duration: 300, onComplete: () => {
-                    c.destroy(); if (this.winOverlay === c) this.winOverlay = undefined;
-                }});
-            });
-            c.add([dimBg, panel, titleText, rolesText, btnBg, btnLbl]);
-        } else {
-            c.add([dimBg, panel, titleText, rolesText]);
-        }
-
+        c.add([dimBg, panel, titleText, rolesText]);
         this.winOverlay = c;
         this.cameras.main.flash(500, isMafia ? 100 : 0, isMafia ? 0 : 60, 0);
         this.tweens.add({ targets: c, alpha: 1, duration: 600 });
@@ -1209,9 +1203,6 @@ export default class GameScene extends Phaser.Scene {
                 };
                 const targetScene = nightSceneMap[this.role];
                 if (targetScene) {
-                    // FIX: نتحقق إن اللاعب حي قبل دخول NightScene
-                    const myPlayer = data.players?.find((p: any) => p.id === socketService.socket.id);
-                    if (myPlayer && !myPlayer.alive) return; // مقتول — يبقى في GameScene
                     this.isNightSceneActive = true;
                     this.cameras.main.fadeOut(500, 10, 13, 19);
                     this.time.delayedCall(500, () => {
@@ -1237,31 +1228,19 @@ export default class GameScene extends Phaser.Scene {
             if (data.phase === "NIGHT" && !this.isAdmin) {
                 const targetScene = nightSceneMap[this.role];
                 if (targetScene) {
-                    if (this.isNightSceneActive || this.isTransitioning) return;
-                    // FIX: لو اللاعب مات → يبقى في GameScene كمشاهد
-                    const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
-                    if (myPlayer && !myPlayer.alive) return;
+                    // دور عنده مشهد ليلي — ينتقل إليه
+                    if (this.isNightSceneActive) return;
                     this.isNightSceneActive = true;
-                    this.isTransitioning = true;
-                    socketService.socket.emit("request_room_state");
-                    this.cameras.main.fadeOut(600, 10, 13, 19);
-                    this.time.delayedCall(600, () => {
-                        if (!this.scene.isActive("GameScene")) return;
+                    this.cameras.main.fadeOut(500, 10, 13, 19);
+                    this.time.delayedCall(500, () => {
                         this.scene.start(targetScene, {
-                            roomId:   this.roomId,
-                            players:  this.currentPlayers
+                            roomId: this.roomId,
+                            players: this.currentPlayers
                         });
                     });
                     return;
                 }
-                // CITIZEN / SPECTATOR / ADMIN — يبقى هنا
-            }
-
-            // NIGHT_REVIEW: الأدمن فقط يستقبله — يحدث الـ drawer
-            if (data.phase === "NIGHT_REVIEW") {
-                this.updateAdminDrawerPhase("NIGHT_REVIEW");
-                this.addEventLog("🌙  Night ended — waiting for story...", "#c084fc");
-                return;
+                // CITIZEN / SPECTATOR — يبقى هنا، فقط يُظهر الـ transition
             }
 
             if (data.phase !== "NIGHT") this.isNightSceneActive = false;
@@ -1275,14 +1254,13 @@ export default class GameScene extends Phaser.Scene {
 
         socketService.socket.on("voting_started", () => {
             this.showPhaseTransition("VOTING");
-            // room_state سيوصل مع voting_started (السيرفر يبعثهم بالترتيب)
-            // نؤخر الـ overlay 400ms عشان room_state يوصل ويحدّث currentPlayers أولاً
-            this.time.delayedCall(400, () => {
-                // فقط اللاعبين الأحياء — الأدمن والمشاهد لا
-                const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
-                const isAlivePlayer = myPlayer?.alive && this.userType === "PLAYER" && !this.isAdmin;
-                if (isAlivePlayer) this.showVotingOverlay();
-            });
+            socketService.socket.emit("request_room_state");
+            // فقط اللاعبين الأحياء يشوفون الـ overlay — الأدمن والمشاهد لا
+            const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
+            const isAlivePlayer = myPlayer?.alive && this.userType === "PLAYER" && !this.isAdmin;
+            if (isAlivePlayer) {
+                this.time.delayedCall(300, () => this.showVotingOverlay());
+            }
         });
 
         socketService.socket.on("vote_update", (v: any) => {
@@ -1325,41 +1303,26 @@ export default class GameScene extends Phaser.Scene {
 
         // back_to_lobby — يُخفي winOverlay ويجهّز الـ scene للـ restart
         socketService.socket.on("back_to_lobby", () => {
-            // reset flags
-            this.isTransitioning    = false;
-            this.isNightSceneActive = false;
-            this.actionUsed         = false;
-
-            // إخفاء كل الـ overlays
-            if (this.winOverlay) { this.winOverlay.destroy(); this.winOverlay = undefined; }
-            this.closeVotingOverlay(false);
-            if (this.nightResultOverlay) { this.nightResultOverlay.destroy(); this.nightResultOverlay = undefined; }
-
+            // إخفاء win overlay فوراً
+            if (this.winOverlay) {
+                this.winOverlay.destroy();
+                this.winOverlay = undefined;
+            }
+            // رسالة انتظار في الـ event log
             this.addEventLog("⟳  New game starting...", "#3b82f6");
         });
 
         socketService.socket.on("game_started", (data: any) => {
-            // FIX: منع double start — لو في transition جارية، تجاهل
-            if (this.isTransitioning) return;
-            this.isTransitioning = true;
-
+            // حدّد userType من data.role
             let newUserType = "PLAYER";
             if (data.role === "ADMIN")          { newUserType = "ADMIN"; socketService.isAdmin = true; }
             else if (data.role === "SPECTATOR") { newUserType = "SPECTATOR"; }
 
-            // نمسح كل الـ overlays فوراً
-            if (this.winOverlay) { this.winOverlay.destroy(); this.winOverlay = undefined; }
-            this.closeVotingOverlay(false);
-            if (this.nightResultOverlay) { this.nightResultOverlay.destroy(); this.nightResultOverlay = undefined; }
-
-            // تأخير بسيط عشان الـ scene الحالية تخلص cleanup
-            this.time.delayedCall(100, () => {
-                if (!this.scene.isActive("GameScene")) return;
-                this.scene.start("GameScene", {
-                    role:     data.role,
-                    roomId:   data.roomId,
-                    userType: newUserType
-                });
+            // ✅ FIX: restart فوري بدون delay — عشان ما نضيع الـ phase_changed=NIGHT
+            this.scene.start("GameScene", {
+                role:     data.role,
+                roomId:   data.roomId,
+                userType: newUserType
             });
         });
     }
@@ -1368,6 +1331,7 @@ export default class GameScene extends Phaser.Scene {
     //  Cleanup
     // ══════════════════════════════════════
     private cleanupHTML() {
+        this.cleanupMobileLayout();
         document.getElementById("lobby-username")?.remove();
         document.getElementById("admin-toggle-btn")?.remove();
         document.getElementById("admin-drawer")?.remove();
@@ -1389,4 +1353,137 @@ export default class GameScene extends Phaser.Scene {
         evts.forEach(e => socketService.socket.off(e));
         this.tweens.killAll();
     }
+    // ══════════════════════════════════════
+    //  Mobile Layout (HTML Overlay)
+    // ══════════════════════════════════════
+    private mobilePanel?: HTMLDivElement;
+
+    private createMobileLayout() {
+        if (!this.isMobile) return;
+
+        const panel = document.createElement("div");
+        panel.id = "mobile-game-panel";
+        Object.assign(panel.style, {
+            position: "fixed",
+            top: "58px",
+            left: "0",
+            right: "0",
+            bottom: "0",
+            zIndex: "500",
+            display: "flex",
+            flexDirection: "column",
+            backgroundColor: "transparent",
+            pointerEvents: "none",
+        });
+        document.body.appendChild(panel);
+        this.mobilePanel = panel;
+
+        // ── Players List (top strip) ──
+        const playersStrip = document.createElement("div");
+        playersStrip.id = "mobile-players-strip";
+        Object.assign(playersStrip.style, {
+            display: "flex",
+            flexWrap: "wrap",
+            gap: "6px",
+            padding: "8px 10px",
+            backgroundColor: "rgba(17,24,39,0.95)",
+            borderBottom: "1px solid #1e2d45",
+            pointerEvents: "auto",
+            maxHeight: "80px",
+            overflowY: "auto",
+        });
+        panel.appendChild(playersStrip);
+
+        // ── Event Log (middle) ──
+        const eventLog = document.createElement("div");
+        eventLog.id = "mobile-event-log";
+        Object.assign(eventLog.style, {
+            flex: "1",
+            padding: "8px 10px",
+            overflowY: "auto",
+            fontSize: "12px",
+            fontFamily: "'Courier New', monospace",
+            color: "#94a3b8",
+            backgroundColor: "transparent",
+            pointerEvents: "none",
+        });
+        panel.appendChild(eventLog);
+
+        // ── Chat Area ──
+        const chatArea = document.createElement("div");
+        chatArea.id = "mobile-chat-area";
+        Object.assign(chatArea.style, {
+            maxHeight: "140px",
+            overflowY: "auto",
+            padding: "6px 10px",
+            backgroundColor: "rgba(17,24,39,0.95)",
+            borderTop: "1px solid #1e2d45",
+            display: "flex",
+            flexDirection: "column",
+            gap: "3px",
+            pointerEvents: "none",
+        });
+        panel.appendChild(chatArea);
+    }
+
+    private updateMobilePlayers(players: any[], phase: string) {
+        if (!this.isMobile) return;
+        const strip = document.getElementById("mobile-players-strip");
+        if (!strip) return;
+        strip.innerHTML = "";
+        players.forEach(p => {
+            const chip = document.createElement("div");
+            const isMe = p.id === socketService.socket.id;
+            chip.textContent = `${p.alive ? "●" : "○"} ${p.username}${isMe ? " [YOU]" : ""}`;
+            Object.assign(chip.style, {
+                fontSize: "11px",
+                fontFamily: "'Courier New', monospace",
+                color: !p.alive ? "#4b5563" : isMe ? "#f1f5f9" : "#94a3b8",
+                padding: "2px 6px",
+                backgroundColor: "rgba(30,45,69,0.6)",
+                borderRadius: "3px",
+                border: isMe ? "1px solid #3b82f6" : "1px solid transparent",
+            });
+            strip.appendChild(chip);
+        });
+    }
+
+    private addMobileChatMessage(username: string, message: string, alive: boolean) {
+        if (!this.isMobile) return;
+        const area = document.getElementById("mobile-chat-area");
+        if (!area) return;
+        const el = document.createElement("div");
+        el.textContent = `${alive ? "" : "☠ "}${username}: ${message}`;
+        Object.assign(el.style, {
+            fontSize: "11px",
+            fontFamily: "'Courier New', monospace",
+            color: alive ? "#94a3b8" : "#4b5563",
+            wordBreak: "break-word",
+        });
+        area.appendChild(el);
+        area.scrollTop = area.scrollHeight;
+        while (area.children.length > 20) area.removeChild(area.firstChild!);
+    }
+
+    private addMobileEventLog(text: string) {
+        if (!this.isMobile) return;
+        const log = document.getElementById("mobile-event-log");
+        if (!log) return;
+        const el = document.createElement("div");
+        el.textContent = `> ${text}`;
+        Object.assign(el.style, {
+            marginBottom: "4px",
+            opacity: "0",
+            transition: "opacity 0.3s",
+        });
+        log.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity = "1"; });
+        log.scrollTop = log.scrollHeight;
+    }
+
+    private cleanupMobileLayout() {
+        document.getElementById("mobile-game-panel")?.remove();
+    }
+
+
 }
