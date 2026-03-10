@@ -729,6 +729,7 @@ export default class GameScene extends Phaser.Scene {
         const chatX = this.PLAYERS_W + this.EVENTS_W;
 
         this.chatInput = document.createElement("input");
+        this.chatInput.id = "game-chat-input";
         this.chatInput.placeholder = "Message...";
         this.chatInput.maxLength = 120;
         Object.assign(this.chatInput.style, {
@@ -1258,15 +1259,21 @@ export default class GameScene extends Phaser.Scene {
             const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
             const isAlivePlayer = myPlayer?.alive && this.userType === "PLAYER" && !this.isAdmin;
             if (isAlivePlayer) {
-                this.time.delayedCall(300, () => this.showVotingOverlay());
+                if (this.W < 700) {
+                    this.time.delayedCall(300, () => this.showMobileVoting());
+                } else {
+                    this.time.delayedCall(300, () => this.showVotingOverlay());
+                }
             }
         });
 
         socketService.socket.on("vote_update", (v: any) => {
             this.updateVotes(v);
+            this.updateMobileVotes(v);
         });
 
         socketService.socket.on("voting_result", (data: any) => {
+            this.closeMobileVoting();
             const msg = data.tie
                 ? "TIE — no one eliminated"
                 : `${data.eliminated} was eliminated by vote`;
@@ -1457,11 +1464,15 @@ export default class GameScene extends Phaser.Scene {
             fontFamily: "'Courier New', monospace", fontSize: "13px",
             outline: "none",
         });
-        mobileInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" && mobileInput.value.trim()) {
-                socketService.socket.emit("send_message", { message: mobileInput.value.trim() });
+        const doSend = () => {
+            const msg = mobileInput.value.trim();
+            if (msg) {
+                socketService.socket.emit("send_message", { message: msg });
                 mobileInput.value = "";
             }
+        };
+        mobileInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") doSend();
         });
 
         const mobileSendBtn = document.createElement("button");
@@ -1470,12 +1481,7 @@ export default class GameScene extends Phaser.Scene {
             padding: "8px 14px", backgroundColor: "#3b82f6", color: "#fff",
             border: "none", borderRadius: "4px", fontSize: "14px", cursor: "pointer",
         });
-        mobileSendBtn.onclick = () => {
-            if (mobileInput.value.trim()) {
-                socketService.socket.emit("send_message", { message: mobileInput.value.trim() });
-                mobileInput.value = "";
-            }
-        };
+        mobileSendBtn.onclick = () => doSend();
 
         chatInputRow.appendChild(mobileInput);
         chatInputRow.appendChild(mobileSendBtn);
@@ -1570,7 +1576,7 @@ export default class GameScene extends Phaser.Scene {
         const msgs = document.getElementById("mobile-chat-messages");
         if (!msgs) return;
         const el = document.createElement("div");
-        const isMe = username === "you";
+        const isMe = false; // username comparison not needed here
         el.innerHTML = `<span style="color:${alive ? "#3b82f6" : "#4b5563"}">${username}:</span> ${message}`;
         Object.assign(el.style, {
             padding: "4px 8px", borderRadius: "3px",
@@ -1593,6 +1599,163 @@ export default class GameScene extends Phaser.Scene {
 
     private cleanupMobileTabs() {
         document.getElementById("mobile-game-ui")?.remove();
+    }
+
+
+    // ══════════════════════════════════════
+    //  MOBILE VOTING OVERLAY (HTML)
+    // ══════════════════════════════════════
+    private mobileVotingEl?: HTMLDivElement;
+
+    private showMobileVoting() {
+        this.closeMobileVoting();
+        this.myVote = null;
+
+        const alivePlayers = this.currentPlayers.filter(p => p.alive);
+        if (alivePlayers.length === 0) return;
+
+        const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
+        const isMe = (p: any) => p.id === socketService.socket.id;
+
+        const overlay = document.createElement("div");
+        overlay.id = "mobile-voting-overlay";
+        Object.assign(overlay.style, {
+            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
+            zIndex: "2000", backgroundColor: "rgba(0,0,0,0.92)",
+            display: "flex", flexDirection: "column", alignItems: "center",
+            overflowY: "auto", padding: "20px 12px",
+        });
+
+        // العنوان
+        const title = document.createElement("div");
+        title.textContent = "VOTE TO ELIMINATE";
+        Object.assign(title.style, {
+            color: "#f1f5f9", fontSize: "20px",
+            fontFamily: "'Georgia', serif", fontWeight: "bold",
+            letterSpacing: "4px", marginBottom: "6px", textAlign: "center",
+        });
+        const sub = document.createElement("div");
+        sub.textContent = "Choose who threatens the community";
+        Object.assign(sub.style, {
+            color: "#64748b", fontSize: "11px",
+            fontFamily: "'Courier New', monospace",
+            letterSpacing: "2px", marginBottom: "20px",
+        });
+        overlay.appendChild(title);
+        overlay.appendChild(sub);
+
+        // Grid اللاعبين
+        const grid = document.createElement("div");
+        Object.assign(grid.style, {
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "12px", width: "100%", maxWidth: "420px",
+        });
+
+        alivePlayers.forEach(p => {
+            const card = document.createElement("div");
+            card.id = `mvote-card-${p.id}`;
+            const isMePlayer = isMe(p);
+            Object.assign(card.style, {
+                backgroundColor: "#111827",
+                border: "1px solid #1e2d45",
+                borderRadius: "8px", padding: "16px 10px",
+                display: "flex", flexDirection: "column",
+                alignItems: "center", gap: "8px",
+                cursor: isMePlayer ? "default" : "pointer",
+                transition: "border-color 0.2s, background 0.2s",
+                opacity: isMePlayer ? "0.5" : "1",
+            });
+
+            const avatar = document.createElement("div");
+            avatar.textContent = isMePlayer ? "😐" : "👤";
+            avatar.style.fontSize = "32px";
+
+            const name = document.createElement("div");
+            name.textContent = p.username + (isMePlayer ? " (YOU)" : "");
+            Object.assign(name.style, {
+                color: "#f1f5f9", fontSize: "13px",
+                fontFamily: "'Courier New', monospace",
+                fontWeight: "bold", textAlign: "center",
+            });
+
+            // Vote bar
+            const barBg = document.createElement("div");
+            Object.assign(barBg.style, {
+                width: "100%", height: "4px",
+                backgroundColor: "#1e2d45", borderRadius: "2px", overflow: "hidden",
+            });
+            const barFill = document.createElement("div");
+            barFill.id = `mvote-bar-${p.id}`;
+            Object.assign(barFill.style, {
+                height: "100%", width: "0%",
+                backgroundColor: "#f59e0b", transition: "width 0.3s",
+            });
+            barBg.appendChild(barFill);
+
+            const votesLabel = document.createElement("div");
+            votesLabel.id = `mvote-label-${p.id}`;
+            votesLabel.textContent = "0 votes";
+            Object.assign(votesLabel.style, {
+                color: "#64748b", fontSize: "10px",
+                fontFamily: "'Courier New', monospace",
+            });
+
+            const voteBtn = document.createElement("button");
+            voteBtn.id = `mvote-btn-${p.id}`;
+            voteBtn.textContent = isMePlayer ? "—" : "VOTE";
+            Object.assign(voteBtn.style, {
+                padding: "6px 16px", fontSize: "11px",
+                fontFamily: "'Courier New', monospace",
+                fontWeight: "bold", letterSpacing: "2px",
+                border: "1px solid #f59e0b",
+                borderRadius: "4px",
+                backgroundColor: "transparent",
+                color: "#f59e0b", cursor: isMePlayer ? "default" : "pointer",
+                pointerEvents: isMePlayer ? "none" : "auto",
+            });
+
+            if (!isMePlayer) {
+                voteBtn.onclick = () => {
+                    if (this.myVote) return;
+                    this.myVote = p.id;
+                    socketService.socket.emit("vote", { targetId: p.id });
+                    voteBtn.textContent = "✓ VOTED";
+                    voteBtn.style.backgroundColor = "#f59e0b";
+                    voteBtn.style.color = "#000";
+                    card.style.borderColor = "#f59e0b";
+                };
+            }
+
+            card.appendChild(avatar);
+            card.appendChild(name);
+            card.appendChild(barBg);
+            card.appendChild(votesLabel);
+            card.appendChild(voteBtn);
+            grid.appendChild(card);
+        });
+
+        overlay.appendChild(grid);
+        document.body.appendChild(overlay);
+        this.mobileVotingEl = overlay;
+    }
+
+    private updateMobileVotes(votes: Record<string, number>) {
+        if (!this.mobileVotingEl) return;
+        const total = Object.values(votes).reduce((a, b) => a + b, 0);
+        const alivePlayers = this.currentPlayers.filter(p => p.alive);
+        alivePlayers.forEach(p => {
+            const count = votes[p.id] || 0;
+            const bar = document.getElementById(`mvote-bar-${p.id}`) as HTMLDivElement;
+            const label = document.getElementById(`mvote-label-${p.id}`) as HTMLDivElement;
+            if (bar) bar.style.width = total > 0 ? `${(count / total) * 100}%` : "0%";
+            if (label) label.textContent = `${count} vote${count !== 1 ? "s" : ""}`;
+        });
+    }
+
+    private closeMobileVoting() {
+        document.getElementById("mobile-voting-overlay")?.remove();
+        this.mobileVotingEl = undefined;
     }
 
 

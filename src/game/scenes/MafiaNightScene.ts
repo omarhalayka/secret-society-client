@@ -67,6 +67,9 @@ export default class MafiaNightScene extends Phaser.Scene {
     }
 
     create() {
+        // نشيل أي HTML من GameScene
+        document.getElementById("mobile-game-ui")?.remove();
+        document.getElementById("game-chat-input")?.remove();
         const W = this.scale.width;
         const H = this.scale.height;
 
@@ -714,6 +717,7 @@ export default class MafiaNightScene extends Phaser.Scene {
     }
 
     shutdown() {
+        this.cleanupMobileNightUI();
         this.cleanupNightChat();
         this.embers.forEach(e => e.gfx.destroy());
         this.embers = [];
@@ -721,4 +725,89 @@ export default class MafiaNightScene extends Phaser.Scene {
         socketService.socket.off("player_killed");
         socketService.socket.off("back_to_lobby");
     }
+    // ═══════════════════════════════
+    //  MOBILE NIGHT UI (HTML)
+    // ═══════════════════════════════
+    private actionUsedMobile: boolean = false;
+
+    private createMobileNightUI(W: number) {
+        if (W >= 700) return;
+        const container = document.createElement("div");
+        container.id = "mobile-night-ui";
+        Object.assign(container.style, {
+            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
+            zIndex: "1000", backgroundColor: "#0d0305",
+            display: "flex", flexDirection: "column",
+            fontFamily: "'Courier New', monospace",
+        });
+        const header = document.createElement("div");
+        Object.assign(header.style, {
+            padding: "16px 20px", borderBottom: "1px solid #7f1d1d",
+            backgroundColor: "rgba(0,0,0,0.4)",
+        });
+        header.innerHTML = `<div style="color:#ef4444;font-size:11px;letter-spacing:3px;margin-bottom:6px">🔪 MAFIA</div><div style="color:#f1f5f9;font-size:18px;font-weight:bold;letter-spacing:2px">CHOOSE YOUR TARGET</div><div style="color:#64748b;font-size:11px;margin-top:4px">Eliminate one player tonight</div>`;
+        container.appendChild(header);
+        const list = document.createElement("div");
+        list.id = "mobile-night-list";
+        Object.assign(list.style, {
+            flex: "1", overflowY: "auto", padding: "12px",
+            display: "flex", flexDirection: "column", gap: "10px",
+        });
+        this.populateMobileNightList(list);
+        container.appendChild(list);
+        document.body.appendChild(container);
+    }
+
+    private populateMobileNightList(list: HTMLDivElement) {
+        const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id);
+        if (targets.length === 0) {
+            const empty = document.createElement("div");
+            empty.textContent = "No targets available";
+            Object.assign(empty.style, { color: "#64748b", textAlign: "center", marginTop: "40px" });
+            list.appendChild(empty);
+            return;
+        }
+        targets.forEach(player => {
+            const row = document.createElement("div");
+            Object.assign(row.style, {
+                display: "flex", alignItems: "center", gap: "12px",
+                padding: "14px 16px", borderRadius: "8px",
+                backgroundColor: "rgba(17,24,39,0.8)", border: "1px solid #7f1d1d",
+            });
+            const avatar = document.createElement("div");
+            avatar.textContent = "👤";
+            avatar.style.fontSize = "28px";
+            const name = document.createElement("div");
+            name.textContent = player.username;
+            Object.assign(name.style, { flex: "1", color: "#f1f5f9", fontSize: "14px", fontWeight: "bold" });
+            const btn = document.createElement("button");
+            btn.textContent = "KILL";
+            Object.assign(btn.style, {
+                padding: "8px 16px", fontSize: "11px", fontWeight: "bold", letterSpacing: "2px",
+                border: "1px solid #ef4444", borderRadius: "4px",
+                backgroundColor: "transparent", color: "#ef4444", cursor: "pointer",
+            });
+            btn.onclick = () => {
+                if (this.actionUsedMobile) return;
+                this.actionUsedMobile = true;
+                btn.textContent = "✓ DONE";
+                btn.style.backgroundColor = "#ef4444";
+                btn.style.color = "#000";
+                document.querySelectorAll("#mobile-night-list button").forEach(b => {
+                    (b as HTMLButtonElement).style.opacity = "0.4";
+                    (b as HTMLButtonElement).style.pointerEvents = "none";
+                });
+                socketService.socket.emit("mafia_kill", player.id);
+            };
+            row.appendChild(avatar);
+            row.appendChild(name);
+            row.appendChild(btn);
+            list.appendChild(row);
+        });
+    }
+
+    private cleanupMobileNightUI() {
+        document.getElementById("mobile-night-ui")?.remove();
+    }
+
 }
