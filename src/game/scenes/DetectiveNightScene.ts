@@ -248,12 +248,20 @@ export default class DetectiveNightScene extends Phaser.Scene {
         const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id);
         if (targets.length === 0) return;
 
-        const isMobile = W < 900;
-        const cardW = isMobile ? Math.min(90, (W - 20) / Math.min(targets.length, 4) - 8) : 140;
-        const cardH = 146 + (isMobile ? 0 : 39);
-        const gap = isMobile ? 6 : 24;
+        // ── Card dimensions (responsive) ──
+        let cardW  = 140;
+        let cardH  = 185;
+        let gap    = 24;
+        const naturalW  = targets.length * cardW + (targets.length - 1) * gap;
+        const maxAvailW = W - 32;
+        if (naturalW > maxAvailW) {
+            const s = maxAvailW / naturalW;
+            cardW = Math.floor(cardW * s);
+            cardH = Math.floor(cardH * s);
+            gap   = Math.floor(gap   * s);
+        }
         const totalW = targets.length * cardW + (targets.length - 1) * gap;
-        const startX = isMobile ? (cardW / 2 + 8) : (W / 2 - totalW / 2 + cardW / 2);
+        const startX = W / 2 - totalW / 2 + cardW / 2;
         const cardY = H / 2 + 30;
 
         targets.forEach((player, i) => {

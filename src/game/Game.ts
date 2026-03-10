@@ -6,27 +6,13 @@ import MafiaNightScene from "./scenes/MafiaNightScene";
 import DoctorNightScene from "./scenes/DoctorNightScene";
 import DetectiveNightScene from "./scenes/DetectiveNightScene";
 
-// ── الحجم الأساسي للتصميم (Desktop) ──
-const BASE_W = 1280;
-const BASE_H = 720;
-
-// ── نحسب أصغر نسبة تناسب الشاشة ──
-const scaleX = window.innerWidth  / BASE_W;
-const scaleY = window.innerHeight / BASE_H;
-const zoom   = Math.min(scaleX, scaleY); // zoom out ليناسب الشاشة
-
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
-    width:  BASE_W,
-    height: BASE_H,
     backgroundColor: "#0a0d13",
     parent: "game",
-    zoom: zoom,
     scale: {
-        mode: Phaser.Scale.FIT,
+        mode: Phaser.Scale.RESIZE,       // يأخذ حجم الشاشة الفعلي دائماً
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: BASE_W,
-        height: BASE_H,
     },
     scene: [
         BootScene,

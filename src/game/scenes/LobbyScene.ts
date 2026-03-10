@@ -7,7 +7,6 @@ export default class LobbyScene extends Phaser.Scene {
     private selectedType: string = "player";
     private queueStatusText!: Phaser.GameObjects.Text;
     private playerCountInterval?: number;
-    private splashOverlay?: HTMLDivElement;
 
     // متغيرات للأزرار عشان نقدر نتحكم فيها
     private roleButtons: { [key: string]: Phaser.GameObjects.Container } = {};
@@ -54,8 +53,6 @@ export default class LobbyScene extends Phaser.Scene {
     create() {
         console.log("LobbyScene create");
 
-        this.showSplashScreen();
-
         this.cameras.main.setBackgroundColor("#0a0d13");
         this.cameras.main.fadeIn(600, 10, 13, 19);
 
@@ -66,6 +63,7 @@ export default class LobbyScene extends Phaser.Scene {
         this.drawGrid(W, H);
 
         // ─── بطاقة مركزية ───
+        // Mobile responsive card
         const cardW = Math.min(460, W - 32);
         const cardH = Math.min(560, H - 40);
         const cardX = W / 2 - cardW / 2;
@@ -725,92 +723,4 @@ export default class LobbyScene extends Phaser.Scene {
         socketService.socket.off("waiting_for_players");
         socketService.socket.off("admin_joined");
     }
-    // ══════════════════════════════
-    //  Splash Screen — شاشة الترحيب
-    // ══════════════════════════════
-    private showSplashScreen() {
-        const overlay = document.createElement("div");
-        overlay.id = "splash-overlay";
-        this.splashOverlay = overlay;
-        Object.assign(overlay.style, {
-            position: "fixed",
-            inset: "0",
-            zIndex: "99999",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "rgba(0,0,0,0.92)",
-            backdropFilter: "blur(6px)",
-            cursor: "pointer",
-            animation: "splashFadeIn 0.6s ease",
-        });
-
-        // الصورة
-        const img = document.createElement("img");
-        img.src = "/welcome.jpg";
-        Object.assign(img.style, {
-            maxWidth: "min(480px, 90vw)",
-            maxHeight: "70vh",
-            objectFit: "contain",
-            borderRadius: "12px",
-            boxShadow: "0 0 40px rgba(59,130,246,0.3)",
-            pointerEvents: "none",
-            userSelect: "none",
-        });
-        overlay.appendChild(img);
-
-        // زر الإغلاق
-        const closeBtn = document.createElement("button");
-        closeBtn.textContent = "▶  ادخل المجتمع السري";
-        Object.assign(closeBtn.style, {
-            marginTop: "24px",
-            padding: "12px 32px",
-            fontSize: "14px",
-            fontFamily: "'Courier New', monospace",
-            letterSpacing: "2px",
-            color: "#f1f5f9",
-            backgroundColor: "rgba(59,130,246,0.15)",
-            border: "1px solid #3b82f6",
-            borderRadius: "6px",
-            cursor: "pointer",
-            transition: "all 0.2s",
-        });
-        closeBtn.onmouseover = () => closeBtn.style.backgroundColor = "rgba(59,130,246,0.35)";
-        closeBtn.onmouseout  = () => closeBtn.style.backgroundColor = "rgba(59,130,246,0.15)";
-        overlay.appendChild(closeBtn);
-
-        // نص صغير
-        const hint = document.createElement("p");
-        hint.textContent = "اضغط في أي مكان للمتابعة";
-        Object.assign(hint.style, {
-            marginTop: "10px",
-            fontSize: "11px",
-            color: "#64748b",
-            fontFamily: "'Courier New', monospace",
-            letterSpacing: "1px",
-        });
-        overlay.appendChild(hint);
-
-        // CSS animation
-        if (!document.getElementById("splash-style")) {
-            const style = document.createElement("style");
-            style.id = "splash-style";
-            style.textContent = `
-                @keyframes splashFadeIn { from { opacity:0; transform:scale(0.97) } to { opacity:1; transform:scale(1) } }
-                @keyframes splashFadeOut { from { opacity:1 } to { opacity:0; pointer-events:none } }
-            `;
-            document.head.appendChild(style);
-        }
-
-        const close = () => {
-            overlay.style.animation = "splashFadeOut 0.4s ease forwards";
-            setTimeout(() => overlay.remove(), 420);
-        };
-        overlay.addEventListener("click", close);
-
-        document.body.appendChild(overlay);
-    }
-
-
 }

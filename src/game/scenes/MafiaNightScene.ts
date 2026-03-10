@@ -259,13 +259,20 @@ export default class MafiaNightScene extends Phaser.Scene {
         const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id);
         if (targets.length === 0) return;
 
-        // Mobile responsive cards
-        const isMobile = W < 768;
-        const cardW = isMobile ? Math.min(100, (W - 20) / Math.min(targets.length, 4) - 8) : 140;
-        const cardH = isMobile ? 142 : 180;
-        const gap = isMobile ? 8 : 24;
+        // ── Card dimensions (responsive) ──
+        let cardW  = 140;
+        let cardH  = 180;
+        let gap    = 24;
+        const naturalW  = targets.length * cardW + (targets.length - 1) * gap;
+        const maxAvailW = W - 32;
+        if (naturalW > maxAvailW) {
+            const s = maxAvailW / naturalW;
+            cardW = Math.floor(cardW * s);
+            cardH = Math.floor(cardH * s);
+            gap   = Math.floor(gap   * s);
+        }
         const totalW = targets.length * cardW + (targets.length - 1) * gap;
-        const startX = isMobile ? (cardW / 2 + 10) : (W / 2 - totalW / 2 + cardW / 2);
+        const startX = W / 2 - totalW / 2 + cardW / 2;
         const cardY = H / 2 + 30;
 
         targets.forEach((player, i) => {

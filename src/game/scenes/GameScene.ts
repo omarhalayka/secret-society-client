@@ -52,8 +52,8 @@ export default class GameScene extends Phaser.Scene {
 
     // ─── تخطيط ───
     private readonly TOPBAR_H  = 58;
-    private readonly PLAYERS_W = 220;
-    private readonly CHAT_W    = 280;
+    private PLAYERS_W: number = 220;
+    private CHAT_W:    number = 280;
     private W!: number;
     private H!: number;
     private CONTENT_H!: number;
@@ -86,18 +86,28 @@ export default class GameScene extends Phaser.Scene {
     create() {
         if (!this.role || !this.roomId) { this.scene.start("LobbyScene"); return; }
 
-        this.W         = this.scale.width;
-        this.H         = this.scale.height;
+        this.W = this.scale.width;
+        this.H = this.scale.height;
+
+        // ── على الهاتف: نخفي الجانبين ونعرض tabs ──
+        if (this.W < 700) {
+            this.PLAYERS_W = 0;
+            this.CHAT_W    = 0;
+        } else {
+            this.PLAYERS_W = 220;
+            this.CHAT_W    = 280;
+        }
         this.CONTENT_H = this.H - this.TOPBAR_H;
         this.EVENTS_W  = this.W - this.PLAYERS_W - this.CHAT_W;
 
         this.cleanupHTML();
         this.cameras.main.fadeIn(600, 10, 13, 19);
         this.drawBackground();
-        this.drawPanels();
+        if (this.W >= 700) this.drawPanels();
         this.drawTopBar();
-        this.drawSectionHeaders();
+        if (this.W >= 700) this.drawSectionHeaders();
         this.createChatInput();
+        this.createMobileTabs();
         if (this.isAdmin) this.createAdminDrawer();
         this.setupSocketListeners();
         socketService.socket.emit("request_room_state");
@@ -255,6 +265,8 @@ export default class GameScene extends Phaser.Scene {
         );
         this.playerRows = [];
         this.currentPlayers = players;
+        this.updateMobilePlayers(players);
+        if (this.W < 700) return;
         const startY  = this.TOPBAR_H + 50;
         const isNight = phase === "NIGHT";
         // BUG FIX #2: المشاهد ما يشوف أزرار الأكشن
@@ -353,8 +365,8 @@ export default class GameScene extends Phaser.Scene {
 
         // العنوان
         const titleTxt = this.add.text(this.W / 2, 78, "VOTE TO ELIMINATE", {
-            fontSize: this.W < 900 ? "22px" : "32px", color: "#f1f5f9",
-            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: this.W < 900 ? 4 : 8
+            fontSize: "32px", color: "#f1f5f9",
+            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 8
         }).setOrigin(0.5);
 
         const subTxt = this.add.text(this.W / 2, 120, "Choose who threatens the community", {
@@ -381,12 +393,10 @@ export default class GameScene extends Phaser.Scene {
         overlay.add([titleTxt, subTxt, divG]);
 
         // حساب positions البطاقات
-        // Mobile: نصغّر الـ cards
-        const isMobile = this.W < 900;
-        const perRow = isMobile ? Math.min(alivePlayers.length, 3) : Math.min(alivePlayers.length, 4);
-        const gap    = isMobile ? 10 : 16;
-        const cardW  = isMobile ? Math.min(110, (this.W - 40) / perRow - gap) : 148;
-        const cardH  = isMobile ? 160 : 196;
+        const cardW  = 148;
+        const cardH  = 196;
+        const gap    = 16;
+        const perRow = Math.min(alivePlayers.length, 4);
         const rows   = Math.ceil(alivePlayers.length / perRow);
         const totalW = perRow * cardW + (perRow - 1) * gap;
         const startX = this.W / 2 - totalW / 2 + cardW / 2;
@@ -630,7 +640,7 @@ export default class GameScene extends Phaser.Scene {
             rows.push({ icon: "🔍", label: "Night victim",  value: victim ? victim.username : "Nobody died tonight", color: victim ? "#f87171" : "#4ade80" });
         }
 
-        const panelW = Math.min(340, this.W - 40);
+        const panelW = 340;
         const panelH = 64 + rows.length * 46 + 24;
         const c = this.add.container(this.W / 2, this.H / 2 - 50).setDepth(48).setAlpha(0);
 
@@ -715,28 +725,6 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
-    
-    // ── تحويل Phaser coords لـ CSS pixels (مهم للموبايل مع FIT scale) ──
-    private toCSS(phaserPx: number): string {
-        const zoom = this.scale.displayScale.x;
-        const canvasRect = this.game.canvas.getBoundingClientRect();
-        return `${phaserPx * zoom + (phaserPx < 100 ? 0 : canvasRect.left)}px`;
-    }
-    private toCSSX(phaserX: number): string {
-        const zoom = this.scale.displayScale.x;
-        const canvasRect = this.game.canvas.getBoundingClientRect();
-        return `${phaserX * zoom + canvasRect.left}px`;
-    }
-    private toCSSY(phaserY: number): string {
-        const zoom = this.scale.displayScale.y;
-        const canvasRect = this.game.canvas.getBoundingClientRect();
-        return `${phaserY * zoom + canvasRect.top}px`;
-    }
-    private toCSSDim(phaserSize: number): string {
-        const zoom = this.scale.displayScale.x;
-        return `${phaserSize * zoom}px`;
-    }
-
     private createChatInput() {
         const chatX = this.PLAYERS_W + this.EVENTS_W;
 
@@ -744,8 +732,9 @@ export default class GameScene extends Phaser.Scene {
         this.chatInput.placeholder = "Message...";
         this.chatInput.maxLength = 120;
         Object.assign(this.chatInput.style, {
-            position: "fixed", left: this.toCSSX(chatX + 12), bottom: "14px",
-            width: this.toCSSDim(this.CHAT_W - 60), padding: "9px 14px",
+            position: "absolute", left: `${chatX + 12}px`, bottom: "14px",
+            display: this.W < 700 ? "none" : "block",
+            width: `${this.CHAT_W - 60}px`, padding: "9px 14px",
             fontSize: "13px", fontFamily: "'Courier New', monospace",
             border: "1px solid #1e2d45", borderRadius: "4px",
             backgroundColor: "#0a0d13", color: "#f1f5f9",
@@ -758,7 +747,8 @@ export default class GameScene extends Phaser.Scene {
         this.sendBtn = document.createElement("button");
         this.sendBtn.textContent = "➤";
         Object.assign(this.sendBtn.style, {
-            position: "fixed", left: this.toCSSX(chatX + this.CHAT_W - 44), bottom: "14px",
+            position: "absolute", left: `${chatX + this.CHAT_W - 44}px`, bottom: "14px",
+            display: this.W < 700 ? "none" : "block",
             width: "36px", height: "36px", fontSize: "14px",
             border: "1px solid #1e2d45", borderRadius: "4px",
             backgroundColor: "#3b82f6", color: "#fff",
@@ -782,6 +772,8 @@ export default class GameScene extends Phaser.Scene {
 
     // BUG FIX #4: alive قد يكون undefined — معاملته كـ true
     private addChatMessage(username: string, message: string, alive?: boolean) {
+        this.addMobileChat(username, message, alive !== false);
+        if (this.W < 700) return;
         const chatX  = this.PLAYERS_W + this.EVENTS_W;
         const baseY  = this.TOPBAR_H + 50;
         const lineH  = 22;
@@ -822,6 +814,8 @@ export default class GameScene extends Phaser.Scene {
     //  Event Log
     // ══════════════════════════════════════
     private addEventLog(msg: string, color: string) {
+        this.addMobileEvent(msg);
+        if (this.W < 700) return;
         const ex    = this.PLAYERS_W + 16;
         const baseY = this.TOPBAR_H + 50;
         const lineH = 26;
@@ -979,7 +973,7 @@ export default class GameScene extends Phaser.Scene {
         this.adminToggleBtn.id = "admin-toggle-btn";
         this.adminToggleBtn.innerHTML = "⚙  CONTROL PANEL";
         Object.assign(this.adminToggleBtn.style, {
-            position: "fixed", right: "16px", top: "10px",
+            position: "absolute", right: "16px", top: "10px",
             padding: "8px 20px", fontSize: "12px",
             fontFamily: "'Courier New', monospace",
             fontWeight: "bold", letterSpacing: "2px",
@@ -1003,8 +997,8 @@ export default class GameScene extends Phaser.Scene {
         const drawer = document.createElement("div");
         drawer.id = "admin-drawer";
         Object.assign(drawer.style, {
-            position: "fixed", top: "0", right: "-105vw",
-            width: "min(500px, 100vw)", height: "100vh",
+            position: "fixed", top: "0", right: "-520px",
+            width: "500px", height: "100vh",
             backgroundColor: "#080c12",
             borderLeft: "1px solid rgba(245,158,11,0.25)",
             boxShadow: "-8px 0 40px rgba(0,0,0,0.6)",
@@ -1336,6 +1330,7 @@ export default class GameScene extends Phaser.Scene {
     //  Cleanup
     // ══════════════════════════════════════
     private cleanupHTML() {
+        this.cleanupMobileTabs();
         document.getElementById("lobby-username")?.remove();
         document.getElementById("admin-toggle-btn")?.remove();
         document.getElementById("admin-drawer")?.remove();
@@ -1357,4 +1352,248 @@ export default class GameScene extends Phaser.Scene {
         evts.forEach(e => socketService.socket.off(e));
         this.tweens.killAll();
     }
+    // ══════════════════════════════════════
+    //  MOBILE TABS (HTML overlay)
+    // ══════════════════════════════════════
+    private mobileTabs?: HTMLDivElement;
+    private mobileActiveTab: string = "events";
+
+    private createMobileTabs() {
+        if (this.W >= 700) return;
+
+        const TOPBAR = this.TOPBAR_H;
+        const container = document.createElement("div");
+        container.id = "mobile-game-ui";
+        Object.assign(container.style, {
+            position: "fixed",
+            top: `${TOPBAR}px`, left: "0", right: "0", bottom: "0",
+            zIndex: "500",
+            display: "flex", flexDirection: "column",
+            backgroundColor: "#0a0d13",
+        });
+        document.body.appendChild(container);
+        this.mobileTabs = container;
+
+        // ── Tab Buttons ──
+        const tabBar = document.createElement("div");
+        Object.assign(tabBar.style, {
+            display: "flex", borderBottom: "1px solid #1e2d45",
+            backgroundColor: "#111827", flexShrink: "0",
+        });
+
+        const tabs = [
+            { id: "players", label: "👥 PLAYERS" },
+            { id: "events",  label: "📋 EVENTS"  },
+            { id: "chat",    label: "💬 CHAT"    },
+        ];
+
+        tabs.forEach(tab => {
+            const btn = document.createElement("button");
+            btn.id = `tab-btn-${tab.id}`;
+            btn.textContent = tab.label;
+            Object.assign(btn.style, {
+                flex: "1", padding: "10px 4px",
+                fontSize: "11px", fontFamily: "'Courier New', monospace",
+                fontWeight: "bold", letterSpacing: "1px",
+                border: "none", cursor: "pointer",
+                color: tab.id === "events" ? "#3b82f6" : "#4b5563",
+                backgroundColor: tab.id === "events" ? "#0a0d13" : "transparent",
+                borderBottom: tab.id === "events" ? "2px solid #3b82f6" : "2px solid transparent",
+                transition: "all 0.2s",
+            });
+            btn.onclick = () => this.switchMobileTab(tab.id);
+            tabBar.appendChild(btn);
+        });
+        container.appendChild(tabBar);
+
+        // ── Tab Contents ──
+        const makePanel = (id: string) => {
+            const p = document.createElement("div");
+            p.id = `tab-panel-${id}`;
+            Object.assign(p.style, {
+                flex: "1", overflowY: "auto", padding: "10px",
+                display: id === "events" ? "flex" : "none",
+                flexDirection: "column", gap: "4px",
+                fontFamily: "'Courier New', monospace", fontSize: "12px",
+                color: "#94a3b8",
+            });
+            container.appendChild(p);
+            return p;
+        };
+
+        makePanel("players");
+        makePanel("events");
+
+        // Chat panel with input
+        const chatPanel = document.createElement("div");
+        chatPanel.id = "tab-panel-chat";
+        Object.assign(chatPanel.style, {
+            flex: "1", display: "none", flexDirection: "column",
+        });
+
+        const chatMessages = document.createElement("div");
+        chatMessages.id = "mobile-chat-messages";
+        Object.assign(chatMessages.style, {
+            flex: "1", overflowY: "auto", padding: "10px",
+            fontFamily: "'Courier New', monospace", fontSize: "12px",
+            color: "#94a3b8", display: "flex", flexDirection: "column", gap: "4px",
+        });
+        chatPanel.appendChild(chatMessages);
+
+        const chatInputRow = document.createElement("div");
+        Object.assign(chatInputRow.style, {
+            display: "flex", padding: "8px", gap: "8px",
+            borderTop: "1px solid #1e2d45", backgroundColor: "#111827",
+        });
+
+        const mobileInput = document.createElement("input");
+        mobileInput.placeholder = "Message...";
+        mobileInput.maxLength = 120;
+        mobileInput.id = "mobile-chat-input";
+        Object.assign(mobileInput.style, {
+            flex: "1", padding: "8px 12px",
+            backgroundColor: "#0a0d13", color: "#f1f5f9",
+            border: "1px solid #1e2d45", borderRadius: "4px",
+            fontFamily: "'Courier New', monospace", fontSize: "13px",
+            outline: "none",
+        });
+        mobileInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && mobileInput.value.trim()) {
+                socketService.socket.emit("send_message", { message: mobileInput.value.trim() });
+                mobileInput.value = "";
+            }
+        });
+
+        const mobileSendBtn = document.createElement("button");
+        mobileSendBtn.textContent = "➤";
+        Object.assign(mobileSendBtn.style, {
+            padding: "8px 14px", backgroundColor: "#3b82f6", color: "#fff",
+            border: "none", borderRadius: "4px", fontSize: "14px", cursor: "pointer",
+        });
+        mobileSendBtn.onclick = () => {
+            if (mobileInput.value.trim()) {
+                socketService.socket.emit("send_message", { message: mobileInput.value.trim() });
+                mobileInput.value = "";
+            }
+        };
+
+        chatInputRow.appendChild(mobileInput);
+        chatInputRow.appendChild(mobileSendBtn);
+        chatPanel.appendChild(chatInputRow);
+        container.appendChild(chatPanel);
+    }
+
+    private switchMobileTab(tabId: string) {
+        if (!this.mobileTabs) return;
+        this.mobileActiveTab = tabId;
+        ["players", "events", "chat"].forEach(id => {
+            const panel = document.getElementById(`tab-panel-${id}`);
+            const btn   = document.getElementById(`tab-btn-${id}`) as HTMLButtonElement;
+            if (!panel || !btn) return;
+            const active = id === tabId;
+            panel.style.display = active ? "flex" : "none";
+            btn.style.color = active ? "#3b82f6" : "#4b5563";
+            btn.style.backgroundColor = active ? "#0a0d13" : "transparent";
+            btn.style.borderBottom = active ? "2px solid #3b82f6" : "2px solid transparent";
+        });
+    }
+
+    private updateMobilePlayers(players: any[]) {
+        if (this.W >= 700) return;
+        const panel = document.getElementById("tab-panel-players");
+        if (!panel) return;
+        panel.innerHTML = "";
+        players.forEach(p => {
+            const row = document.createElement("div");
+            const isMe = p.id === socketService.socket.id;
+            Object.assign(row.style, {
+                display: "flex", alignItems: "center", gap: "8px",
+                padding: "8px 10px", borderRadius: "4px",
+                backgroundColor: isMe ? "rgba(59,130,246,0.1)" : "rgba(17,24,39,0.6)",
+                border: isMe ? "1px solid rgba(59,130,246,0.3)" : "1px solid transparent",
+                marginBottom: "4px",
+            });
+            const dot = document.createElement("span");
+            dot.textContent = p.alive ? "●" : "○";
+            dot.style.color = p.alive ? "#22c55e" : "#374151";
+            dot.style.fontSize = "10px";
+
+            const name = document.createElement("span");
+            name.textContent = p.username + (isMe ? " [YOU]" : "");
+            Object.assign(name.style, {
+                fontFamily: "'Courier New', monospace", fontSize: "13px",
+                color: p.alive ? (isMe ? "#f1f5f9" : "#94a3b8") : "#374151",
+                flex: "1",
+            });
+
+            const role = document.createElement("span");
+            role.textContent = p.role && p.alive ? `[${p.role}]` : "";
+            Object.assign(role.style, {
+                fontSize: "10px", color: "#4b5563",
+                fontFamily: "'Courier New', monospace",
+            });
+
+            row.appendChild(dot);
+            row.appendChild(name);
+            row.appendChild(role);
+            panel.appendChild(row);
+        });
+    }
+
+    private addMobileEvent(msg: string) {
+        if (this.W >= 700) return;
+        const panel = document.getElementById("tab-panel-events");
+        if (!panel) return;
+        const el = document.createElement("div");
+        el.textContent = `› ${msg}`;
+        Object.assign(el.style, {
+            padding: "6px 8px", borderLeft: "2px solid #1e2d45",
+            marginBottom: "2px", opacity: "0",
+            transition: "opacity 0.3s", fontSize: "12px",
+            fontFamily: "'Courier New', monospace", color: "#94a3b8",
+        });
+        panel.appendChild(el);
+        requestAnimationFrame(() => { el.style.opacity = "1"; });
+        panel.scrollTop = panel.scrollHeight;
+        // أضف badge على الـ tab إذا مش مفتوح
+        if (this.mobileActiveTab !== "events") {
+            const btn = document.getElementById("tab-btn-events");
+            if (btn && !btn.textContent?.includes("●")) {
+                btn.textContent = "● EVENTS";
+                btn.style.color = "#f59e0b";
+            }
+        }
+    }
+
+    private addMobileChat(username: string, message: string, alive: boolean) {
+        if (this.W >= 700) return;
+        const msgs = document.getElementById("mobile-chat-messages");
+        if (!msgs) return;
+        const el = document.createElement("div");
+        const isMe = username === "you";
+        el.innerHTML = `<span style="color:${alive ? "#3b82f6" : "#4b5563"}">${username}:</span> ${message}`;
+        Object.assign(el.style, {
+            padding: "4px 8px", borderRadius: "3px",
+            backgroundColor: "rgba(17,24,39,0.4)",
+            fontFamily: "'Courier New', monospace", fontSize: "12px",
+            color: alive ? "#cbd5e1" : "#4b5563",
+        });
+        msgs.appendChild(el);
+        msgs.scrollTop = msgs.scrollHeight;
+        while (msgs.children.length > 30) msgs.removeChild(msgs.firstChild!);
+        // badge على chat tab
+        if (this.mobileActiveTab !== "chat") {
+            const btn = document.getElementById("tab-btn-chat");
+            if (btn && !btn.textContent?.includes("●")) {
+                btn.textContent = "● CHAT";
+                btn.style.color = "#22c55e";
+            }
+        }
+    }
+
+    private cleanupMobileTabs() {
+        document.getElementById("mobile-game-ui")?.remove();
+    }
+
+
 }
