@@ -1472,7 +1472,7 @@ export default class GameScene extends Phaser.Scene {
             }
         };
         mobileInput.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") doSend();
+            if (e.key === "Enter") { e.preventDefault(); doSend(); }
         });
 
         const mobileSendBtn = document.createElement("button");
@@ -1481,7 +1481,8 @@ export default class GameScene extends Phaser.Scene {
             padding: "8px 14px", backgroundColor: "#3b82f6", color: "#fff",
             border: "none", borderRadius: "4px", fontSize: "14px", cursor: "pointer",
         });
-        mobileSendBtn.onclick = () => doSend();
+        mobileSendBtn.onclick = (e) => { e.preventDefault(); doSend(); };
+        mobileSendBtn.addEventListener("touchend", (e) => { e.preventDefault(); doSend(); });
 
         chatInputRow.appendChild(mobileInput);
         chatInputRow.appendChild(mobileSendBtn);

@@ -56,6 +56,9 @@ export default class LobbyScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor("#0a0d13");
         this.cameras.main.fadeIn(600, 10, 13, 19);
 
+        // ── Splash Screen ──
+        this.showSplashScreen();
+
         const W = this.scale.width;
         const H = this.scale.height;
 
@@ -723,4 +726,77 @@ export default class LobbyScene extends Phaser.Scene {
         socketService.socket.off("waiting_for_players");
         socketService.socket.off("admin_joined");
     }
+    // ══════════════════════════════════════
+    //  Splash Screen
+    // ══════════════════════════════════════
+    private showSplashScreen() {
+        const existing = document.getElementById("splash-screen");
+        if (existing) existing.remove();
+
+        const splash = document.createElement("div");
+        splash.id = "splash-screen";
+        Object.assign(splash.style, {
+            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
+            zIndex: "9999",
+            display: "flex", flexDirection: "column",
+            alignItems: "center", justifyContent: "center",
+            backgroundColor: "#0a0d13",
+            animation: "splashFadeIn 0.6s ease",
+        });
+
+        // CSS animation
+        const style = document.createElement("style");
+        style.textContent = `
+            @keyframes splashFadeIn { from { opacity: 0 } to { opacity: 1 } }
+            @keyframes splashFadeOut { from { opacity: 1 } to { opacity: 0 } }
+        `;
+        document.head.appendChild(style);
+
+        // الصورة
+        const img = document.createElement("img");
+        img.src = "/welcome.jpg";
+        Object.assign(img.style, {
+            maxWidth: "90%", maxHeight: "70vh",
+            borderRadius: "12px",
+            boxShadow: "0 0 40px rgba(59,130,246,0.3)",
+            objectFit: "contain",
+        });
+        img.onerror = () => { img.style.display = "none"; };
+
+        // زر الدخول
+        const btn = document.createElement("button");
+        btn.innerHTML = "&#9654; ادخل المجتمع السري";
+        Object.assign(btn.style, {
+            marginTop: "28px", padding: "14px 40px",
+            fontSize: "16px", fontFamily: "'Courier New', monospace",
+            fontWeight: "bold", letterSpacing: "2px",
+            color: "#f1f5f9", backgroundColor: "transparent",
+            border: "1px solid #3b82f6", borderRadius: "6px",
+            cursor: "pointer", transition: "all 0.2s",
+        });
+        btn.onmouseenter = () => { btn.style.backgroundColor = "#3b82f6"; };
+        btn.onmouseleave = () => { btn.style.backgroundColor = "transparent"; };
+
+        const hint = document.createElement("div");
+        hint.textContent = "اضغط في أي مكان للمتابعة";
+        Object.assign(hint.style, {
+            marginTop: "12px", fontSize: "12px",
+            color: "#374151", fontFamily: "'Courier New', monospace",
+        });
+
+        splash.appendChild(img);
+        splash.appendChild(btn);
+        splash.appendChild(hint);
+        document.body.appendChild(splash);
+
+        const dismiss = () => {
+            splash.style.animation = "splashFadeOut 0.4s ease forwards";
+            setTimeout(() => splash.remove(), 400);
+        };
+
+        btn.onclick = (e) => { e.stopPropagation(); dismiss(); };
+        splash.onclick = dismiss;
+    }
+
+
 }

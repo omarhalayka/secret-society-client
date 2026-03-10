@@ -798,6 +798,10 @@ export default class MafiaNightScene extends Phaser.Scene {
                     (b as HTMLButtonElement).style.pointerEvents = "none";
                 });
                 socketService.socket.emit("mafia_kill", player.id);
+                const W2 = this.scale.width;
+                if (W2 < 700) {
+                    this.showMobileResult("🔪 TARGET SELECTED", "#ef4444", player.username);
+                }
             };
             row.appendChild(avatar);
             row.appendChild(name);
@@ -808,6 +812,28 @@ export default class MafiaNightScene extends Phaser.Scene {
 
     private cleanupMobileNightUI() {
         document.getElementById("mobile-night-ui")?.remove();
+        document.getElementById("mobile-night-result")?.remove();
+    }
+
+    private showMobileResult(text: string, color: string, username: string) {
+        document.getElementById("mobile-night-result")?.remove();
+        const banner = document.createElement("div");
+        banner.id = "mobile-night-result";
+        Object.assign(banner.style, {
+            position: "fixed", top: "80px", left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: "2000", padding: "16px 24px",
+            backgroundColor: "#0a0d13",
+            border: `2px solid ${color}`,
+            borderRadius: "8px", textAlign: "center",
+            fontFamily: "'Courier New', monospace",
+            boxShadow: `0 0 20px ${color}44`,
+            minWidth: "260px",
+        });
+        banner.innerHTML = `<div style="color:${color};font-size:14px;font-weight:bold;letter-spacing:2px;margin-bottom:6px">${text}</div><div style="color:#94a3b8;font-size:13px">${username}</div><div style="color:#374151;font-size:10px;margin-top:8px">TAP TO DISMISS</div>`;
+        banner.onclick = () => banner.remove();
+        document.body.appendChild(banner);
+        setTimeout(() => banner?.remove(), 6000);
     }
 
 }
