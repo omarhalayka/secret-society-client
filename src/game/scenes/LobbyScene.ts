@@ -5,6 +5,8 @@ export default class LobbyScene extends Phaser.Scene {
 
     private usernameInput!: HTMLInputElement;
     private selectedType: string = "player";
+    private selectedAvatar: string = "😎";
+    private selectedColor: string = "#1e293b";
     private queueStatusText!: Phaser.GameObjects.Text;
     private playerCountInterval?: number;
 
@@ -56,9 +58,6 @@ export default class LobbyScene extends Phaser.Scene {
         this.cameras.main.setBackgroundColor("#0a0d13");
         this.cameras.main.fadeIn(600, 10, 13, 19);
 
-        // ── Splash Screen ──
-        this.showSplashScreen();
-
         const W = this.scale.width;
         const H = this.scale.height;
 
@@ -66,9 +65,8 @@ export default class LobbyScene extends Phaser.Scene {
         this.drawGrid(W, H);
 
         // ─── بطاقة مركزية ───
-        // Mobile responsive card
-        const cardW = Math.min(460, W - 32);
-        const cardH = Math.min(560, H - 40);
+        const cardW = 460;
+        const cardH = 620;
         const cardX = W / 2 - cardW / 2;
         const cardY = H / 2 - cardH / 2;
 
@@ -92,14 +90,17 @@ export default class LobbyScene extends Phaser.Scene {
         // ─── حقل الاسم ───
         this.createUsernameInput(W / 2, cardY + 145);
 
+        // ─── Avatar Picker ───
+        this.createAvatarPicker(W / 2, cardY + 215);
+
         // ─── أزرار الدور ───
-        this.createRoleSelector(W / 2, cardY + 260);
+        this.createRoleSelector(W / 2, cardY + 320);
 
         // ─── زر الانضمام ───
-        this.createJoinButton(W / 2, cardY + 390);
+        this.createJoinButton(W / 2, cardY + 440);
 
         // ─── نص حالة الطابور ───
-        this.queueStatusText = this.add.text(W / 2, cardY + 450, "⬤  0 / 6 players in queue", {
+        this.queueStatusText = this.add.text(W / 2, cardY + 498, "⬤  0 / 6 players in queue", {
             fontSize: "13px",
             color: "#64748b",
             fontFamily: "'Courier New', monospace"
@@ -357,6 +358,166 @@ export default class LobbyScene extends Phaser.Scene {
         document.body.appendChild(this.usernameInput);
     }
 
+
+    // ═══════════════════════════════════════
+    //  Avatar Picker
+    // ═══════════════════════════════════════
+    private createAvatarPicker(cx: number, cy: number) {
+        const isMobile = this.scale.width < 700;
+
+        // ─── Label ───
+        this.add.text(cx - 180, cy - 22, "AVATAR", {
+            fontSize: "10px", color: "#3b82f6",
+            fontFamily: "'Courier New', monospace", letterSpacing: 2
+        }).setDepth(2);
+
+        // ─── Emoji Grid ───
+        const emojis = ["😎","🦊","🐺","🦁","🐻","🦝","🐸","👻","🤖","💀","🧙","🕵️","🎭","🃏","🦅"];
+        const cols   = isMobile ? 8 : 15;
+        const size   = 30;
+        const gap    = isMobile ? 6 : 4;
+        const totalW = cols * (size + gap) - gap;
+        const startX = cx - totalW / 2;
+
+        const emojiContainers: Phaser.GameObjects.Container[] = [];
+
+        emojis.forEach((emoji, i) => {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            const ex  = startX + col * (size + gap) + size / 2;
+            const ey  = cy + row * (size + gap + 2);
+
+            const container = this.add.container(ex, ey).setDepth(2);
+            const isSelected = emoji === this.selectedAvatar;
+
+            const bg = this.add.rectangle(0, 0, size, size,
+                isSelected ? 0x1e3a5f : 0x111827
+            );
+            bg.setStrokeStyle(isSelected ? 2 : 1,
+                isSelected ? this.COLORS.borderActive : this.COLORS.border
+            );
+
+            const label = this.add.text(0, 0, emoji, { fontSize: "16px" }).setOrigin(0.5);
+
+            container.add([bg, label]);
+            container.setInteractive(
+                new Phaser.Geom.Rectangle(-size / 2, -size / 2, size, size),
+                Phaser.Geom.Rectangle.Contains
+            );
+            container.setData("emoji", emoji);
+            emojiContainers.push(container);
+
+            container.on("pointerover", () => {
+                if (emoji !== this.selectedAvatar) {
+                    bg.setFillStyle(0x1a2234);
+                    bg.setStrokeStyle(1, this.COLORS.borderActive);
+                }
+                this.tweens.add({ targets: container, scaleX: 1.2, scaleY: 1.2, duration: 100 });
+            });
+            container.on("pointerout", () => {
+                if (emoji !== this.selectedAvatar) {
+                    bg.setFillStyle(0x111827);
+                    bg.setStrokeStyle(1, this.COLORS.border);
+                }
+                this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 100 });
+            });
+            container.on("pointerdown", () => {
+                emojiContainers.forEach(c => {
+                    const b = c.list[0] as Phaser.GameObjects.Rectangle;
+                    if (c.getData("emoji") !== emoji) {
+                        b.setFillStyle(0x111827);
+                        b.setStrokeStyle(1, this.COLORS.border);
+                    }
+                });
+                bg.setFillStyle(0x1e3a5f);
+                bg.setStrokeStyle(2, this.COLORS.borderActive);
+                this.selectedAvatar = emoji;
+                this.tweens.add({ targets: container, scaleX: 0.9, scaleY: 0.9, duration: 80, yoyo: true });
+            });
+        });
+
+        // ─── Color Swatches ───
+        const emojiRows = Math.ceil(emojis.length / cols);
+        const colorLabelY = cy + emojiRows * (size + gap + 2) + 14;
+        this.add.text(cx - 180, colorLabelY, "COLOR", {
+            fontSize: "10px", color: "#3b82f6",
+            fontFamily: "'Courier New', monospace", letterSpacing: 2
+        }).setDepth(2);
+
+        const colors = [
+            { hex: "#1e293b", val: 0x1e293b }, // slate
+            { hex: "#7f1d1d", val: 0x7f1d1d }, // red
+            { hex: "#14532d", val: 0x14532d }, // green
+            { hex: "#1e3a5f", val: 0x1e3a5f }, // blue
+            { hex: "#4a1d96", val: 0x4a1d96 }, // purple
+            { hex: "#78350f", val: 0x78350f }, // amber
+            { hex: "#134e4a", val: 0x134e4a }, // teal
+            { hex: "#1f2937", val: 0x1f2937 }, // dark
+            { hex: "#831843", val: 0x831843 }, // pink
+            { hex: "#365314", val: 0x365314 }, // lime
+            { hex: "#1e1b4b", val: 0x1e1b4b }, // indigo
+            { hex: "#451a03", val: 0x451a03 }, // orange
+        ];
+
+        const cSize  = 26;
+        const cGap   = isMobile ? 8 : 6;
+        const cCols  = isMobile ? 6 : 12;
+        const cTotalW = cCols * (cSize + cGap) - cGap;
+        const cStartX = cx - cTotalW / 2;
+        const cStartY = colorLabelY + 22;
+
+        const colorContainers: Phaser.GameObjects.Container[] = [];
+
+        colors.forEach((color, i) => {
+            const col = i % cCols;
+            const row = Math.floor(i / cCols);
+            const px  = cStartX + col * (cSize + cGap) + cSize / 2;
+            const py  = cStartY + row * (cSize + cGap + 2);
+
+            const c = this.add.container(px, py).setDepth(2);
+            const isSelected = color.hex === this.selectedColor;
+
+            const swatch = this.add.rectangle(0, 0, cSize, cSize, color.val);
+            swatch.setStrokeStyle(isSelected ? 2 : 1,
+                isSelected ? 0xffffff : 0x2d3748
+            );
+
+            // checkmark للمحدد
+            const check = this.add.text(0, 0, isSelected ? "✓" : "", {
+                fontSize: "12px", color: "#ffffff"
+            }).setOrigin(0.5);
+
+            c.add([swatch, check]);
+            c.setInteractive(
+                new Phaser.Geom.Rectangle(-cSize/2, -cSize/2, cSize, cSize),
+                Phaser.Geom.Rectangle.Contains
+            );
+            c.setData("color", color.hex);
+            c.setData("colorVal", color.val);
+            colorContainers.push(c);
+
+            c.on("pointerover", () => {
+                this.tweens.add({ targets: c, scaleX: 1.2, scaleY: 1.2, duration: 80 });
+            });
+            c.on("pointerout", () => {
+                this.tweens.add({ targets: c, scaleX: 1, scaleY: 1, duration: 80 });
+            });
+            c.on("pointerdown", () => {
+                // reset all checkmarks
+                colorContainers.forEach(cc => {
+                    const sw = cc.list[0] as Phaser.GameObjects.Rectangle;
+                    const ch = cc.list[1] as Phaser.GameObjects.Text;
+                    sw.setStrokeStyle(1, 0x2d3748);
+                    ch.setText("");
+                });
+                swatch.setStrokeStyle(2, 0xffffff);
+                check.setText("✓");
+                this.selectedColor = color.hex;
+                this.tweens.add({ targets: c, scaleX: 0.9, scaleY: 0.9, duration: 60, yoyo: true });
+            });
+        });
+    }
+
     // ═══════════════════════════════════════
     //  أزرار اختيار الدور
     // ═══════════════════════════════════════
@@ -527,6 +688,8 @@ export default class LobbyScene extends Phaser.Scene {
         // ✅ FIX: reset socketService قبل أي join جديد
         socketService.reset();
         socketService.socket.emit("set_username", username);
+        socketService.socket.emit("set_avatar", this.selectedAvatar);
+        socketService.socket.emit("set_color", this.selectedColor);
 
         if (this.selectedType === "admin") {
             socketService.isAdmin = true;
@@ -726,77 +889,4 @@ export default class LobbyScene extends Phaser.Scene {
         socketService.socket.off("waiting_for_players");
         socketService.socket.off("admin_joined");
     }
-    // ══════════════════════════════════════
-    //  Splash Screen
-    // ══════════════════════════════════════
-    private showSplashScreen() {
-        const existing = document.getElementById("splash-screen");
-        if (existing) existing.remove();
-
-        const splash = document.createElement("div");
-        splash.id = "splash-screen";
-        Object.assign(splash.style, {
-            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
-            zIndex: "9999",
-            display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center",
-            backgroundColor: "#0a0d13",
-            animation: "splashFadeIn 0.6s ease",
-        });
-
-        // CSS animation
-        const style = document.createElement("style");
-        style.textContent = `
-            @keyframes splashFadeIn { from { opacity: 0 } to { opacity: 1 } }
-            @keyframes splashFadeOut { from { opacity: 1 } to { opacity: 0 } }
-        `;
-        document.head.appendChild(style);
-
-        // الصورة
-        const img = document.createElement("img");
-        img.src = "/welcome.jpg";
-        Object.assign(img.style, {
-            maxWidth: "90%", maxHeight: "70vh",
-            borderRadius: "12px",
-            boxShadow: "0 0 40px rgba(59,130,246,0.3)",
-            objectFit: "contain",
-        });
-        img.onerror = () => { img.style.display = "none"; };
-
-        // زر الدخول
-        const btn = document.createElement("button");
-        btn.innerHTML = "&#9654; ادخل المجتمع السري";
-        Object.assign(btn.style, {
-            marginTop: "28px", padding: "14px 40px",
-            fontSize: "16px", fontFamily: "'Courier New', monospace",
-            fontWeight: "bold", letterSpacing: "2px",
-            color: "#f1f5f9", backgroundColor: "transparent",
-            border: "1px solid #3b82f6", borderRadius: "6px",
-            cursor: "pointer", transition: "all 0.2s",
-        });
-        btn.onmouseenter = () => { btn.style.backgroundColor = "#3b82f6"; };
-        btn.onmouseleave = () => { btn.style.backgroundColor = "transparent"; };
-
-        const hint = document.createElement("div");
-        hint.textContent = "اضغط في أي مكان للمتابعة";
-        Object.assign(hint.style, {
-            marginTop: "12px", fontSize: "12px",
-            color: "#374151", fontFamily: "'Courier New', monospace",
-        });
-
-        splash.appendChild(img);
-        splash.appendChild(btn);
-        splash.appendChild(hint);
-        document.body.appendChild(splash);
-
-        const dismiss = () => {
-            splash.style.animation = "splashFadeOut 0.4s ease forwards";
-            setTimeout(() => splash.remove(), 400);
-        };
-
-        btn.onclick = (e) => { e.stopPropagation(); dismiss(); };
-        splash.onclick = dismiss;
-    }
-
-
 }
