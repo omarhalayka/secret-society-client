@@ -3,7 +3,7 @@ import { socketService } from "../../socket";
 
 // ─── كلمة سر الأدمن ─────────────────────────────────────────
 // غيّرها لأي كلمة تبغاها
-const ADMIN_PASSWORD = "1234";
+const ADMIN_PASSWORD = "123123321123";
 
 export default class LobbyScene extends Phaser.Scene {
 
@@ -39,11 +39,70 @@ export default class LobbyScene extends Phaser.Scene {
     //  CREATE
     // ══════════════════════════════════════════════════════
     create() {
+        this.showSplashScreen();
+    }
+
+    private showSplashScreen() {
+        const W = this.scale.width;
+        const H = this.scale.height;
+
+        this.cameras.main.setBackgroundColor("#060810");
+
+        // خلفية سوداء للـ splash
+        const bg = this.add.rectangle(W/2, H/2, W, H, 0x000000).setDepth(0);
+
+        // صورة الـ splash
+        const img = this.add.image(W/2, H/2, "welcome")
+            .setDepth(1).setAlpha(0);
+
+        // تناسب الصورة مع الشاشة
+        const scaleX = W / img.width;
+        const scaleY = H / img.height;
+        const scale  = Math.min(scaleX, scaleY);
+        img.setScale(scale);
+
+        // زر الدخول
+        const btnBg = this.add.rectangle(W/2, H - 80, 260, 50, 0x3b82f6)
+            .setDepth(2).setAlpha(0);
+        const btnTxt = this.add.text(W/2, H - 80, "ادخل المجتمع السري", {
+            fontSize: "18px", color: "#ffffff",
+            fontFamily: "'Georgia', serif", fontStyle: "bold"
+        }).setOrigin(0.5).setDepth(2).setAlpha(0);
+
+        // fade in
+        this.tweens.add({ targets: [img], alpha: 1, duration: 800, delay: 200 });
+        this.tweens.add({ targets: [btnBg, btnTxt], alpha: 1, duration: 600, delay: 800 });
+
+        // اهتزاز خفيف للزر
+        this.tweens.add({
+            targets: btnBg,
+            scaleX: 1.03, scaleY: 1.03,
+            duration: 900, yoyo: true, repeat: -1, delay: 1400
+        });
+
+        // عند الضغط - ادخل اللوبي
+        const enterLobby = () => {
+            [bg, img, btnBg, btnTxt].forEach(o => {
+                this.tweens.add({ targets: o, alpha: 0, duration: 400 });
+            });
+            this.time.delayedCall(450, () => this.initLobby());
+        };
+
+        btnBg.setInteractive().on("pointerdown", enterLobby);
+        btnTxt.setInteractive().on("pointerdown", enterLobby);
+
+        // أو اضغط أي مكان
+        this.input.once("pointerdown", (_p: any, _go: any, e: any) => {
+            // تجاهل لو ضغط الزر (handled above)
+            enterLobby();
+        });
+    }
+
+    private initLobby() {
         const W = this.scale.width;
         const H = this.scale.height;
         const isMobile = W < 700;
 
-        this.cameras.main.setBackgroundColor("#060810");
         this.cameras.main.fadeIn(500, 6, 8, 16);
 
         this.drawBackground(W, H);
@@ -64,94 +123,130 @@ export default class LobbyScene extends Phaser.Scene {
     //  DESKTOP LAYOUT
     // ══════════════════════════════════════════════════════
     private buildDesktopLayout(W: number, H: number) {
-        const cx = W / 2;
         const cy = H / 2;
 
-        // ─── بطاقة يمين ───
-        const cardW = 400;
-        const cardH = 460;
-        const cardX = cx + 80;
+        // ─── القسمة: 55% يسار (hero) | 45% يمين (form card) ───
+        const heroW = Math.floor(W * 0.55);   // عرض منطقة الـ hero
+        const formW = W - heroW;              // عرض منطقة الفورم
+        const heroCx = heroW / 2;             // مركز الـ hero
+        const formCx = heroW + formW / 2;     // مركز الفورم
 
-        const glow = this.add.rectangle(cardX, cy, cardW + 4, cardH + 4, 0x3b82f6, 0.05).setDepth(1);
-        const card = this.add.rectangle(cardX, cy, cardW, cardH, this.C.card).setDepth(2);
+        // ─── بطاقة الفورم ───
+        const cardPad = 40;
+        const cardW   = formW - cardPad * 2;
+        const cardH   = Math.min(H - 80, 460);
+        const cardTop = cy - cardH / 2;
+
+        // glow خفي وراء البطاقة
+        this.add.rectangle(formCx, cy, cardW + 6, cardH + 6, 0x3b82f6, 0.04).setDepth(1);
+        const card = this.add.rectangle(formCx, cy, cardW, cardH, this.C.card).setDepth(2);
         card.setStrokeStyle(1, this.C.cardBorder);
-        this.add.rectangle(cardX, cy - cardH / 2 + 2, cardW - 2, 3, this.C.accent)
+        // شريط لوني أعلى البطاقة
+        this.add.rectangle(formCx, cardTop + 2, cardW - 2, 3, this.C.accent)
             .setOrigin(0.5, 0).setDepth(3);
 
-        const fLeft = cardX - cardW / 2 + 28;
-        const fTop  = cy - cardH / 2 + 36;
+        // خط رأسي فاصل بين القسمين
+        const sepLine = this.add.graphics().setDepth(1);
+        sepLine.lineStyle(1, this.C.cardBorder, 0.6);
+        sepLine.moveTo(heroW, H * 0.1);
+        sepLine.lineTo(heroW, H * 0.9);
+        sepLine.strokePath();
 
-        this.add.text(fLeft, fTop, "ENTER  THE  SOCIETY", {
+        // ─── محتوى البطاقة ───
+        const pad  = 28;
+        const fL   = formCx - cardW / 2 + pad;   // حافة يسار
+        let   posY = cardTop + 30;
+
+        // عنوان صغير داخل البطاقة
+        this.add.text(fL, posY, "ENTER  THE  SOCIETY", {
             fontSize: "9px", color: "#3b82f6",
             fontFamily: "'Courier New', monospace", letterSpacing: 3
         }).setDepth(3);
+        posY += 28;
 
-        this.addFieldLabel(fLeft, fTop + 30, "USERNAME");
-        this.createUsernameInput(fLeft, fTop + 50, cardW - 56);
+        // USERNAME
+        this.addFieldLabel(fL, posY, "USERNAME");
+        posY += 18;
+        this.createUsernameInput(fL, posY, cardW - pad * 2);
+        posY += 56; // ارتفاع الـ input (44px) + gap (12px)
 
-        this.addFieldLabel(fLeft, fTop + 138, "JOIN  AS");
-        this.createRoleButtons(cardX, fTop + 170, cardW - 56);
+        // JOIN AS
+        this.addFieldLabel(fL, posY, "JOIN  AS");
+        posY += 18;
+        this.createRoleButtons(formCx, posY + 32, cardW - pad * 2);
+        posY += 90; // ارتفاع الأزرار (64px) + gap (26px)
 
-        this.createJoinButton(cardX, cy + cardH / 2 - 76, cardW - 56);
+        // JOIN BUTTON
+        const btnY = cardTop + cardH - 72;
+        this.createJoinButton(formCx, btnY, cardW - pad * 2);
 
-        this.queueStatusText = this.add.text(cardX, cy + cardH / 2 - 36,
+        // Queue status
+        this.queueStatusText = this.add.text(formCx, cardTop + cardH - 32,
             "●  0 / 6 in queue", {
                 fontSize: "11px", color: "#3b4a5c",
                 fontFamily: "'Courier New', monospace", letterSpacing: 1
             }).setOrigin(0.5).setDepth(3);
 
-        // fade in البطاقة
-        [card, glow].forEach(o => { o.setAlpha(0); this.tweens.add({ targets: o, alpha: 1, duration: 600, delay: 150 }); });
+        // fade in
+        card.setAlpha(0);
+        this.tweens.add({ targets: card, alpha: 1, duration: 600, delay: 150 });
 
         // ─── Hero يسار ───
-        this.buildDesktopHero(cx - 180, cy);
+        this.buildDesktopHero(heroCx, cy, heroW);
     }
 
-    private buildDesktopHero(cx: number, cy: number) {
-        // أيقونة ماسة
+    private buildDesktopHero(cx: number, cy: number, heroW: number) {
+        // ─── أيقونة ماسة ───
+        const s = Math.min(heroW * 0.06, 24); // حجم متناسب مع العرض
         const icon = this.add.graphics().setDepth(2).setAlpha(0);
         icon.fillStyle(this.C.accent, 1);
-        icon.fillTriangle(cx - 20, cy - 76, cx + 20, cy - 76, cx, cy - 46);
-        icon.fillTriangle(cx - 20, cy - 40, cx + 20, cy - 40, cx, cy - 70);
+        icon.fillTriangle(cx - s, cy - s*3.2, cx + s, cy - s*3.2, cx, cy - s*1.5);
+        icon.fillTriangle(cx - s, cy - s*1.2, cx + s, cy - s*1.2, cx, cy - s*2.9);
         this.tweens.add({ targets: icon, alpha: 0.85, duration: 800, delay: 100 });
 
-        // خط علوي
+        // خط علوي زخرفي
+        const lineW = Math.min(heroW * 0.3, 120);
         const g1 = this.add.graphics().setDepth(2);
-        g1.lineStyle(1, this.C.accent, 0.25);
-        g1.moveTo(cx - 70, cy - 98); g1.lineTo(cx + 70, cy - 98); g1.strokePath();
+        g1.lineStyle(1, this.C.accent, 0.22);
+        g1.moveTo(cx - lineW/2, cy - s*4.2); g1.lineTo(cx + lineW/2, cy - s*4.2); g1.strokePath();
 
-        // العنوان
-        const t1 = this.add.text(cx, cy - 6, "SECRET\nSOCIETY", {
-            fontSize: "50px", color: "#f1f5f9",
+        // ─── العنوان الرئيسي ───
+        const titleSize = Math.min(Math.floor(heroW * 0.11), 52);
+        const t1 = this.add.text(cx, cy - 10, "المنظمة\nالسوداء", {
+            fontSize: `${titleSize}px`, color: "#f1f5f9",
             fontFamily: "'Georgia', serif", fontStyle: "bold",
-            letterSpacing: 5, align: "center", lineSpacing: 2
+            letterSpacing: Math.floor(titleSize * 0.1), align: "center", lineSpacing: 4
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: t1, alpha: 1, y: t1.y - 8, duration: 700, delay: 200, ease: "Cubic.easeOut" });
 
-        const t2 = this.add.text(cx, cy + 80, "MULTIPLAYER  ·  SOCIAL DEDUCTION", {
+        // subtitle
+        const t2 = this.add.text(cx, cy + titleSize + 22, "MULTIPLAYER  ·  SOCIAL DEDUCTION", {
             fontSize: "10px", color: "#3b82f6",
             fontFamily: "'Courier New', monospace", letterSpacing: 3
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: t2, alpha: 1, duration: 600, delay: 400 });
 
-        // خط سفلي
+        // خط سفلي زخرفي
         const g2 = this.add.graphics().setDepth(2);
-        g2.lineStyle(1, this.C.accent, 0.15);
-        g2.moveTo(cx - 70, cy + 108); g2.lineTo(cx + 70, cy + 108); g2.strokePath();
+        g2.lineStyle(1, this.C.accent, 0.12);
+        g2.moveTo(cx - lineW/2, cy + titleSize + 50); g2.lineTo(cx + lineW/2, cy + titleSize + 50); g2.strokePath();
 
-        const t3 = this.add.text(cx, cy + 130, "Deceive.  Deduce.  Survive.", {
-            fontSize: "12px", color: "#374151",
+        // جملة italics
+        const t3 = this.add.text(cx, cy + titleSize + 68, "Deceive.  Deduce.  Survive.", {
+            fontSize: "13px", color: "#2d3748",
             fontFamily: "'Georgia', serif", fontStyle: "italic"
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: t3, alpha: 1, duration: 600, delay: 550 });
 
+        // ─── Features ───
+        const baseY = cy + titleSize + 108;
         [
-            { icon: "🔪", text: "Hidden Roles" },
-            { icon: "🗳️", text: "Strategic Voting" },
-            { icon: "🌙", text: "Night Elimination" },
+            { ico: "🔪", text: "Hidden Roles" },
+            { ico: "🗳️", text: "Strategic Voting" },
+            { ico: "🌙", text: "Night Elimination" },
         ].forEach((item, i) => {
-            const f = this.add.text(cx, cy + 175 + i * 30, `${item.icon}  ${item.text}`, {
-                fontSize: "11px", color: "#1f2937",
+            const f = this.add.text(cx, baseY + i * 32, `${item.ico}  ${item.text}`, {
+                fontSize: "12px", color: "#1a2535",
                 fontFamily: "'Courier New', monospace", letterSpacing: 1
             }).setOrigin(0.5).setDepth(2).setAlpha(0);
             this.tweens.add({ targets: f, alpha: 1, duration: 500, delay: 650 + i * 100 });
@@ -162,52 +257,67 @@ export default class LobbyScene extends Phaser.Scene {
     //  MOBILE LAYOUT
     // ══════════════════════════════════════════════════════
     private buildMobileLayout(W: number, H: number) {
-        const cx = W / 2;
+        const cx  = W / 2;
+        const pad = 16; // padding جانبي
 
-        // رأس مضغوط
+        // ─── رأس ───
+        const headerH = 108;
+
+        // أيقونة ماسة صغيرة
         const icon = this.add.graphics().setDepth(2);
         icon.fillStyle(this.C.accent, 0.9);
-        icon.fillTriangle(cx - 11, 30, cx + 11, 30, cx, 46);
-        icon.fillTriangle(cx - 11, 52, cx + 11, 52, cx, 36);
+        icon.fillTriangle(cx - 10, 28, cx + 10, 28, cx, 44);
+        icon.fillTriangle(cx - 10, 50, cx + 10, 50, cx, 34);
 
-        this.add.text(cx, 68, "SECRET SOCIETY", {
-            fontSize: "21px", color: "#f1f5f9",
+        this.add.text(cx, 64, "المنظمة السوداء", {
+            fontSize: "20px", color: "#f1f5f9",
             fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 4
         }).setOrigin(0.5).setDepth(2);
 
-        this.add.text(cx, 90, "SOCIAL DEDUCTION", {
-            fontSize: "9px", color: "#3b82f6",
-            fontFamily: "'Courier New', monospace", letterSpacing: 3
+        this.add.text(cx, 86, "MULTIPLAYER  ·  SOCIAL DEDUCTION", {
+            fontSize: "8px", color: "#3b82f6",
+            fontFamily: "'Courier New', monospace", letterSpacing: 2
         }).setOrigin(0.5).setDepth(2);
 
-        // بطاقة
-        const padH  = 110;
-        const padS  = 18;
-        const cardW = W - padS * 2;
-        const cardH = H - padH - 16;
-        const cardX = cx;
-        const cardY = padH + cardH / 2;
+        // ─── البطاقة ───
+        const cardW  = W - pad * 2;
+        const cardH  = H - headerH - pad;
+        const cardCX = cx;
+        const cardCY = headerH + cardH / 2;
+        const cardT  = headerH; // أعلى البطاقة
 
-        const card = this.add.rectangle(cardX, cardY, cardW, cardH, this.C.card).setDepth(1);
+        const card = this.add.rectangle(cardCX, cardCY, cardW, cardH, this.C.card).setDepth(1);
         card.setStrokeStyle(1, this.C.cardBorder);
-        this.add.rectangle(cardX, padH + 1, cardW - 2, 3, this.C.accent)
+        // شريط لوني أعلى
+        this.add.rectangle(cardCX, cardT + 2, cardW - 2, 3, this.C.accent)
             .setOrigin(0.5, 0).setDepth(2);
 
-        const fLeft = cardX - cardW / 2 + 18;
-        const fTop  = padH + 22;
+        // ─── محتوى البطاقة (positioning عمودي ثابت) ───
+        const fL   = cardCX - cardW / 2 + 18;
+        let   posY = cardT + 24;
 
-        this.addFieldLabel(fLeft, fTop, "USERNAME");
-        this.createUsernameInput(fLeft, fTop + 18, cardW - 36);
+        // USERNAME
+        this.addFieldLabel(fL, posY, "USERNAME");
+        posY += 17;
+        this.createUsernameInput(fL, posY, cardW - 36);
+        posY += 58; // input height 44px + gap 14px
 
-        this.addFieldLabel(fLeft, fTop + 96, "JOIN  AS");
-        this.createRoleButtons(cardX, fTop + 128, cardW - 36);
+        // JOIN AS
+        this.addFieldLabel(fL, posY, "JOIN  AS");
+        posY += 18;
+        this.createRoleButtons(cardCX, posY + 32, cardW - 36);
+        // أزرار الدور ارتفاعها 64px
 
-        this.createJoinButton(cardX, padH + cardH - 76, cardW - 36);
+        // JOIN BUTTON - من أسفل البطاقة
+        const btnY   = cardT + cardH - 68;
+        const queueY = cardT + cardH - 30;
 
-        this.queueStatusText = this.add.text(cardX, padH + cardH - 36,
+        this.createJoinButton(cardCX, btnY, cardW - 36);
+
+        this.queueStatusText = this.add.text(cardCX, queueY,
             "●  0 / 6 in queue", {
                 fontSize: "11px", color: "#3b4a5c",
-                fontFamily: "'Courier New', monospace"
+                fontFamily: "'Courier New', monospace", letterSpacing: 1
             }).setOrigin(0.5).setDepth(3);
     }
 
