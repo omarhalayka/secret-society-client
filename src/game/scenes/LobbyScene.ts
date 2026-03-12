@@ -1,802 +1,677 @@
 import Phaser from "phaser";
 import { socketService } from "../../socket";
 
+// ─── كلمة سر الأدمن ─────────────────────────────────────────
+// غيّرها لأي كلمة تبغاها
+const ADMIN_PASSWORD = "1234";
+
 export default class LobbyScene extends Phaser.Scene {
 
     private usernameInput!: HTMLInputElement;
     private selectedType: string = "player";
     private queueStatusText!: Phaser.GameObjects.Text;
     private playerCountInterval?: number;
-
-    // متغيرات للأزرار عشان نقدر نتحكم فيها
-    private roleButtons: { [key: string]: Phaser.GameObjects.Container } = {};
     private joinButton!: Phaser.GameObjects.Container;
+    private joinBtnLabel!: Phaser.GameObjects.Text;
+    private roleButtons: { [key: string]: Phaser.GameObjects.Container } = {};
 
-    // جسيمات الخلفية
     private particles: Array<{
         gfx: Phaser.GameObjects.Graphics;
-        x: number; y: number;
-        vx: number; vy: number;
+        x: number; y: number; vx: number; vy: number;
         radius: number; alpha: number;
         pulseSpeed: number; pulseOffset: number;
     }> = [];
-    private bgLines: Array<{
-        gfx: Phaser.GameObjects.Graphics;
-        x1: number; y1: number;
-        x2: number; y2: number;
-        alpha: number; fadeDir: number;
-    }> = [];
 
-    // ألوان الثيم
-    private readonly COLORS = {
-        bg:           0x0a0d13,
-        surface:      0x111827,
-        surfaceHover: 0x1a2234,
-        border:       0x1e2d45,
-        borderActive: 0x3b82f6,
-        accent:       0x3b82f6,
-        accentHover:  0x60a5fa,
-        textPrimary:  0xf1f5f9,
-        textMuted:    0x64748b,
-        textSub:      0x94a3b8,
-        player:       0x22c55e,
-        spectator:    0x3b82f6,
-        admin:        0xf59e0b,
-        success:      0x22c55e,
-        error:        0xef4444,
+    private readonly C = {
+        bg:          0x060810,
+        card:        0x0d1117,
+        cardBorder:  0x21262d,
+        accent:      0x3b82f6,
+        accentHover: 0x60a5fa,
+        player:      0x22c55e,
+        spectator:   0x8b5cf6,
+        admin:       0xf59e0b,
     };
 
-    constructor() {
-        super("LobbyScene");
-    }
+    constructor() { super("LobbyScene"); }
 
+    // ══════════════════════════════════════════════════════
+    //  CREATE
+    // ══════════════════════════════════════════════════════
     create() {
-        console.log("LobbyScene create");
-
-        this.cameras.main.setBackgroundColor("#0a0d13");
-        this.cameras.main.fadeIn(600, 10, 13, 19);
-
-        // ── Splash Screen ──
-        this.showSplashScreen();
-
         const W = this.scale.width;
         const H = this.scale.height;
+        const isMobile = W < 700;
 
-        // ─── خلفية مع شبكة دقيقة ───
-        this.drawGrid(W, H);
+        this.cameras.main.setBackgroundColor("#060810");
+        this.cameras.main.fadeIn(500, 6, 8, 16);
 
-        // ─── بطاقة مركزية ───
-        // Mobile responsive card
-        const cardW = Math.min(460, W - 32);
-        const cardH = Math.min(560, H - 40);
-        const cardX = W / 2 - cardW / 2;
-        const cardY = H / 2 - cardH / 2;
+        this.drawBackground(W, H);
 
-        // ظل البطاقة
-        const shadow = this.add.rectangle(W / 2 + 4, H / 2 + 6, cardW, cardH, 0x000000, 0.4);
-        shadow.setDepth(0);
+        if (isMobile) {
+            this.buildMobileLayout(W, H);
+        } else {
+            this.buildDesktopLayout(W, H);
+        }
 
-        // جسم البطاقة
-        const card = this.add.rectangle(W / 2, H / 2, cardW, cardH, this.COLORS.surface);
-        card.setStrokeStyle(1, this.COLORS.border);
-        card.setDepth(1);
-
-        // شريط علوي ملون في البطاقة
-        const topStripe = this.add.rectangle(W / 2, cardY + 3, cardW - 2, 3, this.COLORS.accent);
-        topStripe.setOrigin(0.5, 0);
-        topStripe.setDepth(2);
-
-        // ─── Logo / Title ───
-        this.createLogo(W / 2, cardY + 55);
-
-        // ─── حقل الاسم ───
-        this.createUsernameInput(W / 2, cardY + 145);
-
-        // ─── أزرار الدور ───
-        this.createRoleSelector(W / 2, cardY + 260);
-
-        // ─── زر الانضمام ───
-        this.createJoinButton(W / 2, cardY + 390);
-
-        // ─── نص حالة الطابور ───
-        this.queueStatusText = this.add.text(W / 2, cardY + 450, "⬤  0 / 6 players in queue", {
-            fontSize: "13px",
-            color: "#64748b",
-            fontFamily: "'Courier New', monospace"
-        }).setOrigin(0.5).setDepth(2);
-
-        // ─── Footer ───
-        this.add.text(W / 2, cardY + cardH - 22, "SECRET SOCIETY  ·  v1.0", {
-            fontSize: "11px",
-            color: "#1e2d45",
-            fontFamily: "'Courier New', monospace",
-            letterSpacing: 2
-        }).setOrigin(0.5).setDepth(2);
-
-        // ─── Socket Events ───
         this.setupSocketEvents();
-
-        // تحديث الطابور كل 3 ثواني
         this.playerCountInterval = window.setInterval(() => {
             socketService.socket.emit("request_queue_status");
         }, 3000);
     }
 
-    // ═══════════════════════════════════════
-    //  شبكة الخلفية الثابتة
-    // ═══════════════════════════════════════
-    private drawGrid(W: number, H: number) {
-        const graphics = this.add.graphics();
-        graphics.lineStyle(1, 0x111827, 0.8);
+    // ══════════════════════════════════════════════════════
+    //  DESKTOP LAYOUT
+    // ══════════════════════════════════════════════════════
+    private buildDesktopLayout(W: number, H: number) {
+        const cx = W / 2;
+        const cy = H / 2;
 
-        const step = 48;
-        for (let x = 0; x < W; x += step) {
-            graphics.moveTo(x, 0);
-            graphics.lineTo(x, H);
-        }
-        for (let y = 0; y < H; y += step) {
-            graphics.moveTo(0, y);
-            graphics.lineTo(W, y);
-        }
-        graphics.strokePath();
-        graphics.setDepth(0);
+        // ─── بطاقة يمين ───
+        const cardW = 400;
+        const cardH = 460;
+        const cardX = cx + 80;
 
-        // نقاط التقاطع
-        const dots = this.add.graphics();
-        dots.fillStyle(0x1e2d45, 0.6);
-        const step2 = 48;
-        for (let x = 0; x < W; x += step2) {
-            for (let y = 0; y < H; y += step2) {
-                dots.fillCircle(x, y, 1);
-            }
-        }
-        dots.setDepth(0);
+        const glow = this.add.rectangle(cardX, cy, cardW + 4, cardH + 4, 0x3b82f6, 0.05).setDepth(1);
+        const card = this.add.rectangle(cardX, cy, cardW, cardH, this.C.card).setDepth(2);
+        card.setStrokeStyle(1, this.C.cardBorder);
+        this.add.rectangle(cardX, cy - cardH / 2 + 2, cardW - 2, 3, this.C.accent)
+            .setOrigin(0.5, 0).setDepth(3);
 
-        // ─── جسيمات متحركة ───
-        this.spawnParticles(W, H);
+        const fLeft = cardX - cardW / 2 + 28;
+        const fTop  = cy - cardH / 2 + 36;
+
+        this.add.text(fLeft, fTop, "ENTER  THE  SOCIETY", {
+            fontSize: "9px", color: "#3b82f6",
+            fontFamily: "'Courier New', monospace", letterSpacing: 3
+        }).setDepth(3);
+
+        this.addFieldLabel(fLeft, fTop + 30, "USERNAME");
+        this.createUsernameInput(fLeft, fTop + 50, cardW - 56);
+
+        this.addFieldLabel(fLeft, fTop + 138, "JOIN  AS");
+        this.createRoleButtons(cardX, fTop + 170, cardW - 56);
+
+        this.createJoinButton(cardX, cy + cardH / 2 - 76, cardW - 56);
+
+        this.queueStatusText = this.add.text(cardX, cy + cardH / 2 - 36,
+            "●  0 / 6 in queue", {
+                fontSize: "11px", color: "#3b4a5c",
+                fontFamily: "'Courier New', monospace", letterSpacing: 1
+            }).setOrigin(0.5).setDepth(3);
+
+        // fade in البطاقة
+        [card, glow].forEach(o => { o.setAlpha(0); this.tweens.add({ targets: o, alpha: 1, duration: 600, delay: 150 }); });
+
+        // ─── Hero يسار ───
+        this.buildDesktopHero(cx - 180, cy);
     }
 
-    // ═══════════════════════════════════════
-    //  إنشاء الجسيمات
-    // ═══════════════════════════════════════
-    private spawnParticles(W: number, H: number) {
-        const count = 28;
-        for (let i = 0; i < count; i++) {
-            const gfx = this.add.graphics();
-            gfx.setDepth(0);
+    private buildDesktopHero(cx: number, cy: number) {
+        // أيقونة ماسة
+        const icon = this.add.graphics().setDepth(2).setAlpha(0);
+        icon.fillStyle(this.C.accent, 1);
+        icon.fillTriangle(cx - 20, cy - 76, cx + 20, cy - 76, cx, cy - 46);
+        icon.fillTriangle(cx - 20, cy - 40, cx + 20, cy - 40, cx, cy - 70);
+        this.tweens.add({ targets: icon, alpha: 0.85, duration: 800, delay: 100 });
 
-            const radius = Phaser.Math.Between(1, 3);
-            const x = Phaser.Math.Between(0, W);
-            const y = Phaser.Math.Between(0, H);
-            const speed = 0.15 + Math.random() * 0.3;
-            const angle = Math.random() * Math.PI * 2;
+        // خط علوي
+        const g1 = this.add.graphics().setDepth(2);
+        g1.lineStyle(1, this.C.accent, 0.25);
+        g1.moveTo(cx - 70, cy - 98); g1.lineTo(cx + 70, cy - 98); g1.strokePath();
 
-            this.particles.push({
-                gfx,
-                x, y,
-                vx: Math.cos(angle) * speed,
-                vy: Math.sin(angle) * speed,
-                radius,
-                alpha: 0.1 + Math.random() * 0.4,
-                pulseSpeed: 0.01 + Math.random() * 0.02,
-                pulseOffset: Math.random() * Math.PI * 2
-            });
-        }
+        // العنوان
+        const t1 = this.add.text(cx, cy - 6, "SECRET\nSOCIETY", {
+            fontSize: "50px", color: "#f1f5f9",
+            fontFamily: "'Georgia', serif", fontStyle: "bold",
+            letterSpacing: 5, align: "center", lineSpacing: 2
+        }).setOrigin(0.5).setDepth(2).setAlpha(0);
+        this.tweens.add({ targets: t1, alpha: 1, y: t1.y - 8, duration: 700, delay: 200, ease: "Cubic.easeOut" });
 
-        // ─── خطوط متلاشية ───
-        const lineCount = 6;
-        for (let i = 0; i < lineCount; i++) {
-            const gfx = this.add.graphics();
-            gfx.setDepth(0);
-            this.bgLines.push({
-                gfx,
-                x1: Math.random() * W, y1: Math.random() * H,
-                x2: Math.random() * W, y2: Math.random() * H,
-                alpha: 0,
-                fadeDir: 1
-            });
-        }
-    }
+        const t2 = this.add.text(cx, cy + 80, "MULTIPLAYER  ·  SOCIAL DEDUCTION", {
+            fontSize: "10px", color: "#3b82f6",
+            fontFamily: "'Courier New', monospace", letterSpacing: 3
+        }).setOrigin(0.5).setDepth(2).setAlpha(0);
+        this.tweens.add({ targets: t2, alpha: 1, duration: 600, delay: 400 });
 
-    // ═══════════════════════════════════════
-    //  تحديث كل فريم
-    // ═══════════════════════════════════════
-    update(time: number, _delta: number) {
-        const W = this.scale.width;
-        const H = this.scale.height;
+        // خط سفلي
+        const g2 = this.add.graphics().setDepth(2);
+        g2.lineStyle(1, this.C.accent, 0.15);
+        g2.moveTo(cx - 70, cy + 108); g2.lineTo(cx + 70, cy + 108); g2.strokePath();
 
-        // تحريك الجسيمات
-        this.particles.forEach(p => {
-            p.x += p.vx;
-            p.y += p.vy;
+        const t3 = this.add.text(cx, cy + 130, "Deceive.  Deduce.  Survive.", {
+            fontSize: "12px", color: "#374151",
+            fontFamily: "'Georgia', serif", fontStyle: "italic"
+        }).setOrigin(0.5).setDepth(2).setAlpha(0);
+        this.tweens.add({ targets: t3, alpha: 1, duration: 600, delay: 550 });
 
-            // ارتداد من الحواف
-            if (p.x < 0 || p.x > W) p.vx *= -1;
-            if (p.y < 0 || p.y > H) p.vy *= -1;
-
-            // نبض الـ alpha
-            const pulse = Math.sin(time * p.pulseSpeed + p.pulseOffset);
-            const currentAlpha = p.alpha + pulse * 0.15;
-
-            p.gfx.clear();
-            p.gfx.fillStyle(0x3b82f6, Math.max(0, Math.min(1, currentAlpha)));
-            p.gfx.fillCircle(p.x, p.y, p.radius);
-        });
-
-        // رسم خطوط الاتصال بين الجسيمات القريبة
-        const connectionGfx = this.children.getByName("connectionLines") as Phaser.GameObjects.Graphics;
-        const lines = connectionGfx || this.add.graphics().setName("connectionLines").setDepth(0);
-
-        if (!connectionGfx) {
-            // تم إنشاؤه للتو
-        }
-        lines.clear();
-
-        for (let i = 0; i < this.particles.length; i++) {
-            for (let j = i + 1; j < this.particles.length; j++) {
-                const dx = this.particles[i].x - this.particles[j].x;
-                const dy = this.particles[i].y - this.particles[j].y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                const maxDist = 120;
-
-                if (dist < maxDist) {
-                    const alpha = (1 - dist / maxDist) * 0.12;
-                    lines.lineStyle(1, 0x3b82f6, alpha);
-                    lines.moveTo(this.particles[i].x, this.particles[i].y);
-                    lines.lineTo(this.particles[j].x, this.particles[j].y);
-                    lines.strokePath();
-                }
-            }
-        }
-    }
-
-    // ═══════════════════════════════════════
-    //  اللوجو
-    // ═══════════════════════════════════════
-    private createLogo(cx: number, cy: number) {
-        // أيقونة صغيرة
-        const icon = this.add.graphics();
-        icon.fillStyle(this.COLORS.accent, 1);
-        // شكل معين صغير
-        icon.fillTriangle(cx - 10, cy - 16, cx + 10, cy - 16, cx, cy - 2);
-        icon.fillTriangle(cx - 10, cy + 0, cx + 10, cy + 0, cx, cy - 14);
-        icon.setDepth(2);
-        icon.setAlpha(0);
-
-        this.add.text(cx, cy + 14, "SECRET SOCIETY", {
-            fontSize: "26px",
-            color: "#f1f5f9",
-            fontFamily: "'Georgia', serif",
-            fontStyle: "bold",
-            letterSpacing: 4
-        }).setOrigin(0.5).setDepth(2).setAlpha(0)
-          .setData("anim", true);
-
-        this.add.text(cx, cy + 36, "MULTIPLAYER  ·  SOCIAL DEDUCTION", {
-            fontSize: "10px",
-            color: "#3b82f6",
-            fontFamily: "'Courier New', monospace",
-            letterSpacing: 3
-        }).setOrigin(0.5).setDepth(2).setAlpha(0)
-          .setData("anim", true);
-
-        // أنيميشن ظهور
-        this.time.delayedCall(100, () => {
-            this.children.list
-                .filter((c: any) => c.getData && c.getData("anim"))
-                .forEach((obj: any, i: number) => {
-                    obj.setAlpha(0);
-                    this.tweens.add({
-                        targets: obj,
-                        alpha: 1,
-                        y: obj.y - 6,
-                        duration: 500,
-                        ease: "Cubic.easeOut",
-                        delay: i * 100
-                    });
-                });
-
-            this.tweens.add({
-                targets: icon,
-                alpha: 1,
-                duration: 400,
-                ease: "Cubic.easeOut"
-            });
+        [
+            { icon: "🔪", text: "Hidden Roles" },
+            { icon: "🗳️", text: "Strategic Voting" },
+            { icon: "🌙", text: "Night Elimination" },
+        ].forEach((item, i) => {
+            const f = this.add.text(cx, cy + 175 + i * 30, `${item.icon}  ${item.text}`, {
+                fontSize: "11px", color: "#1f2937",
+                fontFamily: "'Courier New', monospace", letterSpacing: 1
+            }).setOrigin(0.5).setDepth(2).setAlpha(0);
+            this.tweens.add({ targets: f, alpha: 1, duration: 500, delay: 650 + i * 100 });
         });
     }
 
-    // ═══════════════════════════════════════
-    //  حقل الاسم
-    // ═══════════════════════════════════════
-    private createUsernameInput(cx: number, cy: number) {
-        const existing = document.getElementById("lobby-username");
-        if (existing) existing.remove();
+    // ══════════════════════════════════════════════════════
+    //  MOBILE LAYOUT
+    // ══════════════════════════════════════════════════════
+    private buildMobileLayout(W: number, H: number) {
+        const cx = W / 2;
 
-        // Label
-        this.add.text(cx - 180, cy - 22, "USERNAME", {
-            fontSize: "10px",
-            color: "#3b82f6",
-            fontFamily: "'Courier New', monospace",
-            letterSpacing: 2
-        }).setDepth(2);
+        // رأس مضغوط
+        const icon = this.add.graphics().setDepth(2);
+        icon.fillStyle(this.C.accent, 0.9);
+        icon.fillTriangle(cx - 11, 30, cx + 11, 30, cx, 46);
+        icon.fillTriangle(cx - 11, 52, cx + 11, 52, cx, 36);
 
+        this.add.text(cx, 68, "SECRET SOCIETY", {
+            fontSize: "21px", color: "#f1f5f9",
+            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 4
+        }).setOrigin(0.5).setDepth(2);
+
+        this.add.text(cx, 90, "SOCIAL DEDUCTION", {
+            fontSize: "9px", color: "#3b82f6",
+            fontFamily: "'Courier New', monospace", letterSpacing: 3
+        }).setOrigin(0.5).setDepth(2);
+
+        // بطاقة
+        const padH  = 110;
+        const padS  = 18;
+        const cardW = W - padS * 2;
+        const cardH = H - padH - 16;
+        const cardX = cx;
+        const cardY = padH + cardH / 2;
+
+        const card = this.add.rectangle(cardX, cardY, cardW, cardH, this.C.card).setDepth(1);
+        card.setStrokeStyle(1, this.C.cardBorder);
+        this.add.rectangle(cardX, padH + 1, cardW - 2, 3, this.C.accent)
+            .setOrigin(0.5, 0).setDepth(2);
+
+        const fLeft = cardX - cardW / 2 + 18;
+        const fTop  = padH + 22;
+
+        this.addFieldLabel(fLeft, fTop, "USERNAME");
+        this.createUsernameInput(fLeft, fTop + 18, cardW - 36);
+
+        this.addFieldLabel(fLeft, fTop + 96, "JOIN  AS");
+        this.createRoleButtons(cardX, fTop + 128, cardW - 36);
+
+        this.createJoinButton(cardX, padH + cardH - 76, cardW - 36);
+
+        this.queueStatusText = this.add.text(cardX, padH + cardH - 36,
+            "●  0 / 6 in queue", {
+                fontSize: "11px", color: "#3b4a5c",
+                fontFamily: "'Courier New', monospace"
+            }).setOrigin(0.5).setDepth(3);
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  FIELD HELPERS
+    // ══════════════════════════════════════════════════════
+    private addFieldLabel(x: number, y: number, label: string) {
+        this.add.text(x, y, label, {
+            fontSize: "9px", color: "#4a5568",
+            fontFamily: "'Courier New', monospace", letterSpacing: 3
+        }).setDepth(3);
+    }
+
+    private createUsernameInput(x: number, y: number, width: number) {
+        document.getElementById("lobby-username")?.remove();
         this.usernameInput = document.createElement("input");
         this.usernameInput.id = "lobby-username";
         this.usernameInput.type = "text";
-        this.usernameInput.placeholder = "Enter your name...";
+        this.usernameInput.placeholder = "Your name...";
         this.usernameInput.maxLength = 20;
-
+        this.usernameInput.autocomplete = "off";
         Object.assign(this.usernameInput.style, {
-            position: "absolute",
-            left: `${cx - 180}px`,
-            top: `${cy}px`,
-            width: "360px",
-            padding: "12px 16px",
-            fontSize: "15px",
-            fontFamily: "'Courier New', monospace",
-            borderRadius: "6px",
-            border: "1px solid #1e2d45",
-            backgroundColor: "#0a0d13",
-            color: "#f1f5f9",
-            outline: "none",
-            zIndex: "1000",
-            letterSpacing: "1px",
-            transition: "border-color 0.2s ease, box-shadow 0.2s ease"
+            position: "absolute", left: `${x}px`, top: `${y}px`,
+            width: `${width}px`, padding: "11px 14px", fontSize: "14px",
+            fontFamily: "'Courier New', monospace", borderRadius: "6px",
+            border: "1px solid #21262d", backgroundColor: "#010409", color: "#f1f5f9",
+            outline: "none", zIndex: "1000", letterSpacing: "1px",
+            transition: "border-color 0.2s, box-shadow 0.2s",
         });
-
         this.usernameInput.addEventListener("focus", () => {
             this.usernameInput.style.borderColor = "#3b82f6";
             this.usernameInput.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.15)";
         });
-
         this.usernameInput.addEventListener("blur", () => {
-            this.usernameInput.style.borderColor = "#1e2d45";
+            this.usernameInput.style.borderColor = "#21262d";
             this.usernameInput.style.boxShadow = "none";
         });
-
+        this.usernameInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") this.handleJoin();
+        });
         document.body.appendChild(this.usernameInput);
     }
 
-    // ═══════════════════════════════════════
-    //  أزرار اختيار الدور
-    // ═══════════════════════════════════════
-    private createRoleSelector(cx: number, cy: number) {
-        // Label
-        this.add.text(cx - 180, cy - 52, "JOIN AS", {
-            fontSize: "10px",
-            color: "#3b82f6",
-            fontFamily: "'Courier New', monospace",
-            letterSpacing: 2
-        }).setDepth(2);
-
+    private createRoleButtons(cx: number, cy: number, totalW: number) {
         const roles = [
-            { key: "player",    label: "PLAYER",    icon: "⚔",  color: this.COLORS.player,    hex: "#22c55e" },
-            { key: "spectator", label: "SPECTATOR", icon: "👁",  color: this.COLORS.spectator, hex: "#3b82f6" },
-            { key: "admin",     label: "ADMIN",     icon: "⚙",  color: this.COLORS.admin,     hex: "#f59e0b" }
+            { key: "player",    label: "PLAYER",    icon: "⚔",  colHex: 0x22c55e, hex: "#22c55e" },
+            { key: "spectator", label: "SPECTATOR", icon: "👁",  colHex: 0x8b5cf6, hex: "#8b5cf6" },
+            { key: "admin",     label: "ADMIN",     icon: "🔒",  colHex: 0xf59e0b, hex: "#f59e0b" },
         ];
-
-        const btnW = 112;
-        const btnH = 60;
-        const gap = 8;
-        const totalW = roles.length * btnW + (roles.length - 1) * gap;
-        const startX = cx - totalW / 2;
+        const gap  = 8;
+        const btnW = (totalW - gap * 2) / 3;
+        const btnH = 64;
+        const sx   = cx - totalW / 2 + btnW / 2;
 
         roles.forEach((role, i) => {
-            const bx = startX + i * (btnW + gap) + btnW / 2;
+            const bx = sx + i * (btnW + gap);
             const isActive = role.key === this.selectedType;
+            const c = this.add.container(bx, cy).setDepth(3);
 
-            const container = this.add.container(bx, cy).setDepth(2);
-
-            // خلفية الزر
             const bg = this.add.rectangle(0, 0, btnW, btnH,
-                isActive ? 0x0f172a : this.COLORS.surface
-            );
+                isActive ? 0x0d1f3c : this.C.card);
             bg.setStrokeStyle(isActive ? 2 : 1,
-                isActive ? role.color : this.COLORS.border
-            );
+                isActive ? role.colHex : this.C.cardBorder);
 
-            // أيقونة
-            const iconText = this.add.text(0, -10, role.icon, {
-                fontSize: "18px"
+            const iconTxt = this.add.text(0, -12, role.icon, { fontSize: "20px" }).setOrigin(0.5);
+            const lbl     = this.add.text(0, 14, role.label, {
+                fontSize: "9px", color: isActive ? role.hex : "#4a5568",
+                fontFamily: "'Courier New', monospace", letterSpacing: 1, fontStyle: "bold"
             }).setOrigin(0.5);
 
-            // نص
-            const label = this.add.text(0, 13, role.label, {
-                fontSize: "10px",
-                color: isActive ? role.hex : "#64748b",
-                fontFamily: "'Courier New', monospace",
-                letterSpacing: 1,
-                fontStyle: "bold"
-            }).setOrigin(0.5);
-
-            container.add([bg, iconText, label]);
-            container.setInteractive(
-                new Phaser.Geom.Rectangle(-btnW / 2, -btnH / 2, btnW, btnH),
+            c.add([bg, iconTxt, lbl]);
+            c.setInteractive(
+                new Phaser.Geom.Rectangle(-btnW/2, -btnH/2, btnW, btnH),
                 Phaser.Geom.Rectangle.Contains
             );
+            c.setData("roleKey", role.key);
+            this.roleButtons[role.key] = c;
 
-            container.on("pointerover", () => {
+            c.on("pointerover", () => {
                 if (this.selectedType !== role.key) {
-                    bg.setFillStyle(this.COLORS.surfaceHover);
-                    bg.setStrokeStyle(1, role.color);
-                    label.setColor(role.hex);
+                    bg.setFillStyle(0x0d1117); bg.setStrokeStyle(1, role.colHex);
+                    lbl.setColor(role.hex);
                 }
-                this.tweens.add({ targets: container, scaleX: 1.03, scaleY: 1.03, duration: 120 });
+                this.tweens.add({ targets: c, scaleX: 1.04, scaleY: 1.04, duration: 100 });
             });
-
-            container.on("pointerout", () => {
+            c.on("pointerout", () => {
                 if (this.selectedType !== role.key) {
-                    bg.setFillStyle(this.COLORS.surface);
-                    bg.setStrokeStyle(1, this.COLORS.border);
-                    label.setColor("#64748b");
+                    bg.setFillStyle(this.C.card); bg.setStrokeStyle(1, this.C.cardBorder);
+                    lbl.setColor("#4a5568");
                 }
-                this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 120 });
+                this.tweens.add({ targets: c, scaleX: 1, scaleY: 1, duration: 100 });
             });
-
-            container.on("pointerdown", () => {
-                // إعادة تعيين كل الأزرار
-                Object.values(this.roleButtons).forEach(c => {
-                    const b = c.list[0] as Phaser.GameObjects.Rectangle;
-                    const l = c.list[2] as Phaser.GameObjects.Text;
-                    const r = roles.find(r => r.key === c.getData("roleKey"));
-                    if (r) {
-                        b.setFillStyle(this.COLORS.surface);
-                        b.setStrokeStyle(1, this.COLORS.border);
-                        l.setColor("#64748b");
-                    }
-                });
-
-                // تفعيل الزر المختار
-                bg.setFillStyle(0x0f172a);
-                bg.setStrokeStyle(2, role.color);
-                label.setColor(role.hex);
-                this.selectedType = role.key;
-
-                // أنيميشن ضغط
-                this.tweens.add({
-                    targets: container,
-                    scaleX: 0.95, scaleY: 0.95,
-                    duration: 80, yoyo: true
-                });
+            c.on("pointerdown", () => {
+                if (role.key === "admin" && this.selectedType !== "admin") {
+                    this.showAdminPasswordPopup();
+                    return;
+                }
+                this.activateRole(role.key, roles);
+                this.tweens.add({ targets: c, scaleX: 0.93, scaleY: 0.93, duration: 70, yoyo: true });
             });
-
-            container.setData("roleKey", role.key);
-            this.roleButtons[role.key] = container;
         });
     }
 
-    // ═══════════════════════════════════════
-    //  زر الانضمام
-    // ═══════════════════════════════════════
-    private createJoinButton(cx: number, cy: number) {
-        const btnW = 360;
-        const btnH = 48;
+    private activateRole(key: string, roles: Array<{key:string; colHex:number; hex:string}>) {
+        Object.values(this.roleButtons).forEach(rc => {
+            const b  = rc.list[0] as Phaser.GameObjects.Rectangle;
+            const lt = rc.list[2] as Phaser.GameObjects.Text;
+            b.setFillStyle(this.C.card); b.setStrokeStyle(1, this.C.cardBorder);
+            lt.setColor("#4a5568");
+        });
+        const rb = this.roleButtons[key];
+        if (rb) {
+            const r  = roles.find(r => r.key === key)!;
+            const b  = rb.list[0] as Phaser.GameObjects.Rectangle;
+            const lt = rb.list[2] as Phaser.GameObjects.Text;
+            b.setFillStyle(0x0d1f3c); b.setStrokeStyle(2, r.colHex);
+            lt.setColor(r.hex);
+        }
+        this.selectedType = key;
+    }
 
-        const container = this.add.container(cx, cy).setDepth(2);
+    // ══════════════════════════════════════════════════════
+    //  ADMIN PASSWORD POPUP
+    // ══════════════════════════════════════════════════════
+    private showAdminPasswordPopup() {
+        document.getElementById("admin-pass-overlay")?.remove();
 
-        const bg = this.add.rectangle(0, 0, btnW, btnH, this.COLORS.accent);
-
-        const label = this.add.text(0, 0, "JOIN QUEUE", {
-            fontSize: "13px",
-            color: "#ffffff",
+        const overlay = document.createElement("div");
+        overlay.id = "admin-pass-overlay";
+        Object.assign(overlay.style, {
+            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
+            zIndex: "5000", backgroundColor: "rgba(0,0,0,0.78)",
+            display: "flex", alignItems: "center", justifyContent: "center",
             fontFamily: "'Courier New', monospace",
-            letterSpacing: 3,
-            fontStyle: "bold"
-        }).setOrigin(0.5);
+        });
 
-        container.add([bg, label]);
-        container.setInteractive(
-            new Phaser.Geom.Rectangle(-btnW / 2, -btnH / 2, btnW, btnH),
+        const box = document.createElement("div");
+        Object.assign(box.style, {
+            backgroundColor: "#0d1117", border: "1px solid #f59e0b",
+            borderRadius: "10px", padding: "28px 26px 22px",
+            width: "290px", boxShadow: "0 0 50px rgba(245,158,11,0.12)",
+        });
+
+        const lockIcon = document.createElement("div");
+        lockIcon.textContent = "🔒";
+        lockIcon.style.cssText = "font-size:30px;text-align:center;margin-bottom:10px";
+
+        const title = document.createElement("div");
+        title.textContent = "ADMIN ACCESS";
+        title.style.cssText = "color:#f59e0b;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold";
+
+        const sub = document.createElement("div");
+        sub.textContent = "Enter admin password to continue";
+        sub.style.cssText = "color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px";
+
+        const passInput = document.createElement("input");
+        passInput.type = "password";
+        passInput.placeholder = "Password...";
+        Object.assign(passInput.style, {
+            width: "100%", padding: "10px 12px", boxSizing: "border-box",
+            backgroundColor: "#010409", color: "#f1f5f9",
+            border: "1px solid #21262d", borderRadius: "6px",
+            fontSize: "14px", fontFamily: "'Courier New', monospace",
+            outline: "none", marginBottom: "10px",
+        });
+        passInput.addEventListener("focus", () => {
+            passInput.style.borderColor = "#f59e0b";
+            passInput.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.1)";
+        });
+        passInput.addEventListener("blur", () => {
+            passInput.style.borderColor = "#21262d";
+            passInput.style.boxShadow = "none";
+        });
+
+        const errEl = document.createElement("div");
+        errEl.style.cssText = "color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px;letter-spacing:1px";
+
+        const btnRow = document.createElement("div");
+        btnRow.style.cssText = "display:flex;gap:8px;margin-top:4px";
+
+        const cancelBtn = document.createElement("button");
+        cancelBtn.textContent = "CANCEL";
+        Object.assign(cancelBtn.style, {
+            flex: "1", padding: "10px", border: "1px solid #21262d",
+            borderRadius: "6px", background: "none", color: "#4a5568",
+            fontSize: "10px", letterSpacing: "2px", cursor: "pointer",
+            fontFamily: "'Courier New', monospace",
+        });
+
+        const confirmBtn = document.createElement("button");
+        confirmBtn.textContent = "CONFIRM";
+        Object.assign(confirmBtn.style, {
+            flex: "1", padding: "10px", border: "none",
+            borderRadius: "6px", backgroundColor: "#f59e0b", color: "#000",
+            fontSize: "10px", letterSpacing: "2px", cursor: "pointer",
+            fontFamily: "'Courier New', monospace", fontWeight: "bold",
+        });
+
+        const roles = [
+            { key: "player",    colHex: 0x22c55e, hex: "#22c55e" },
+            { key: "spectator", colHex: 0x8b5cf6, hex: "#8b5cf6" },
+            { key: "admin",     colHex: 0xf59e0b, hex: "#f59e0b" },
+        ];
+
+        const confirm = () => {
+            if (passInput.value === ADMIN_PASSWORD) {
+                overlay.remove();
+                this.activateRole("admin", roles);
+                this.showToast("Admin access granted \u2713", "success");
+            } else {
+                errEl.textContent = "Incorrect password";
+                passInput.value = "";
+                passInput.style.borderColor = "#ef4444";
+                passInput.style.boxShadow = "0 0 0 3px rgba(239,68,68,0.1)";
+                passInput.focus();
+                // shake
+                let n = 0;
+                const iv = setInterval(() => {
+                    box.style.marginLeft = n % 2 === 0 ? "7px" : "-7px";
+                    n++;
+                    if (n >= 6) { clearInterval(iv); box.style.marginLeft = "0"; }
+                }, 55);
+            }
+        };
+
+        passInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") confirm();
+            if (e.key === "Escape") overlay.remove();
+        });
+        cancelBtn.addEventListener("click", () => overlay.remove());
+        confirmBtn.addEventListener("click", confirm);
+        overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+
+        box.appendChild(lockIcon);
+        box.appendChild(title);
+        box.appendChild(sub);
+        box.appendChild(passInput);
+        box.appendChild(errEl);
+        box.appendChild(btnRow);
+        btnRow.appendChild(cancelBtn);
+        btnRow.appendChild(confirmBtn);
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+        setTimeout(() => passInput.focus(), 60);
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  JOIN BUTTON
+    // ══════════════════════════════════════════════════════
+    private createJoinButton(cx: number, cy: number, width: number) {
+        const btnH = 48;
+        const c    = this.add.container(cx, cy).setDepth(3);
+        const bg   = this.add.rectangle(0, 0, width, btnH, this.C.accent);
+        const lbl  = this.add.text(0, 0, "JOIN  QUEUE", {
+            fontSize: "12px", color: "#ffffff",
+            fontFamily: "'Courier New', monospace", letterSpacing: 4, fontStyle: "bold"
+        }).setOrigin(0.5);
+        c.add([bg, lbl]);
+        c.setInteractive(
+            new Phaser.Geom.Rectangle(-width/2, -btnH/2, width, btnH),
             Phaser.Geom.Rectangle.Contains
         );
-
-        container.on("pointerover", () => {
-            bg.setFillStyle(this.COLORS.accentHover);
-            this.tweens.add({ targets: container, scaleY: 1.04, duration: 120 });
+        c.on("pointerover", () => { bg.setFillStyle(this.C.accentHover); this.tweens.add({ targets: c, scaleY: 1.04, duration: 100 }); });
+        c.on("pointerout",  () => { bg.setFillStyle(this.C.accent);      this.tweens.add({ targets: c, scaleY: 1,    duration: 100 }); });
+        c.on("pointerdown", () => {
+            this.tweens.add({ targets: c, scaleX: 0.97, scaleY: 0.97, duration: 70, yoyo: true, onComplete: () => this.handleJoin() });
         });
-
-        container.on("pointerout", () => {
-            bg.setFillStyle(this.COLORS.accent);
-            this.tweens.add({ targets: container, scaleY: 1, duration: 120 });
-        });
-
-        container.on("pointerdown", () => {
-            this.tweens.add({
-                targets: container,
-                scaleX: 0.97, scaleY: 0.97,
-                duration: 80, yoyo: true,
-                onComplete: () => this.handleJoin()
-            });
-        });
-
-        this.joinButton = container;
+        this.joinButton   = c;
+        this.joinBtnLabel = lbl;
     }
 
-    // ═══════════════════════════════════════
-    //  منطق الانضمام
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════════════
+    //  HANDLE JOIN
+    // ══════════════════════════════════════════════════════
     private handleJoin() {
         const username = this.usernameInput?.value.trim();
-
-        if (!username || username.length < 3) {
-            this.showToast("Username must be at least 3 characters", "error");
+        if (!username || username.length < 2) {
+            this.showToast("Username must be at least 2 characters", "error");
             this.shakeInput();
             return;
         }
-
-        // ✅ FIX: reset socketService قبل أي join جديد
         socketService.reset();
         socketService.socket.emit("set_username", username);
+        socketService.socket.emit("set_avatar", "😎");
+        socketService.socket.emit("set_color", "#1e293b");
 
         if (this.selectedType === "admin") {
             socketService.isAdmin = true;
             socketService.socket.emit("join_admin");
+            this.joinBtnLabel.setText("CONNECTING...");
             this.showToast("Joining as admin...", "info");
         } else if (this.selectedType === "spectator") {
             socketService.socket.emit("spectator_join_game");
+            this.joinBtnLabel.setText("SEARCHING...");
             this.showToast("Looking for active game...", "info");
         } else {
             socketService.socket.emit("join_queue", { type: "player" });
+            this.joinBtnLabel.setText("JOINING...");
             this.showToast("Joining queue...", "success");
         }
 
-        // تعطيل الزر مؤقتاً
         this.joinButton.setAlpha(0.6);
         this.joinButton.disableInteractive();
-        this.time.delayedCall(2000, () => {
-            if (this.joinButton && this.joinButton.active) {
+        this.time.delayedCall(2500, () => {
+            if (this.joinButton?.active) {
                 this.joinButton.setAlpha(1);
+                this.joinBtnLabel.setText("JOIN  QUEUE");
                 this.joinButton.setInteractive(
-                    new Phaser.Geom.Rectangle(-180, -24, 360, 48),
+                    new Phaser.Geom.Rectangle(-172, -24, 344, 48),
                     Phaser.Geom.Rectangle.Contains
                 );
             }
         });
     }
 
-    // ═══════════════════════════════════════
-    //  Socket Events
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════════════
+    //  SOCKET EVENTS
+    // ══════════════════════════════════════════════════════
     private setupSocketEvents() {
-        socketService.socket.off("game_started");
-        socketService.socket.off("queue_update");
-        socketService.socket.off("error");
-        socketService.socket.off("connect");
-        socketService.socket.off("connect_error");
-        socketService.socket.off("waiting_for_players");
-        socketService.socket.off("admin_joined");
+        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined"]
+            .forEach(ev => socketService.socket.off(ev));
 
-        // ─── حالة الطابور ───
         socketService.socket.on("queue_update", (data: any) => {
-            if (this.queueStatusText?.active) {
-                const size  = data.queueSize || 0;
-                const color = size >= 5 ? "#22c55e" : size >= 3 ? "#f59e0b" : "#64748b";
-                this.queueStatusText.setText(`⬤  ${size} / 6 players in queue`);
-                this.queueStatusText.setColor(color);
-            }
+            if (!this.queueStatusText?.active) return;
+            const size  = data.queueSize || 0;
+            const color = size >= 5 ? "#22c55e" : size >= 3 ? "#f59e0b" : "#3b4a5c";
+            this.queueStatusText.setText(`●  ${size} / 6 in queue`).setColor(color);
         });
 
-        // ─── خطأ (مثل: ما في لعبة للمشاهد) ───
         socketService.socket.on("error", (data: any) => {
             this.showToast(data.message, "error");
             if (this.joinButton?.active) {
+                this.joinBtnLabel?.setText("JOIN  QUEUE");
                 this.joinButton.setAlpha(1);
                 this.joinButton.setInteractive(
-                    new Phaser.Geom.Rectangle(-180, -24, 360, 48),
+                    new Phaser.Geom.Rectangle(-172, -24, 344, 48),
                     Phaser.Geom.Rectangle.Contains
                 );
             }
         });
 
-        // ─── الأدمن انضم بنجاح ───
-        socketService.socket.on("admin_joined", () => {
-            this.showToast("Admin panel ready", "success");
-        });
+        socketService.socket.on("admin_joined", () => this.showToast("Admin panel ready \u2713", "success"));
 
-        // ✅ FIX: الأدمن يستنى لو ما في غرفة بعد
         socketService.socket.on("waiting_for_players", (data: any) => {
-            this.showToast(data.message || "Waiting for players to join...", "info");
-            if (this.queueStatusText?.active) {
-                this.queueStatusText.setText("⬤  Waiting for a game to start...");
-                this.queueStatusText.setColor("#f59e0b");
-            }
-            // ✅ نُعيد تفعيل الزر عشان الأدمن ما يبقى عالق
+            this.showToast(data.message || "Waiting for players...", "info");
+            if (this.queueStatusText?.active)
+                this.queueStatusText.setText("●  Waiting for players...").setColor("#f59e0b");
             if (this.joinButton?.active) {
+                this.joinBtnLabel?.setText("JOIN  QUEUE");
                 this.joinButton.setAlpha(1);
                 this.joinButton.setInteractive(
-                    new Phaser.Geom.Rectangle(-180, -24, 360, 48),
+                    new Phaser.Geom.Rectangle(-172, -24, 344, 48),
                     Phaser.Geom.Rectangle.Contains
                 );
             }
         });
 
-        // ─── دخول اللعبة ───
         socketService.socket.on("game_started", (data: any) => {
-            // ✅ FIX: userType يتحدد من data.role مباشرة — مش من socketService.isAdmin فقط
             let userType = "PLAYER";
             if (data.role === "ADMIN")          { userType = "ADMIN";     socketService.isAdmin = true; }
             else if (data.role === "SPECTATOR") { userType = "SPECTATOR"; }
-
-            if (this.usernameInput) this.usernameInput.remove();
-
-            this.cameras.main.fadeOut(400, 10, 13, 19);
+            document.getElementById("lobby-username")?.remove();
+            document.getElementById("admin-pass-overlay")?.remove();
+            this.cameras.main.fadeOut(400, 6, 8, 16);
             this.time.delayedCall(400, () => {
-                this.scene.start("GameScene", {
-                    role:     data.role,
-                    roomId:   data.roomId,
-                    userType: userType
-                });
+                this.scene.start("GameScene", { role: data.role, roomId: data.roomId, userType });
             });
         });
 
-        socketService.socket.on("connect", () => {
-            this.showToast("Connected to server", "success");
-        });
-
-        socketService.socket.on("connect_error", () => {
-            this.showToast("Cannot connect to server", "error");
-        });
+        socketService.socket.on("connect",       () => this.showToast("Connected \u2713", "success"));
+        socketService.socket.on("connect_error", () => this.showToast("Cannot connect to server", "error"));
     }
 
-    // ═══════════════════════════════════════
-    //  Toast Notification
-    // ═══════════════════════════════════════
-    private showToast(message: string, type: "success" | "error" | "info") {
-        const colorMap = {
-            success: { bg: 0x052e16, border: 0x22c55e, text: "#22c55e" },
-            error:   { bg: 0x2d0a0a, border: 0xef4444, text: "#ef4444" },
-            info:    { bg: 0x0a1628, border: 0x3b82f6, text: "#3b82f6" }
-        };
-        const c = colorMap[type];
-        const W = this.scale.width;
+    // ══════════════════════════════════════════════════════
+    //  BACKGROUND
+    // ══════════════════════════════════════════════════════
+    private drawBackground(W: number, H: number) {
+        const grid = this.add.graphics().setDepth(0);
+        grid.fillStyle(0x1a2035, 0.45);
+        for (let x = 0; x <= W; x += 44)
+            for (let y = 0; y <= H; y += 44)
+                grid.fillCircle(x, y, 1);
 
-        const toast = this.add.container(W / 2, this.scale.height - 60).setDepth(10);
-
-        const msgWidth = Math.min(message.length * 8 + 40, 400);
-        const bg = this.add.rectangle(0, 0, msgWidth, 38, c.bg);
-        bg.setStrokeStyle(1, c.border);
-
-        const text = this.add.text(0, 0, message, {
-            fontSize: "13px",
-            color: c.text,
-            fontFamily: "'Courier New', monospace"
-        }).setOrigin(0.5);
-
-        toast.add([bg, text]);
-        toast.setAlpha(0);
-        toast.setY(this.scale.height - 30);
-
-        this.tweens.add({
-            targets: toast,
-            alpha: 1,
-            y: this.scale.height - 60,
-            duration: 300,
-            ease: "Cubic.easeOut"
-        });
-
-        this.time.delayedCall(2500, () => {
-            this.tweens.add({
-                targets: toast,
-                alpha: 0,
-                y: this.scale.height - 40,
-                duration: 300,
-                onComplete: () => toast.destroy()
+        for (let i = 0; i < 22; i++) {
+            const gfx = this.add.graphics().setDepth(0);
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 0.1 + Math.random() * 0.22;
+            this.particles.push({
+                gfx,
+                x: Phaser.Math.Between(0, W),
+                y: Phaser.Math.Between(0, H),
+                vx: Math.cos(angle) * speed,
+                vy: Math.sin(angle) * speed,
+                radius: Phaser.Math.Between(1, 3),
+                alpha: 0.07 + Math.random() * 0.28,
+                pulseSpeed: 0.007 + Math.random() * 0.014,
+                pulseOffset: Math.random() * Math.PI * 2
             });
-        });
+        }
     }
 
-    // ═══════════════════════════════════════
-    //  اهتزاز حقل الاسم عند الخطأ
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════════════
+    //  UTILITIES
+    // ══════════════════════════════════════════════════════
+    private showToast(message: string, type: "success"|"error"|"info") {
+        const cm = { success:{bg:0x052e16,border:0x22c55e,text:"#22c55e"}, error:{bg:0x2d0a0a,border:0xef4444,text:"#ef4444"}, info:{bg:0x0a1628,border:0x3b82f6,text:"#3b82f6"} }[type];
+        const W  = this.scale.width;
+        const toast = this.add.container(W/2, this.scale.height - 30).setDepth(10);
+        const bg  = this.add.rectangle(0, 0, Math.min(message.length*8+40,420), 38, cm.bg);
+        bg.setStrokeStyle(1, cm.border);
+        const txt = this.add.text(0, 0, message, { fontSize:"12px", color:cm.text, fontFamily:"'Courier New', monospace" }).setOrigin(0.5);
+        toast.add([bg, txt]).setAlpha(0);
+        this.tweens.add({ targets:toast, alpha:1, y:this.scale.height-60, duration:280 });
+        this.time.delayedCall(2500, () =>
+            this.tweens.add({ targets:toast, alpha:0, y:this.scale.height-40, duration:280, onComplete:()=>toast.destroy() })
+        );
+    }
+
     private shakeInput() {
         this.usernameInput.style.borderColor = "#ef4444";
-        this.usernameInput.style.boxShadow = "0 0 0 3px rgba(239,68,68,0.2)";
-
-        let count = 0;
-        const originalLeft = this.usernameInput.style.left;
-        const interval = setInterval(() => {
-            const offset = count % 2 === 0 ? "4px" : "-4px";
-            const baseLeft = parseInt(originalLeft) || 0;
-            this.usernameInput.style.left = `${baseLeft + parseInt(offset)}px`;
-            count++;
-            if (count >= 6) {
-                clearInterval(interval);
-                this.usernameInput.style.left = originalLeft;
-                this.usernameInput.style.borderColor = "#1e2d45";
-                this.usernameInput.style.boxShadow = "none";
-            }
+        this.usernameInput.style.boxShadow   = "0 0 0 3px rgba(239,68,68,0.2)";
+        let n = 0;
+        const orig = this.usernameInput.style.left;
+        const iv = setInterval(() => {
+            this.usernameInput.style.left = `${parseInt(orig) + (n%2===0?5:-5)}px`;
+            n++;
+            if (n>=6) { clearInterval(iv); this.usernameInput.style.left=orig; this.usernameInput.style.borderColor="#21262d"; this.usernameInput.style.boxShadow="none"; }
         }, 50);
     }
 
-    // ═══════════════════════════════════════
-    //  Shutdown
-    // ═══════════════════════════════════════
+    // ══════════════════════════════════════════════════════
+    //  UPDATE
+    // ══════════════════════════════════════════════════════
+    update(time: number, _delta: number) {
+        const W = this.scale.width;
+        const H = this.scale.height;
+        this.particles.forEach(p => {
+            p.x += p.vx; p.y += p.vy;
+            if (p.x<0||p.x>W) p.vx*=-1;
+            if (p.y<0||p.y>H) p.vy*=-1;
+            const a = Math.max(0, Math.min(1, p.alpha + Math.sin(time*p.pulseSpeed+p.pulseOffset)*0.1));
+            p.gfx.clear(); p.gfx.fillStyle(0x3b82f6, a); p.gfx.fillCircle(p.x, p.y, p.radius);
+        });
+        let lines = this.children.getByName("connLines") as Phaser.GameObjects.Graphics;
+        if (!lines) lines = this.add.graphics().setName("connLines").setDepth(0);
+        lines.clear();
+        for (let i=0; i<this.particles.length; i++)
+            for (let j=i+1; j<this.particles.length; j++) {
+                const dx=this.particles[i].x-this.particles[j].x, dy=this.particles[i].y-this.particles[j].y;
+                const d=Math.sqrt(dx*dx+dy*dy);
+                if (d<110) { lines.lineStyle(1,0x3b82f6,(1-d/110)*0.07); lines.moveTo(this.particles[i].x,this.particles[i].y); lines.lineTo(this.particles[j].x,this.particles[j].y); lines.strokePath(); }
+            }
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  SHUTDOWN
+    // ══════════════════════════════════════════════════════
     shutdown() {
         if (this.playerCountInterval) clearInterval(this.playerCountInterval);
-        if (this.usernameInput) this.usernameInput.remove();
+        document.getElementById("lobby-username")?.remove();
+        document.getElementById("admin-pass-overlay")?.remove();
         this.particles.forEach(p => p.gfx.destroy());
         this.particles = [];
-        this.bgLines.forEach(l => l.gfx.destroy());
-        this.bgLines = [];
-        socketService.socket.off("game_started");
-        socketService.socket.off("queue_update");
-        socketService.socket.off("error");
-        socketService.socket.off("connect");
-        socketService.socket.off("connect_error");
-        socketService.socket.off("waiting_for_players");
-        socketService.socket.off("admin_joined");
+        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined"]
+            .forEach(ev => socketService.socket.off(ev));
     }
-    // ══════════════════════════════════════
-    //  Splash Screen
-    // ══════════════════════════════════════
-    private showSplashScreen() {
-        const existing = document.getElementById("splash-screen");
-        if (existing) existing.remove();
-
-        const splash = document.createElement("div");
-        splash.id = "splash-screen";
-        Object.assign(splash.style, {
-            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
-            zIndex: "9999",
-            display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center",
-            backgroundColor: "#0a0d13",
-            animation: "splashFadeIn 0.6s ease",
-        });
-
-        // CSS animation
-        const style = document.createElement("style");
-        style.textContent = `
-            @keyframes splashFadeIn { from { opacity: 0 } to { opacity: 1 } }
-            @keyframes splashFadeOut { from { opacity: 1 } to { opacity: 0 } }
-        `;
-        document.head.appendChild(style);
-
-        // الصورة
-        const img = document.createElement("img");
-        img.src = "/welcome.jpg";
-        Object.assign(img.style, {
-            maxWidth: "90%", maxHeight: "70vh",
-            borderRadius: "12px",
-            boxShadow: "0 0 40px rgba(59,130,246,0.3)",
-            objectFit: "contain",
-        });
-        img.onerror = () => { img.style.display = "none"; };
-
-        // زر الدخول
-        const btn = document.createElement("button");
-        btn.innerHTML = "&#9654; ادخل المجتمع السري";
-        Object.assign(btn.style, {
-            marginTop: "28px", padding: "14px 40px",
-            fontSize: "16px", fontFamily: "'Courier New', monospace",
-            fontWeight: "bold", letterSpacing: "2px",
-            color: "#f1f5f9", backgroundColor: "transparent",
-            border: "1px solid #3b82f6", borderRadius: "6px",
-            cursor: "pointer", transition: "all 0.2s",
-        });
-        btn.onmouseenter = () => { btn.style.backgroundColor = "#3b82f6"; };
-        btn.onmouseleave = () => { btn.style.backgroundColor = "transparent"; };
-
-        const hint = document.createElement("div");
-        hint.textContent = "اضغط في أي مكان للمتابعة";
-        Object.assign(hint.style, {
-            marginTop: "12px", fontSize: "12px",
-            color: "#374151", fontFamily: "'Courier New', monospace",
-        });
-
-        splash.appendChild(img);
-        splash.appendChild(btn);
-        splash.appendChild(hint);
-        document.body.appendChild(splash);
-
-        const dismiss = () => {
-            splash.style.animation = "splashFadeOut 0.4s ease forwards";
-            setTimeout(() => splash.remove(), 400);
-        };
-
-        btn.onclick = (e) => { e.stopPropagation(); dismiss(); };
-        splash.onclick = dismiss;
-    }
-
-
 }
