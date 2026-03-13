@@ -109,9 +109,7 @@ export default class LobbyScene extends Phaser.Scene {
             btn.style.opacity = "0";
             this.tweens.add({ targets: [bg, img], alpha: 0, duration: 450 });
             this.time.delayedCall(500, () => {
-                document.getElementById("splash-btn")?.remove();
-        document.getElementById("lobby-hero-title")?.remove();
-        document.getElementById("lobby-mobile-title")?.remove();
+                this.cleanupAllLobbyHTML();
                 this.initLobby();
             });
         };
@@ -126,9 +124,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.cameras.main.fadeIn(500, 6, 8, 16);
         // cleanup عناصر قديمة لو كانت موجودة
-        document.getElementById("lobby-hero-title")?.remove();
-        document.getElementById("lobby-mobile-title")?.remove();
-        document.getElementById("lobby-card-tag")?.remove();
+        this.cleanupAllLobbyHTML();
 
         this.drawBackground(W, H);
 
@@ -751,8 +747,7 @@ export default class LobbyScene extends Phaser.Scene {
             let userType = "PLAYER";
             if (data.role === "ADMIN")          { userType = "ADMIN";     socketService.isAdmin = true; }
             else if (data.role === "SPECTATOR") { userType = "SPECTATOR"; }
-            document.getElementById("lobby-username")?.remove();
-            document.getElementById("admin-pass-overlay")?.remove();
+            this.cleanupAllLobbyHTML();
             this.cameras.main.fadeOut(400, 6, 8, 16);
             this.time.delayedCall(400, () => {
                 this.scene.start("GameScene", { role: data.role, roomId: data.roomId, userType });
@@ -847,14 +842,22 @@ export default class LobbyScene extends Phaser.Scene {
     // ══════════════════════════════════════════════════════
     //  SHUTDOWN
     // ══════════════════════════════════════════════════════
+    // ─── مسح كل HTML elements دفعة واحدة ───
+    private cleanupAllLobbyHTML() {
+        const ids = [
+            "lobby-username",
+            "admin-pass-overlay",
+            "splash-btn",
+            "lobby-hero-title",
+            "lobby-mobile-title",
+            "lobby-card-tag",
+        ];
+        ids.forEach(id => document.getElementById(id)?.remove());
+    }
+
     shutdown() {
         if (this.playerCountInterval) clearInterval(this.playerCountInterval);
-        document.getElementById("lobby-username")?.remove();
-        document.getElementById("admin-pass-overlay")?.remove();
-        document.getElementById("splash-btn")?.remove();
-        document.getElementById("lobby-hero-title")?.remove();
-        document.getElementById("lobby-mobile-title")?.remove();
-        document.getElementById("lobby-card-tag")?.remove();
+        this.cleanupAllLobbyHTML();
         this.particles.forEach(p => p.gfx.destroy());
         this.particles = [];
         ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined"]
