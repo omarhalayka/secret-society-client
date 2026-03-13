@@ -112,12 +112,14 @@ class AudioManager {
 
             const setLevel = (e: Event) => {
                 e.stopPropagation();
-                const val = pct / 100;
+                // خريطة واضحة: 0→0, 5→0.1, 10→0.3, 15→0.6, 25→1.0
+                const volMap: {[k:number]: number} = { 0: 0, 5: 0.1, 10: 0.3, 15: 0.6, 25: 1.0 };
+                const val = volMap[pct] ?? pct / 100;
                 this.audio.volume = val;
                 this.muted = pct === 0;
                 if (pct === 0) {
                     this.audio.pause();
-                } else if (this.muted === false) {
+                } else {
                     this.audio.play().catch(() => {});
                 }
 
