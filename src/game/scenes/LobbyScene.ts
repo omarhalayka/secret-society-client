@@ -128,6 +128,7 @@ export default class LobbyScene extends Phaser.Scene {
         // cleanup عناصر قديمة لو كانت موجودة
         document.getElementById("lobby-hero-title")?.remove();
         document.getElementById("lobby-mobile-title")?.remove();
+        document.getElementById("lobby-card-tag")?.remove();
 
         this.drawBackground(W, H);
 
@@ -182,10 +183,23 @@ export default class LobbyScene extends Phaser.Scene {
         let   posY = cardTop + 30;
 
         // عنوان صغير داخل البطاقة
-        this.add.text(fL, posY, "ENTER  THE  SOCIETY", {
-            fontSize: "9px", color: "#3b82f6",
-            fontFamily: "'Courier New', monospace", letterSpacing: 3
-        }).setDepth(3);
+        // عنوان صغير أعلى البطاقة - HTML عشان RTL
+        const cardTagEl = document.createElement("div");
+        cardTagEl.id = "lobby-card-tag";
+        cardTagEl.textContent = "المنظمة السوداء";
+        Object.assign(cardTagEl.style, {
+            position:      "fixed",
+            top:           `${posY}px`,
+            left:          `${fL}px`,
+            direction:     "rtl",
+            fontSize:      "10px",
+            color:         "#3b82f6",
+            fontFamily:    "'Courier New', monospace",
+            letterSpacing: "2px",
+            pointerEvents: "none",
+            zIndex:        "10",
+        });
+        document.body.appendChild(cardTagEl);
         posY += 28;
 
         // USERNAME
@@ -235,7 +249,7 @@ export default class LobbyScene extends Phaser.Scene {
         g1.moveTo(cx - lineW/2, cy - s*4.2); g1.lineTo(cx + lineW/2, cy - s*4.2); g1.strokePath();
 
         // ─── العنوان الرئيسي (HTML عشان RTL يشتغل صح) ───
-        const titleSize = Math.min(Math.floor(heroW * 0.11), 52);
+        const titleSize = Math.min(Math.floor(heroW * 0.055), 28);
         const titleEl = document.createElement("div");
         titleEl.id = "lobby-hero-title";
         titleEl.textContent = "المنظمة السوداء";
@@ -840,6 +854,7 @@ export default class LobbyScene extends Phaser.Scene {
         document.getElementById("splash-btn")?.remove();
         document.getElementById("lobby-hero-title")?.remove();
         document.getElementById("lobby-mobile-title")?.remove();
+        document.getElementById("lobby-card-tag")?.remove();
         this.particles.forEach(p => p.gfx.destroy());
         this.particles = [];
         ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined"]
