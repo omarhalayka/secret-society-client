@@ -872,8 +872,10 @@ export default class LobbyScene extends Phaser.Scene {
             "lobby-hero-title",
             "lobby-mobile-title",
             "lobby-card-tag",
+            "global-mute-btn",   // اسم قديم - نمسحه لو موجود
         ];
         ids.forEach(id => document.getElementById(id)?.remove());
+        // ملاحظة: global-audio-ctrl لا يُمسح - يضل ظاهر بكل الشاشات
     }
 
     shutdown() {
