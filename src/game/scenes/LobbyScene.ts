@@ -186,10 +186,29 @@ export default class LobbyScene extends Phaser.Scene {
         const cardH   = Math.min(H - 80, 460);
         const cardTop = cy - cardH / 2;
 
-        // glow خفي وراء البطاقة
-        this.add.rectangle(formCx, cy, cardW + 6, cardH + 6, 0x3b82f6, 0.04).setDepth(1);
-        const card = this.add.rectangle(formCx, cy, cardW, cardH, this.C.card).setDepth(2);
+        // بطاقة شفافة - backdrop blur بدل اللون الصلب
+        this.add.rectangle(formCx, cy, cardW + 6, cardH + 6, 0x3b82f6, 0.08).setDepth(1);
+        const card = this.add.rectangle(formCx, cy, cardW, cardH, 0x060810, 0.0).setDepth(2);
         card.setStrokeStyle(1, this.C.cardBorder);
+
+        // HTML overlay شفاف للبطاقة مع blur
+        const cardOverlay = document.createElement("div");
+        cardOverlay.id = "lobby-card-overlay";
+        Object.assign(cardOverlay.style, {
+            position:       "fixed",
+            top:            `${cardTop}px`,
+            left:           `${heroW + cardPad}px`,
+            width:          `${cardW}px`,
+            height:         `${cardH}px`,
+            background:     "rgba(6, 8, 16, 0.45)",
+            backdropFilter: "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            borderRadius:   "12px",
+            border:         "1px solid rgba(33,38,45,0.6)",
+            zIndex:         "2",
+            pointerEvents:  "none",
+        });
+        document.body.appendChild(cardOverlay);
         // شريط لوني أعلى البطاقة
         this.add.rectangle(formCx, cardTop + 2, cardW - 2, 3, this.C.accent)
             .setOrigin(0.5, 0).setDepth(3);
@@ -382,8 +401,27 @@ export default class LobbyScene extends Phaser.Scene {
         const cardCY = headerH + cardH / 2;
         const cardT  = headerH; // أعلى البطاقة
 
-        const card = this.add.rectangle(cardCX, cardCY, cardW, cardH, this.C.card).setDepth(1);
+        // بطاقة شفافة مع HTML blur overlay
+        const card = this.add.rectangle(cardCX, cardCY, cardW, cardH, 0x060810, 0.0).setDepth(1);
         card.setStrokeStyle(1, this.C.cardBorder);
+
+        const mobCardOverlay = document.createElement("div");
+        mobCardOverlay.id = "lobby-card-overlay";
+        Object.assign(mobCardOverlay.style, {
+            position:             "fixed",
+            top:                  `${cardT}px`,
+            left:                 `${pad}px`,
+            width:                `${cardW}px`,
+            height:               `${cardH}px`,
+            background:           "rgba(6, 8, 16, 0.45)",
+            backdropFilter:       "blur(16px)",
+            WebkitBackdropFilter: "blur(16px)",
+            borderRadius:         "10px",
+            border:               "1px solid rgba(33,38,45,0.6)",
+            zIndex:               "1",
+            pointerEvents:        "none",
+        });
+        document.body.appendChild(mobCardOverlay);
         // شريط لوني أعلى
         this.add.rectangle(cardCX, cardT + 2, cardW - 2, 3, this.C.accent)
             .setOrigin(0.5, 0).setDepth(2);
@@ -812,6 +850,11 @@ export default class LobbyScene extends Phaser.Scene {
             transition:    "opacity 1.2s ease",
             pointerEvents: "none",
         });
+        // تأكد إن الـ canvas شفاف عشان يبين الفيديو
+        const canvas = document.querySelector("canvas");
+        if (canvas) {
+            (canvas as HTMLElement).style.background = "transparent";
+        }
         vid.addEventListener("canplay", () => {
             vid.style.opacity = "0.4";
         });
@@ -910,6 +953,7 @@ export default class LobbyScene extends Phaser.Scene {
             "lobby-mobile-title",
             "lobby-card-tag",
             "lobby-bg-video",
+            "lobby-card-overlay",
             "global-mute-btn",
         ];
         ids.forEach(id => document.getElementById(id)?.remove());
