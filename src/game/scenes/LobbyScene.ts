@@ -791,52 +791,58 @@ export default class LobbyScene extends Phaser.Scene {
     private startBgVideo() {
         document.getElementById("lobby-bg-video")?.remove();
 
-        // خلي الـ Phaser canvas وحاويته شفافين
-        const canvas = document.querySelector("canvas");
-        if (canvas) {
-            const canvasEl = canvas as HTMLElement;
-            canvasEl.style.background  = "transparent";
-            canvasEl.style.position    = "relative";
-            canvasEl.style.zIndex      = "2";
-        }
-        // خلي الـ #game div شفاف
+        // ─── خلي كل شي شفاف ───
+        document.body.style.background = "transparent";
+        document.body.style.margin     = "0";
+
         const gameDiv = document.getElementById("game");
         if (gameDiv) {
-            gameDiv.style.background = "transparent";
+            gameDiv.style.background  = "transparent";
+            gameDiv.style.position    = "fixed";
+            gameDiv.style.top         = "0";
+            gameDiv.style.left        = "0";
+            gameDiv.style.width       = "100%";
+            gameDiv.style.height      = "100%";
         }
-        // خلي body شفاف
-        document.body.style.background = "#060810";
 
+        const canvas = document.querySelector("canvas");
+        if (canvas) {
+            const el = canvas as HTMLElement;
+            el.style.background = "transparent";
+            el.style.position   = "fixed";
+            el.style.top        = "0";
+            el.style.left       = "0";
+            el.style.zIndex     = "10";
+        }
+
+        // ─── الفيديو تحت الـ canvas مباشرة ───
         const vid = document.createElement("video");
-        vid.id           = "lobby-bg-video";
-        vid.src          = "/bg.mp4";
-        vid.autoplay     = true;
-        vid.loop         = true;
-        vid.muted        = true;
+        vid.id             = "lobby-bg-video";
+        vid.src            = "/bg.mp4";
+        vid.autoplay       = true;
+        vid.loop           = true;
+        vid.muted          = true;
         (vid as any).playsInline = true;
         Object.assign(vid.style, {
             position:      "fixed",
-            top:           "0", left: "0",
-            width:         "100%", height: "100%",
+            top:           "0",
+            left:          "0",
+            width:         "100vw",
+            height:        "100vh",
             objectFit:     "cover",
-            zIndex:        "1",        // فوق الـ body تحت الـ canvas
+            zIndex:        "5",
             opacity:       "0",
-            transition:    "opacity 1.2s ease",
+            transition:    "opacity 1.5s ease",
             pointerEvents: "none",
         });
 
         vid.addEventListener("canplay", () => {
-            vid.style.opacity = "0.5";
+            vid.style.opacity = "0.55";
         });
 
-        // أضفه بعد الـ canvas مباشرة
-        if (canvas && canvas.parentNode) {
-            canvas.parentNode.insertBefore(vid, canvas);
-        } else {
-            document.body.insertBefore(vid, document.body.firstChild);
-        }
-
-        vid.play().catch(() => {});
+        // أضفه أول عنصر في الـ body
+        document.body.insertBefore(vid, document.body.firstChild);
+        vid.play().catch((e) => console.warn("video blocked:", e));
     }
 
     private drawBackground(W: number, H: number) {
