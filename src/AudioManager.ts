@@ -3,25 +3,22 @@
 class AudioManager {
     private static instance: AudioManager;
     private audio: HTMLAudioElement;
-    private controlEl: HTMLElement | null = null;
-    private volume: number = 0.28;
+    private currentVol: number = 0.28;
     private muted: boolean = false;
-    private currentLevel: number = 3; // index في المصفوفة
+    private menuOpen: boolean = false;
 
-    // مستويات الصوت المتاحة
     private readonly LEVELS = [
-        { label: "🔇", value: 0   },
-        { label: "🔈", value: 0.05 },
-        { label: "🔉", value: 0.10 },
-        { label: "🔉", value: 0.15 },
-        { label: "🔊", value: 0.25 },
-        { label: "🔊", value: 0.40 },
+        { label: "0",  value: 0    },
+        { label: "5",  value: 0.1  },
+        { label: "10", value: 0.3  },
+        { label: "15", value: 0.6  },
+        { label: "25", value: 1.0  },
     ];
 
     private constructor() {
         this.audio = new Audio("/music.mp3");
         this.audio.loop   = true;
-        this.audio.volume = this.LEVELS[this.currentLevel].value;
+        this.audio.volume = this.currentVol;
         this.audio.addEventListener("ended", () => {
             this.audio.currentTime = 0;
             if (!this.muted) this.audio.play().catch(() => {});
@@ -45,163 +42,161 @@ class AudioManager {
 
         const isMobile = window.innerWidth < 700;
 
-        const wrap = document.createElement("div");
-        wrap.id = "global-audio-ctrl";
-        Object.assign(wrap.style, {
+        // ─── الزر الرئيسي (سماعة صغيرة) ───
+        const btn = document.createElement("button");
+        btn.id = "global-audio-ctrl";
+        btn.textContent = "🔊";
+        Object.assign(btn.style, {
             position:       "fixed",
-            top:            "12px",
-            right:          "12px",
+            bottom:         "18px",
+            right:          "18px",
             zIndex:         "9999",
+            width:          "34px",
+            height:         "34px",
+            borderRadius:   "50%",
+            border:         "1px solid rgba(255,255,255,0.12)",
+            background:     "rgba(13,17,23,0.85)",
+            color:          "#f1f5f9",
+            fontSize:       "15px",
+            cursor:         "pointer",
             display:        "flex",
             alignItems:     "center",
-            gap:            "4px",
-            background:     "rgba(13,17,23,0.88)",
+            justifyContent: "center",
+            lineHeight:     "1",
+            backdropFilter: "blur(8px)",
+            transition:     "transform 0.12s, background 0.15s",
+            padding:        "0",
+        });
+
+        // ─── قائمة مستويات الصوت (مخفية) ───
+        const menu = document.createElement("div");
+        menu.id = "audio-vol-menu";
+        Object.assign(menu.style, {
+            position:       "fixed",
+            bottom:         "60px",
+            right:          "18px",
+            zIndex:         "9998",
+            display:        "none",
+            flexDirection:  "column",
+            gap:            "6px",
+            background:     "rgba(13,17,23,0.92)",
             border:         "1px solid rgba(255,255,255,0.1)",
-            borderRadius:   "24px",
-            padding:        "5px 8px",
+            borderRadius:   "12px",
+            padding:        "8px",
             backdropFilter: "blur(10px)",
         });
 
-        if (isMobile) {
-            // ─── هاتف: أزرار نصية واضحة ───
-            this.buildMobileButtons(wrap);
-        } else {
-            // ─── لابتوب: slider ───
-            this.buildDesktopSlider(wrap);
-        }
-
-        document.body.appendChild(wrap);
-        this.controlEl = wrap;
-    }
-
-    // ══════════════════════════════════════════
-    //  MOBILE - أزرار
-    // ══════════════════════════════════════════
-    private buildMobileButtons(wrap: HTMLElement) {
-        const levels = [0, 5, 10, 15, 25];   // النسب المئوية
-
-        // أيقونة يسار
-        const iconEl = document.createElement("span");
-        iconEl.id = "audio-icon";
-        iconEl.textContent = "🔊";
-        Object.assign(iconEl.style, {
-            fontSize: "15px", marginRight: "4px", lineHeight: "1"
-        });
-        wrap.appendChild(iconEl);
-
-        levels.forEach((pct) => {
-            const btn = document.createElement("button");
-            btn.textContent = `${pct}`;
-            const isActive = Math.round(this.LEVELS[this.currentLevel].value * 100) === pct
-                || (pct === 25 && this.currentLevel === 4);
-
-            Object.assign(btn.style, {
-                minWidth:     "32px",
+        // أزرار المستويات
+        this.LEVELS.forEach((lvl) => {
+            const item = document.createElement("button");
+            item.textContent = lvl.label;
+            const isActive = Math.abs(lvl.value - this.currentVol) < 0.05;
+            Object.assign(item.style, {
+                width:        "34px",
                 height:       "28px",
-                padding:      "0 6px",
-                borderRadius: "14px",
-                border:       "1px solid " + (isActive ? "#3b82f6" : "rgba(255,255,255,0.1)"),
+                borderRadius: "8px",
+                border:       "1px solid " + (isActive ? "#3b82f6" : "rgba(255,255,255,0.08)"),
                 background:   isActive ? "#3b82f6" : "transparent",
                 color:        isActive ? "#fff" : "#8b949e",
                 fontSize:     "11px",
                 fontFamily:   "'Courier New', monospace",
                 cursor:       "pointer",
-                transition:   "background 0.15s, color 0.15s",
-                lineHeight:   "1",
+                transition:   "background 0.12s",
+                padding:      "0",
             });
 
-            const setLevel = (e: Event) => {
+            const pick = (e: Event) => {
                 e.stopPropagation();
-                // خريطة واضحة: 0→0, 5→0.1, 10→0.3, 15→0.6, 25→1.0
-                const volMap: {[k:number]: number} = { 0: 0, 5: 0.1, 10: 0.3, 15: 0.6, 25: 1.0 };
-                const val = volMap[pct] ?? pct / 100;
-                this.audio.volume = val;
-                this.muted = pct === 0;
-                if (pct === 0) {
+                this.currentVol  = lvl.value;
+                this.audio.volume = lvl.value;
+                this.muted = lvl.value === 0;
+                if (lvl.value === 0) {
                     this.audio.pause();
                 } else {
                     this.audio.play().catch(() => {});
                 }
-
-                // أيقونة
-                const ic = document.getElementById("audio-icon");
-                if (ic) ic.textContent = pct === 0 ? "🔇" : pct <= 10 ? "🔉" : "🔊";
-
-                // تحديث لون الأزرار
-                wrap.querySelectorAll("button").forEach((b: Element) => {
+                // أيقونة الزر
+                btn.textContent = lvl.value === 0 ? "🔇" : lvl.value < 0.3 ? "🔉" : "🔊";
+                // تحديث الألوان
+                menu.querySelectorAll("button").forEach((b) => {
                     const bEl = b as HTMLElement;
-                    const isThis = bEl.textContent === `${pct}`;
-                    bEl.style.background   = isThis ? "#3b82f6" : "transparent";
-                    bEl.style.color        = isThis ? "#fff"    : "#8b949e";
-                    bEl.style.borderColor  = isThis ? "#3b82f6" : "rgba(255,255,255,0.1)";
+                    const active = bEl.textContent === lvl.label;
+                    bEl.style.background  = active ? "#3b82f6" : "transparent";
+                    bEl.style.color       = active ? "#fff"    : "#8b949e";
+                    bEl.style.borderColor = active ? "#3b82f6" : "rgba(255,255,255,0.08)";
                 });
+                // إغلاق القائمة
+                this.closeMenu(menu);
             };
 
-            btn.addEventListener("click",      setLevel);
-            btn.addEventListener("touchend",   (e) => { e.preventDefault(); setLevel(e); }, { passive: false });
-            btn.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
-
-            wrap.appendChild(btn);
-        });
-    }
-
-    // ══════════════════════════════════════════
-    //  DESKTOP - slider
-    // ══════════════════════════════════════════
-    private buildDesktopSlider(wrap: HTMLElement) {
-        const icon = document.createElement("span");
-        icon.id = "audio-icon";
-        icon.textContent = "🔊";
-        Object.assign(icon.style, {
-            fontSize:  "17px",
-            cursor:    "pointer",
-            userSelect:"none",
-            lineHeight:"1",
-            marginRight: "4px",
-        });
-        icon.addEventListener("click", () => this.toggleMuteDesktop(icon));
-
-        const slider = document.createElement("input");
-        slider.type  = "range";
-        slider.min   = "0";
-        slider.max   = "100";
-        slider.value = String(Math.round(this.LEVELS[this.currentLevel].value * 100));
-        Object.assign(slider.style, {
-            width:       "80px",
-            height:      "4px",
-            cursor:      "pointer",
-            accentColor: "#3b82f6",
-            outline:     "none",
-            border:      "none",
-            background:  "transparent",
-            margin:      "0",
-            padding:     "0",
+            item.addEventListener("click",    pick);
+            item.addEventListener("touchend", (e) => { e.preventDefault(); pick(e); }, { passive: false });
+            item.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+            menu.appendChild(item);
         });
 
-        slider.addEventListener("input", () => {
-            const val = parseInt(slider.value) / 100;
-            this.audio.volume = val;
-            this.muted = val === 0;
-            if (val === 0) this.audio.pause();
-            else this.audio.play().catch(() => {});
-            const ic = document.getElementById("audio-icon");
-            if (ic) ic.textContent = val === 0 ? "🔇" : val < 0.15 ? "🔉" : "🔊";
+        // ─── فتح/إغلاق القائمة ───
+        const toggleMenu = (e: Event) => {
+            e.stopPropagation();
+            this.menuOpen = !this.menuOpen;
+            menu.style.display = this.menuOpen ? "flex" : "none";
+            btn.style.background = this.menuOpen
+                ? "rgba(59,130,246,0.35)"
+                : "rgba(13,17,23,0.85)";
+        };
+
+        btn.addEventListener("click",    toggleMenu);
+        btn.addEventListener("touchend", (e) => { e.preventDefault(); toggleMenu(e); }, { passive: false });
+        btn.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+
+        // إغلاق لو ضغط برا
+        document.addEventListener("click", (e) => {
+            if (this.menuOpen && e.target !== btn) this.closeMenu(menu);
         });
+        document.addEventListener("touchstart", (e) => {
+            if (this.menuOpen && e.target !== btn) this.closeMenu(menu);
+        }, { passive: true });
 
-        wrap.appendChild(icon);
-        wrap.appendChild(slider);
-    }
+        // للابتوب - slider بدل الأزرار
+        if (!isMobile) {
+            menu.innerHTML = "";
+            menu.style.flexDirection = "column";
+            menu.style.padding = "10px 12px";
+            menu.style.gap = "0";
 
-    private toggleMuteDesktop(iconEl: HTMLElement) {
-        this.muted = !this.muted;
-        if (this.muted) {
-            this.audio.pause();
-            iconEl.textContent = "🔇";
-        } else {
-            this.audio.volume = this.LEVELS[this.currentLevel].value;
-            this.audio.play().catch(() => {});
-            iconEl.textContent = "🔊";
+            const sliderLabel = document.createElement("div");
+            sliderLabel.textContent = "Volume";
+            sliderLabel.style.cssText = "color:#4a5568;font-size:9px;font-family:'Courier New',monospace;letter-spacing:2px;margin-bottom:8px;text-align:center";
+
+            const slider = document.createElement("input");
+            slider.type = "range"; slider.min = "0"; slider.max = "100";
+            slider.value = String(Math.round(this.currentVol * 100));
+            Object.assign(slider.style, {
+                width: "90px", accentColor: "#3b82f6",
+                cursor: "pointer", margin: "0",
+            });
+            slider.addEventListener("input", () => {
+                const val = parseInt(slider.value) / 100;
+                this.currentVol = val; this.audio.volume = val;
+                this.muted = val === 0;
+                if (val === 0) this.audio.pause();
+                else this.audio.play().catch(() => {});
+                btn.textContent = val === 0 ? "🔇" : val < 0.15 ? "🔉" : "🔊";
+            });
+
+            menu.appendChild(sliderLabel);
+            menu.appendChild(slider);
         }
+
+        document.body.appendChild(menu);
+        document.body.appendChild(btn);
+    }
+
+    private closeMenu(menu: HTMLElement) {
+        this.menuOpen = false;
+        menu.style.display = "none";
+        const btn = document.getElementById("global-audio-ctrl");
+        if (btn) btn.style.background = "rgba(13,17,23,0.85)";
     }
 }
 
