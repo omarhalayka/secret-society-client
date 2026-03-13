@@ -101,15 +101,17 @@ export default class LobbyScene extends Phaser.Scene {
         });
         document.body.appendChild(btn);
 
+        // أنشئ زر الـ mute فوراً (مستقل عن الموسيقى)
+        audioManager.createMuteButton();
+
         // fade in الزر بعد الصورة
         this.time.delayedCall(900, () => {
             btn.style.opacity = "1";
         });
 
         const enterLobby = () => {
-            // شغّل الموسيقى أول ما المستخدم يضغط (browser policy)
+            // شغّل الموسيقى عند أول ضغطة (browser policy)
             audioManager.play();
-            audioManager.createMuteButton();
             btn.style.opacity = "0";
             this.tweens.add({ targets: [bg, img], alpha: 0, duration: 450 });
             this.time.delayedCall(500, () => {
