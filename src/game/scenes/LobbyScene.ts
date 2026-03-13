@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { socketService } from "../../socket";
+import { audioManager } from "../../AudioManager";
 
 // ─── كلمة سر الأدمن ─────────────────────────────────────────
 // غيّرها لأي كلمة تبغاها
@@ -106,6 +107,9 @@ export default class LobbyScene extends Phaser.Scene {
         });
 
         const enterLobby = () => {
+            // شغّل الموسيقى أول ما المستخدم يضغط (browser policy)
+            audioManager.play();
+            audioManager.createMuteButton();
             btn.style.opacity = "0";
             this.tweens.add({ targets: [bg, img], alpha: 0, duration: 450 });
             this.time.delayedCall(500, () => {
