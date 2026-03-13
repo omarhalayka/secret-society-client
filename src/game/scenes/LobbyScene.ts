@@ -109,7 +109,10 @@ export default class LobbyScene extends Phaser.Scene {
             btn.style.opacity = "1";
         });
 
+        let entered = false;
         const enterLobby = () => {
+            if (entered) return;
+            entered = true;
             // شغّل الموسيقى عند أول ضغطة (browser policy)
             audioManager.play();
             btn.style.opacity = "0";
@@ -121,6 +124,18 @@ export default class LobbyScene extends Phaser.Scene {
         };
 
         btn.addEventListener("click", enterLobby);
+
+        // fallback: أي ضغطة على الشاشة تشغّل اللوبي
+        const onFirstClick = (e: Event) => {
+            document.removeEventListener("pointerdown", onFirstClick);
+            document.removeEventListener("touchstart",  onFirstClick);
+            enterLobby();
+        };
+        // نضيفهم بعد ثانية عشان ما يتشتغلوا بدون قصد
+        this.time.delayedCall(1000, () => {
+            document.addEventListener("pointerdown", onFirstClick, { once: true });
+            document.addEventListener("touchstart",  onFirstClick, { once: true, passive: true });
+        });
     }
 
     private initLobby() {

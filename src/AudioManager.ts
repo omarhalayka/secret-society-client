@@ -1,18 +1,15 @@
-// ─── AudioManager - singleton يشتغل عبر كل الـ scenes ───────────────────────
+// ─── AudioManager ────────────────────────────────────────────────────────────
+
 class AudioManager {
     private static instance: AudioManager;
     private audio: HTMLAudioElement;
     private muteBtn: HTMLElement | null = null;
     private isMuted: boolean = false;
-    private started: boolean = false;
 
     private constructor() {
-        this.audio = document.createElement("audio");
-        this.audio.src = "/music.mp3";
-        this.audio.loop = true;
+        this.audio = new Audio("/music.mp3");
+        this.audio.loop   = true;
         this.audio.volume = 0.28;
-        this.audio.preload = "auto";
-        document.body.appendChild(this.audio);
     }
 
     static getInstance(): AudioManager {
@@ -22,52 +19,44 @@ class AudioManager {
         return AudioManager.instance;
     }
 
-    // ─── شغّل الموسيقى (يُستدعى عند أول تفاعل) ───
+    // استدعيها عند أول click من المستخدم
     play() {
-        if (this.isMuted || this.started) return;
-        this.audio.play().then(() => {
-            this.started = true;
-        }).catch(() => {});
+        if (this.isMuted) return;
+        const p = this.audio.play();
+        if (p !== undefined) {
+            p.catch((err) => {
+                console.warn("Audio play blocked:", err);
+            });
+        }
     }
 
-    // ─── أنشئ زر الـ mute فوراً (مستقل عن تشغيل الموسيقى) ───
     createMuteButton() {
         if (document.getElementById("global-mute-btn")) return;
 
         const btn = document.createElement("button");
         btn.id = "global-mute-btn";
-        btn.innerHTML = "🔊";
+        btn.textContent = "🔊";
         Object.assign(btn.style, {
             position:       "fixed",
-            top:            "16px",
-            right:          "16px",
+            top:            "14px",
+            right:          "14px",
             zIndex:         "9999",
-            width:          "40px",
-            height:         "40px",
+            width:          "38px",
+            height:         "38px",
             borderRadius:   "50%",
-            border:         "1px solid rgba(255,255,255,0.15)",
-            background:     "rgba(13,17,23,0.85)",
+            border:         "1px solid rgba(255,255,255,0.12)",
+            background:     "rgba(13,17,23,0.82)",
             color:          "#f1f5f9",
-            fontSize:       "18px",
+            fontSize:       "17px",
             cursor:         "pointer",
             display:        "flex",
             alignItems:     "center",
             justifyContent: "center",
-            backdropFilter: "blur(8px)",
-            transition:     "background 0.2s, transform 0.15s",
             lineHeight:     "1",
+            transition:     "transform 0.12s ease, background 0.2s ease",
         });
 
-        btn.addEventListener("mouseover", () => {
-            btn.style.background = "rgba(59,130,246,0.3)";
-        });
-        btn.addEventListener("mouseout", () => {
-            btn.style.background = this.isMuted
-                ? "rgba(239,68,68,0.25)"
-                : "rgba(13,17,23,0.85)";
-        });
         btn.addEventListener("click", () => this.toggle());
-
         document.body.appendChild(btn);
         this.muteBtn = btn;
     }
@@ -78,24 +67,25 @@ class AudioManager {
         if (this.isMuted) {
             this.audio.pause();
             if (this.muteBtn) {
-                this.muteBtn.innerHTML = "🔇";
-                this.muteBtn.style.background = "rgba(239,68,68,0.25)";
-                this.muteBtn.style.borderColor = "rgba(239,68,68,0.3)";
+                this.muteBtn.textContent = "🔇";
+                this.muteBtn.style.background = "rgba(239,68,68,0.22)";
+                this.muteBtn.style.borderColor = "rgba(239,68,68,0.35)";
             }
         } else {
             this.audio.play().catch(() => {});
             if (this.muteBtn) {
-                this.muteBtn.innerHTML = "🔊";
-                this.muteBtn.style.background = "rgba(13,17,23,0.85)";
-                this.muteBtn.style.borderColor = "rgba(255,255,255,0.15)";
+                this.muteBtn.textContent = "🔊";
+                this.muteBtn.style.background = "rgba(13,17,23,0.82)";
+                this.muteBtn.style.borderColor = "rgba(255,255,255,0.12)";
             }
         }
 
+        // أنيميشن ضغط
         if (this.muteBtn) {
-            this.muteBtn.style.transform = "scale(0.88)";
+            this.muteBtn.style.transform = "scale(0.85)";
             setTimeout(() => {
                 if (this.muteBtn) this.muteBtn.style.transform = "scale(1)";
-            }, 120);
+            }, 110);
         }
     }
 }
