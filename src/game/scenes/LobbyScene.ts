@@ -55,10 +55,11 @@ export default class LobbyScene extends Phaser.Scene {
         const img = this.add.image(W/2, H/2, "welcome")
             .setDepth(1).setAlpha(0);
 
-        // تناسب الصورة مع الشاشة (cover)
+        // تناسب الصورة - contain على الديسكتوب، cover على الهاتف
+        const isMobile = W < 700;
         const scaleX = W / img.width;
         const scaleY = H / img.height;
-        img.setScale(Math.max(scaleX, scaleY));
+        img.setScale(isMobile ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY) * 0.85);
 
         // fade in الصورة
         this.tweens.add({ targets: img, alpha: 1, duration: 900, delay: 200 });
@@ -66,7 +67,7 @@ export default class LobbyScene extends Phaser.Scene {
         // ─── زر HTML عشان النص العربي يطلع صح (RTL) ───
         const btn = document.createElement("button");
         btn.id = "splash-btn";
-        btn.textContent = "ادخل المجتمع السري";
+        btn.textContent = "الدخول إلى المنظمة السوداء";
         Object.assign(btn.style, {
             position:    "fixed",
             bottom:      "60px",
