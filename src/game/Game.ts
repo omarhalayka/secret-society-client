@@ -8,7 +8,8 @@ import DetectiveNightScene from "./scenes/DetectiveNightScene";
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
-    backgroundColor: "#0a0d13",
+    backgroundColor: "transparent",
+    transparent: true,
     parent: "game",
     scale: {
         mode: Phaser.Scale.RESIZE,       // يأخذ حجم الشاشة الفعلي دائماً

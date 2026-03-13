@@ -144,9 +144,16 @@ export default class LobbyScene extends Phaser.Scene {
         const isMobile = W < 700;
 
         this.cameras.main.fadeIn(500, 6, 8, 16);
-        // cleanup عناصر قديمة لو كانت موجودة
+        this.cameras.main.setBackgroundColor("rgba(0,0,0,0)");
+        // خلي الـ canvas شفاف عشان يبين الفيديو تحته
+        const canvas = document.querySelector("canvas");
+        if (canvas) {
+            (canvas as HTMLElement).style.zIndex = "1";
+            (canvas as HTMLElement).style.position = "relative";
+            (canvas as HTMLElement).style.background = "transparent";
+        }
         this.cleanupAllLobbyHTML();
-
+        this.startBgVideo();
         this.drawBackground(W, H);
 
         if (isMobile) {
