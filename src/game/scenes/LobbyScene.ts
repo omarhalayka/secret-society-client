@@ -782,6 +782,36 @@ export default class LobbyScene extends Phaser.Scene {
     // ══════════════════════════════════════════════════════
     //  BACKGROUND
     // ══════════════════════════════════════════════════════
+    // ═══════════════════════════════════════════════════════════════════════════
+    //  VIDEO BACKGROUND
+    // ═══════════════════════════════════════════════════════════════════════════
+    private startBgVideo() {
+        document.getElementById("lobby-bg-video")?.remove();
+
+        const vid = document.createElement("video");
+        vid.id         = "lobby-bg-video";
+        vid.src        = "/bg.mp4";
+        vid.autoplay   = true;
+        vid.loop       = true;
+        vid.muted      = true;
+        (vid as any).playsInline = true;
+        Object.assign(vid.style, {
+            position:      "fixed",
+            top:           "0", left: "0",
+            width:         "100%", height: "100%",
+            objectFit:     "cover",
+            zIndex:        "0",
+            opacity:       "0",
+            transition:    "opacity 1.2s ease",
+            pointerEvents: "none",
+        });
+        vid.addEventListener("canplay", () => {
+            vid.style.opacity = "0.4";
+        });
+        document.body.insertBefore(vid, document.body.firstChild);
+        vid.play().catch(() => {});
+    }
+
     private drawBackground(W: number, H: number) {
         const grid = this.add.graphics().setDepth(0);
         grid.fillStyle(0x1a2035, 0.45);
@@ -872,7 +902,8 @@ export default class LobbyScene extends Phaser.Scene {
             "lobby-hero-title",
             "lobby-mobile-title",
             "lobby-card-tag",
-            "global-mute-btn",   // اسم قديم - نمسحه لو موجود
+            "lobby-bg-video",
+            "global-mute-btn",
         ];
         ids.forEach(id => document.getElementById(id)?.remove());
         // ملاحظة: global-audio-ctrl لا يُمسح - يضل ظاهر بكل الشاشات

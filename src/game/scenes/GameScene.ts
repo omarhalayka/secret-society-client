@@ -472,9 +472,20 @@ export default class GameScene extends Phaser.Scene {
                 border: isMe ? "1px solid rgba(59,130,246,0.4)" : "1px solid #1e2d45",
             });
 
-            const dot = document.createElement("span");
-            dot.textContent = p.alive ? "●" : "○";
-            dot.style.cssText = `color:${p.alive ? "#22c55e" : "#374151"};font-size:10px;flex-shrink:0`;
+            // avatar circle
+            const avatarDiv = document.createElement("div");
+            Object.assign(avatarDiv.style, {
+                width: "30px", height: "30px", borderRadius: "50%",
+                backgroundColor: p.color || "#1e293b",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "15px", flexShrink: "0",
+                border: `1px solid ${p.alive ? "#22c55e44" : "#37415144"}`,
+                opacity: p.alive ? "1" : "0.4",
+            });
+            avatarDiv.textContent = p.avatar || "😎";
+
+            const dot = document.createElement("span"); // نبقيها للـ alive indicator
+            dot.style.display = "none"; // مش محتاجينها هلق
 
             const name = document.createElement("span");
             let nameText = p.username;
@@ -486,7 +497,7 @@ export default class GameScene extends Phaser.Scene {
             });
             name.textContent = nameText;
 
-            row.appendChild(dot);
+            row.appendChild(avatarDiv);
             row.appendChild(name);
 
             // ── أظهر الدور فقط لنفسك أو إذا ميت ──
@@ -530,7 +541,13 @@ export default class GameScene extends Phaser.Scene {
         else if (this.userType === "SPECTATOR") tag = `  [${player.role}]`;
         else if (!isAlive) tag = `  [${player.role}]`;
 
-        const name = this.add.text(30, 0, `${player.username}${tag}`, {
+        // avatar emoji قبل الاسم
+        const avatarEmoji = player.avatar || "😎";
+        const avatarText = this.add.text(30, 0, avatarEmoji, {
+            fontSize: "14px"
+        }).setOrigin(0, 0.5);
+
+        const name = this.add.text(52, 0, `${player.username}${tag}`, {
             fontSize: "13px", color: isAlive ? "#e2e8f0" : "#374151",
             fontFamily: "'Courier New', monospace", fontStyle: isMe ? "bold" : "normal"
         }).setOrigin(0, 0.5);
@@ -538,7 +555,7 @@ export default class GameScene extends Phaser.Scene {
         const sep = this.add.graphics();
         sep.lineStyle(1, this.C.border, 0.25);
         sep.moveTo(10, 20); sep.lineTo(this.PLAYERS_W - 10, 20); sep.strokePath();
-        container.add([sep, dot, name]);
+        container.add([sep, dot, avatarText, name]);
 
         if (isAlive && !this.isAdmin && this.userType !== "SPECTATOR") {
             const btnX = this.PLAYERS_W - 32;
@@ -904,7 +921,7 @@ export default class GameScene extends Phaser.Scene {
         overlay.id = "mobile-voting-overlay";
         Object.assign(overlay.style, {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
-            zIndex: "500", backgroundColor: "rgba(0,0,0,0.93)",
+            zIndex: "9999", backgroundColor: "rgba(0,0,0,0.65)",
             display: "flex", flexDirection: "column", alignItems: "center",
             overflowY: "auto", padding: "20px 12px 20px",
             fontFamily: "'Courier New', monospace",
@@ -1201,136 +1218,481 @@ export default class GameScene extends Phaser.Scene {
         this.winOverlay?.destroy();
         this.cameras.main.flash(500, data.winner === "MAFIA" ? 100 : 0, data.winner === "MAFIA" ? 0 : 60, 0);
 
+        // ─── شغّل فيديو الفوز ───
+        this.playWinVideo(data.winner);
+
         if (this.isMobile) {
             this.showMobileWinOverlay(data);
-            return;
+        } else {
+            this.showDesktopWinOverlay(data);
         }
+    }
 
+    private playWinVideo(winner: string) {
+        document.getElementById("win-bg-video")?.remove();
+
+        const src = winner === "MAFIA" ? "/mafia-win.mp4" : "/citizens-win.mp4";
+
+        const vid = document.createElement("video");
+        vid.id         = "win-bg-video";
+        vid.src        = src;
+        vid.autoplay   = true;
+        vid.loop       = true;
+        vid.muted      = true;
+        (vid as any).playsInline = true;
+        Object.assign(vid.style, {
+            position:      "fixed",
+            top:           "0", left: "0",
+            width:         "100%", height: "100%",
+            objectFit:     "cover",
+            zIndex:        "9998",   // تحت الـ overlay (9999) وفوق كل شي
+            opacity:       "0",
+            transition:    "opacity 1s ease",
+            pointerEvents: "none",
+        });
+        vid.addEventListener("canplay", () => {
+            vid.style.opacity = "1";
+        });
+        document.body.appendChild(vid);
+        vid.play().catch(() => {});
+    }
+
+    private showDesktopWinOverlay(data: any) {
+        document.getElementById("mobile-win-overlay")?.remove();
         const isMafia = data.winner === "MAFIA";
-        const hex = isMafia ? "#f87171" : "#4ade80";
-        const c = this.add.container(this.W / 2, this.H / 2).setDepth(100).setAlpha(0);
-        const dimBg = this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.8).setOrigin(0.5);
-        const panel = this.add.rectangle(0, 0, 500, 320, isMafia ? 0x0f0505 : 0x050f05);
-        panel.setStrokeStyle(2, isMafia ? this.C.mafia : this.C.alive);
-        const titleText = this.add.text(0, -100, `${isMafia ? "🔪" : "👑"}  ${isMafia ? "MAFIA WINS" : "CITIZENS WIN"}`, {
-            fontSize: "38px", color: hex,
-            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 6
-        }).setOrigin(0.5);
-        const rolesStr = data.roles ? data.roles.map((r: any) => `${r.username}  →  ${r.role}`).join("\n") : "";
-        const rolesText = this.add.text(0, 30, rolesStr, {
-            fontSize: "14px", color: "#94a3b8",
-            fontFamily: "'Courier New', monospace", align: "center", lineSpacing: 8
-        }).setOrigin(0.5);
-        c.add([dimBg, panel, titleText, rolesText]);
-        this.winOverlay = c;
-        this.tweens.add({ targets: c, alpha: 1, duration: 600 });
-        this.tweens.add({ targets: titleText, scaleX: 1.05, scaleY: 1.05, duration: 900, yoyo: true, repeat: -1 });
+        const accent  = isMafia ? "#ef4444" : "#22c55e";
+
+        const overlay = document.createElement("div");
+        overlay.id = "mobile-win-overlay"; // نفس الـ ID عشان الـ cleanup يشتغل
+        Object.assign(overlay.style, {
+            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
+            zIndex: "9999", backgroundColor: "rgba(0,0,0,0.65)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "'Courier New', monospace",
+        });
+
+        // ─── Main Card ───
+        const card = document.createElement("div");
+        Object.assign(card.style, {
+            width: "820px", maxWidth: "95vw",
+            backgroundColor: isMafia ? "rgba(15,5,5,0.98)" : "rgba(5,15,5,0.98)",
+            border: `2px solid ${accent}`,
+            borderRadius: "12px", overflow: "hidden",
+            boxShadow: `0 0 60px ${accent}55`,
+        });
+
+        // ─── Header (كامل العرض) ───
+        const header = document.createElement("div");
+        Object.assign(header.style, {
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "20px 28px", borderBottom: `1px solid ${accent}33`,
+        });
+        const leftH = document.createElement("div");
+        const iconEl = document.createElement("div");
+        iconEl.textContent = isMafia ? "🔪" : "👑";
+        iconEl.style.cssText = "font-size:36px;margin-bottom:4px";
+        const titleEl = document.createElement("div");
+        titleEl.textContent = isMafia ? "MAFIA WINS" : "CITIZENS WIN";
+        Object.assign(titleEl.style, {
+            color: accent, fontSize: "28px", fontWeight: "bold",
+            fontFamily: "'Georgia', serif", letterSpacing: "4px",
+        });
+        leftH.appendChild(iconEl);
+        leftH.appendChild(titleEl);
+
+        const rightH = document.createElement("div");
+        rightH.style.cssText = "text-align:right";
+        const durEl = document.createElement("div");
+        durEl.textContent = data.duration || "";
+        durEl.style.cssText = `color:${accent};font-size:20px;font-weight:bold`;
+        const roundsEl = document.createElement("div");
+        roundsEl.textContent = `${data.rounds || 1} ROUNDS`;
+        roundsEl.style.cssText = "color:#475569;font-size:11px;letter-spacing:2px;margin-top:4px";
+        rightH.appendChild(durEl);
+        rightH.appendChild(roundsEl);
+        header.appendChild(leftH);
+        header.appendChild(rightH);
+
+        // ─── Body: 3 columns ───
+        const body = document.createElement("div");
+        Object.assign(body.style, {
+            display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+            gap: "0", minHeight: "300px",
+        });
+
+        const roleColors: Record<string, string> = {
+            MAFIA: "#ef4444", DOCTOR: "#22c55e",
+            DETECTIVE: "#3b82f6", CITIZEN: "#94a3b8", ADMIN: "#f59e0b",
+        };
+
+        const makePanelHeader = (label: string) => {
+            const el = document.createElement("div");
+            el.textContent = label;
+            Object.assign(el.style, {
+                color: "#475569", fontSize: "10px", letterSpacing: "3px",
+                padding: "12px 16px 8px", borderBottom: `1px solid ${accent}22`,
+            });
+            return el;
+        };
+
+        // ─── Column 1: Players ───
+        const col1 = document.createElement("div");
+        col1.style.cssText = `border-right:1px solid ${accent}22;overflow-y:auto;max-height:340px`;
+        col1.appendChild(makePanelHeader("PLAYERS"));
+        const col1content = document.createElement("div");
+        col1content.style.cssText = "padding:10px";
+        (data.roles || []).forEach((r: any) => {
+            const row = document.createElement("div");
+            Object.assign(row.style, {
+                display: "flex", alignItems: "center", gap: "8px",
+                padding: "6px 8px", marginBottom: "5px",
+                backgroundColor: "rgba(255,255,255,0.03)",
+                borderRadius: "6px",
+                opacity: r.alive === false ? "0.45" : "1",
+            });
+            const av = document.createElement("div");
+            Object.assign(av.style, {
+                width: "30px", height: "30px", borderRadius: "50%",
+                backgroundColor: r.color || "#1e293b",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "16px", flexShrink: "0",
+                border: `2px solid ${roleColors[r.role] || "#94a3b8"}`,
+            });
+            av.textContent = r.avatar || "😎";
+            const nameEl = document.createElement("span");
+            nameEl.textContent = r.username;
+            nameEl.style.cssText = "color:#e2e8f0;font-size:12px;font-weight:bold;flex:1";
+            const roleEl = document.createElement("span");
+            roleEl.textContent = r.role;
+            roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:9px;letter-spacing:2px`;
+            row.appendChild(av); row.appendChild(nameEl); row.appendChild(roleEl);
+            col1content.appendChild(row);
+        });
+        col1.appendChild(col1content);
+
+        // ─── Column 2: Stats ───
+        const col2 = document.createElement("div");
+        col2.style.cssText = `border-right:1px solid ${accent}22`;
+        col2.appendChild(makePanelHeader("STATS"));
+        const col2content = document.createElement("div");
+        col2content.style.cssText = "padding:10px";
+        const kills     = (data.nightKills || []).filter((k: any) => !k.saved).length;
+        const saves     = (data.nightKills || []).filter((k: any) => k.saved).length;
+        const eliminated = (data.votingEliminations || []).filter((v: any) => !v.tie).length;
+        const ties      = (data.votingEliminations || []).filter((v: any) => v.tie).length;
+        const makeStatDesktop = (label: string, value: string, color = "#94a3b8") => {
+            const row = document.createElement("div");
+            Object.assign(row.style, {
+                display: "flex", justifyContent: "space-between",
+                padding: "8px 10px", marginBottom: "5px",
+                backgroundColor: "rgba(255,255,255,0.02)", borderRadius: "5px",
+            });
+            const l = document.createElement("span");
+            l.textContent = label;
+            l.style.cssText = "color:#475569;font-size:10px;letter-spacing:1px";
+            const v = document.createElement("span");
+            v.textContent = value;
+            v.style.cssText = `color:${color};font-size:13px;font-weight:bold`;
+            row.appendChild(l); row.appendChild(v);
+            return row;
+        };
+        col2content.appendChild(makeStatDesktop("WINNER",        isMafia ? "🔪 MAFIA" : "👑 CITIZENS", accent));
+        col2content.appendChild(makeStatDesktop("ROUNDS",        `${data.rounds || 1}`, "#e2e8f0"));
+        col2content.appendChild(makeStatDesktop("DURATION",      data.duration || "—", "#e2e8f0"));
+        col2content.appendChild(makeStatDesktop("NIGHT KILLS",   `${kills}`, "#ef4444"));
+        col2content.appendChild(makeStatDesktop("DOCTOR SAVES",  `${saves}`, "#22c55e"));
+        col2content.appendChild(makeStatDesktop("VOTED OUT",     `${eliminated}`, "#f59e0b"));
+        col2content.appendChild(makeStatDesktop("VOTE TIES",     `${ties}`, "#64748b"));
+        col2.appendChild(col2content);
+
+        // ─── Column 3: Timeline ───
+        const col3 = document.createElement("div");
+        col3.style.cssText = "overflow-y:auto;max-height:340px";
+        col3.appendChild(makePanelHeader("TIMELINE"));
+        const col3content = document.createElement("div");
+        col3content.style.cssText = "padding:10px";
+        const typeColors: Record<string, string> = {
+            kill: "#ef4444", save: "#22c55e", vote: "#f59e0b", tie: "#475569", quiet: "#1e3a5f",
+        };
+        (data.gameLog || []).forEach((entry: any) => {
+            const row = document.createElement("div");
+            Object.assign(row.style, {
+                display: "flex", gap: "8px", padding: "7px 8px", marginBottom: "5px",
+                backgroundColor: "rgba(255,255,255,0.02)", borderRadius: "5px",
+                borderLeft: `2px solid ${typeColors[entry.type] || "#1e3a5f"}`,
+            });
+            const iconEl = document.createElement("span");
+            iconEl.textContent = entry.icon || "•";
+            iconEl.style.cssText = "font-size:12px;flex-shrink:0";
+            const textEl = document.createElement("div");
+            const roundEl = document.createElement("div");
+            roundEl.textContent = `R${entry.round}`;
+            roundEl.style.cssText = "color:#374151;font-size:9px;letter-spacing:1px";
+            const msgEl = document.createElement("div");
+            msgEl.textContent = entry.text;
+            msgEl.style.cssText = "color:#94a3b8;font-size:10px;line-height:1.4;margin-top:1px";
+            textEl.appendChild(roundEl); textEl.appendChild(msgEl);
+            row.appendChild(iconEl); row.appendChild(textEl);
+            col3content.appendChild(row);
+        });
+        col3.appendChild(col3content);
+
+        body.appendChild(col1);
+        body.appendChild(col2);
+        body.appendChild(col3);
+
+        // ─── Footer ───
+        const footer = document.createElement("div");
+        footer.textContent = "Waiting for admin to start new game...";
+        Object.assign(footer.style, {
+            textAlign: "center", padding: "10px",
+            color: "#374151", fontSize: "10px", letterSpacing: "1px",
+            borderTop: `1px solid ${accent}22`,
+        });
+
+        card.appendChild(header);
+        card.appendChild(body);
+        card.appendChild(footer);
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
     }
 
     private showMobileWinOverlay(data: any) {
         document.getElementById("mobile-win-overlay")?.remove();
-        const isMafia = data.winner === "MAFIA";
-        const accentColor = isMafia ? "#ef4444" : "#22c55e";
-        const bgColor     = isMafia ? "rgba(15,5,5,0.97)" : "rgba(5,15,5,0.97)";
+        const isMafia    = data.winner === "MAFIA";
+        const accent     = isMafia ? "#ef4444" : "#22c55e";
+        const bgColor    = isMafia ? "rgba(15,5,5,0.98)" : "rgba(5,15,5,0.98)";
 
         const overlay = document.createElement("div");
         overlay.id = "mobile-win-overlay";
         Object.assign(overlay.style, {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
-            zIndex: "9999", backgroundColor: "rgba(0,0,0,0.92)",
+            zIndex: "9999", backgroundColor: "rgba(0,0,0,0.95)",
             display: "flex", flexDirection: "column",
-            alignItems: "center", justifyContent: "center",
+            alignItems: "center", overflowY: "auto",
             fontFamily: "'Courier New', monospace",
-            padding: "20px",
+            padding: "16px",
         });
 
+        // ─── Card ───
         const card = document.createElement("div");
         Object.assign(card.style, {
-            width: "100%", maxWidth: "400px",
+            width: "100%", maxWidth: "420px",
             backgroundColor: bgColor,
-            border: `2px solid ${accentColor}`,
-            borderRadius: "12px", padding: "28px 20px",
-            boxShadow: `0 0 40px ${accentColor}44`,
-            textAlign: "center",
+            border: `2px solid ${accent}`,
+            borderRadius: "12px",
+            boxShadow: `0 0 40px ${accent}44`,
+            overflow: "hidden",
+            marginTop: "8px",
         });
 
-        // أيقونة كبيرة
-        const icon = document.createElement("div");
-        icon.textContent = isMafia ? "🔪" : "👑";
-        icon.style.cssText = "font-size:52px;margin-bottom:16px";
-
-        // عنوان الفوز
+        // ─── Header ───
+        const header = document.createElement("div");
+        Object.assign(header.style, {
+            textAlign: "center", padding: "20px 16px 12px",
+            borderBottom: `1px solid ${accent}33`,
+        });
+        const icon  = document.createElement("div");
+        icon.textContent  = isMafia ? "🔪" : "👑";
+        icon.style.cssText = "font-size:44px;margin-bottom:8px";
         const title = document.createElement("div");
         title.textContent = isMafia ? "MAFIA WINS" : "CITIZENS WIN";
         Object.assign(title.style, {
-            color: accentColor, fontSize: "26px", fontWeight: "bold",
+            color: accent, fontSize: "22px", fontWeight: "bold",
             fontFamily: "'Georgia', serif", letterSpacing: "4px",
-            marginBottom: "6px",
         });
-
-        // سطر فرعي
         const sub = document.createElement("div");
-        sub.textContent = isMafia ? "The Mafia has eliminated enough citizens" : "The citizens have exposed the Mafia";
-        Object.assign(sub.style, {
-            color: "#64748b", fontSize: "11px", letterSpacing: "1px",
-            marginBottom: "20px",
+        sub.textContent = `${data.rounds || 1} round${(data.rounds || 1) > 1 ? "s" : ""} · ${data.duration || ""}`;
+        sub.style.cssText = `color:#475569;font-size:11px;margin-top:4px;letter-spacing:1px`;
+        header.appendChild(icon);
+        header.appendChild(title);
+        header.appendChild(sub);
+
+        // ─── Tabs ───
+        const tabBar = document.createElement("div");
+        Object.assign(tabBar.style, {
+            display: "flex", borderBottom: `1px solid ${accent}33`,
         });
 
-        // فاصل
-        const divider = document.createElement("div");
-        Object.assign(divider.style, {
-            height: "1px", backgroundColor: accentColor,
-            opacity: "0.3", marginBottom: "20px",
-        });
+        const tabContents: Record<string, HTMLElement> = {};
 
-        // قائمة اللاعبين والأدوار
-        const rolesList = document.createElement("div");
-        Object.assign(rolesList.style, {
-            display: "flex", flexDirection: "column", gap: "8px",
-            marginBottom: "24px", textAlign: "left",
-        });
+        const createTab = (id: string, label: string) => {
+            const btn = document.createElement("button");
+            btn.textContent = label;
+            Object.assign(btn.style, {
+                flex: "1", padding: "10px 0",
+                background: "none", border: "none",
+                color: "#475569", fontSize: "11px",
+                letterSpacing: "2px", cursor: "pointer",
+                fontFamily: "'Courier New', monospace",
+                transition: "all 0.15s",
+            });
+            const content = document.createElement("div");
+            content.style.cssText = "display:none;padding:14px";
+            tabContents[id] = content;
 
-        if (data.roles && data.roles.length) {
+            btn.addEventListener("click", () => {
+                Object.keys(tabContents).forEach(k => {
+                    tabContents[k].style.display = "none";
+                });
+                tabBar.querySelectorAll("button").forEach((b: any) => {
+                    b.style.color = "#475569";
+                    b.style.borderBottom = "2px solid transparent";
+                });
+                content.style.display = "block";
+                btn.style.color = accent;
+                btn.style.borderBottom = `2px solid ${accent}`;
+            });
+            tabBar.appendChild(btn);
+            return btn;
+        };
+
+        const rolesBtn    = createTab("roles",    "PLAYERS");
+        const statsBtn    = createTab("stats",    "STATS");
+        const timelineBtn = createTab("timeline", "TIMELINE");
+
+        // ─── Tab: PLAYERS ───
+        const roleColors: Record<string, string> = {
+            MAFIA: "#ef4444", DOCTOR: "#22c55e",
+            DETECTIVE: "#3b82f6", CITIZEN: "#94a3b8", ADMIN: "#f59e0b",
+        };
+        if (data.roles?.length) {
             data.roles.forEach((r: any) => {
-                const roleColors: Record<string, string> = {
-                    MAFIA: "#ef4444", DOCTOR: "#22c55e",
-                    DETECTIVE: "#3b82f6", CITIZEN: "#94a3b8",
-                    ADMIN: "#f59e0b",
-                };
                 const row = document.createElement("div");
                 Object.assign(row.style, {
-                    display: "flex", justifyContent: "space-between",
-                    alignItems: "center", padding: "8px 12px",
+                    display: "flex", alignItems: "center", gap: "10px",
+                    padding: "8px 10px", marginBottom: "6px",
                     backgroundColor: "rgba(255,255,255,0.03)",
-                    borderRadius: "6px", border: "1px solid rgba(255,255,255,0.05)",
+                    borderRadius: "8px",
+                    border: `1px solid ${r.alive === false ? "#1f2937" : "rgba(255,255,255,0.05)"}`,
+                    opacity: r.alive === false ? "0.55" : "1",
                 });
+
+                // avatar circle
+                const avatarEl = document.createElement("div");
+                Object.assign(avatarEl.style, {
+                    width: "34px", height: "34px", borderRadius: "50%",
+                    backgroundColor: r.color || "#1e293b",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "18px", flexShrink: "0",
+                    border: `2px solid ${roleColors[r.role] || "#94a3b8"}`,
+                });
+                avatarEl.textContent = r.avatar || "😎";
+
                 const nameEl = document.createElement("span");
                 nameEl.textContent = r.username;
-                nameEl.style.cssText = "color:#e2e8f0;font-size:13px;font-weight:bold";
+                nameEl.style.cssText = "color:#e2e8f0;font-size:13px;font-weight:bold;flex:1";
+
                 const roleEl = document.createElement("span");
                 roleEl.textContent = r.role;
-                roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:11px;letter-spacing:2px`;
+                roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:10px;letter-spacing:2px`;
+
+                const deadEl = document.createElement("span");
+                deadEl.textContent = r.alive === false ? "☠" : "";
+                deadEl.style.cssText = "color:#374151;font-size:14px";
+
+                row.appendChild(avatarEl);
                 row.appendChild(nameEl);
                 row.appendChild(roleEl);
-                rolesList.appendChild(row);
+                row.appendChild(deadEl);
+                tabContents["roles"].appendChild(row);
             });
         }
 
-        // نص انتظار
-        const waitingEl = document.createElement("div");
-        waitingEl.textContent = "Waiting for next game...";
-        Object.assign(waitingEl.style, {
-            color: "#374151", fontSize: "11px", letterSpacing: "2px",
-        });
+        // ─── Tab: STATS ───
+        const makeStatRow = (label: string, value: string, color = "#94a3b8") => {
+            const row = document.createElement("div");
+            Object.assign(row.style, {
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+                padding: "10px 12px", marginBottom: "6px",
+                backgroundColor: "rgba(255,255,255,0.03)",
+                borderRadius: "6px", border: "1px solid rgba(255,255,255,0.04)",
+            });
+            const lbl = document.createElement("span");
+            lbl.textContent = label;
+            lbl.style.cssText = "color:#475569;font-size:11px;letter-spacing:1px";
+            const val = document.createElement("span");
+            val.textContent = value;
+            val.style.cssText = `color:${color};font-size:13px;font-weight:bold`;
+            row.appendChild(lbl); row.appendChild(val);
+            return row;
+        };
 
-        card.appendChild(icon);
-        card.appendChild(title);
-        card.appendChild(sub);
-        card.appendChild(divider);
-        card.appendChild(rolesList);
-        card.appendChild(waitingEl);
+        const kills     = (data.nightKills || []).filter((k: any) => !k.saved).length;
+        const saves     = (data.nightKills || []).filter((k: any) => k.saved).length;
+        const eliminated = (data.votingEliminations || []).filter((v: any) => !v.tie).length;
+        const ties      = (data.votingEliminations || []).filter((v: any) => v.tie).length;
+
+        tabContents["stats"].appendChild(makeStatRow("WINNER",          isMafia ? "🔪 MAFIA" : "👑 CITIZENS", accent));
+        tabContents["stats"].appendChild(makeStatRow("ROUNDS PLAYED",   `${data.rounds || 1}`, "#e2e8f0"));
+        tabContents["stats"].appendChild(makeStatRow("GAME DURATION",   data.duration || "—", "#e2e8f0"));
+        tabContents["stats"].appendChild(makeStatRow("NIGHT KILLS",     `${kills}`, "#ef4444"));
+        tabContents["stats"].appendChild(makeStatRow("DOCTOR SAVES",    `${saves}`, "#22c55e"));
+        tabContents["stats"].appendChild(makeStatRow("VOTED OUT",       `${eliminated}`, "#f59e0b"));
+        tabContents["stats"].appendChild(makeStatRow("VOTE TIES",       `${ties}`, "#64748b"));
+
+        // ─── Tab: TIMELINE ───
+        if (data.gameLog?.length) {
+            data.gameLog.forEach((entry: any) => {
+                const row = document.createElement("div");
+                Object.assign(row.style, {
+                    display: "flex", alignItems: "flex-start", gap: "10px",
+                    padding: "8px 10px", marginBottom: "6px",
+                    backgroundColor: "rgba(255,255,255,0.02)",
+                    borderRadius: "6px", borderLeft: "2px solid",
+                });
+                const typeColors: Record<string, string> = {
+                    kill: "#ef4444", save: "#22c55e",
+                    vote: "#f59e0b", tie: "#475569", quiet: "#1e3a5f",
+                };
+                row.style.borderLeftColor = typeColors[entry.type] || "#1e3a5f";
+
+                const iconEl = document.createElement("span");
+                iconEl.textContent = entry.icon || "•";
+                iconEl.style.cssText = "font-size:14px;flex-shrink:0;margin-top:1px";
+
+                const textEl = document.createElement("div");
+                const roundLabel = document.createElement("div");
+                roundLabel.textContent = `ROUND ${entry.round}`;
+                roundLabel.style.cssText = "color:#374151;font-size:9px;letter-spacing:1px;margin-bottom:2px";
+                const msgEl = document.createElement("div");
+                msgEl.textContent = entry.text;
+                msgEl.style.cssText = "color:#94a3b8;font-size:11px;line-height:1.4";
+
+                textEl.appendChild(roundLabel);
+                textEl.appendChild(msgEl);
+                row.appendChild(iconEl);
+                row.appendChild(textEl);
+                tabContents["timeline"].appendChild(row);
+            });
+        } else {
+            const empty = document.createElement("div");
+            empty.textContent = "No events recorded";
+            empty.style.cssText = "color:#374151;font-size:12px;text-align:center;padding:20px";
+            tabContents["timeline"].appendChild(empty);
+        }
+
+        // ─── Footer ───
+        const footer = document.createElement("div");
+        Object.assign(footer.style, {
+            textAlign: "center", padding: "12px",
+            borderTop: `1px solid ${accent}22`,
+        });
+        const waitEl = document.createElement("div");
+        waitEl.textContent = "Waiting for admin to start new game...";
+        waitEl.style.cssText = "color:#374151;font-size:10px;letter-spacing:1px";
+        footer.appendChild(waitEl);
+
+        // ─── Assemble ───
+        card.appendChild(header);
+        card.appendChild(tabBar);
+        Object.values(tabContents).forEach(tc => card.appendChild(tc));
+        card.appendChild(footer);
         overlay.appendChild(card);
         document.body.appendChild(overlay);
+
+        // فعّل PLAYERS tab افتراضياً
+        rolesBtn.click();
     }
 
     // ══════════════════════════════════════
@@ -1644,6 +2006,7 @@ export default class GameScene extends Phaser.Scene {
         document.getElementById("admin-drawer")?.remove();
         document.getElementById("desktop-chat-input")?.remove();
         document.getElementById("desktop-send-btn")?.remove();
+        document.getElementById("win-bg-video")?.remove();
         if (this.outsideClickHandler) document.removeEventListener("click", this.outsideClickHandler);
     }
 
