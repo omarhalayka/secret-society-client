@@ -795,6 +795,16 @@ export default class LobbyScene extends Phaser.Scene {
         document.body.style.background = "transparent";
         document.body.style.margin     = "0";
 
+        const gameDiv = document.getElementById("game");
+        if (gameDiv) {
+            gameDiv.style.background  = "transparent";
+            gameDiv.style.position    = "fixed";
+            gameDiv.style.top         = "0";
+            gameDiv.style.left        = "0";
+            gameDiv.style.width       = "100%";
+            gameDiv.style.height      = "100%";
+        }
+
         // force canvas transparent - نكرر كل frame أول ثانيتين
         const forceCanvasTransparent = () => {
             const canvas = document.querySelector("canvas");
@@ -814,15 +824,15 @@ export default class LobbyScene extends Phaser.Scene {
         setTimeout(() => clearInterval(canvasTimer), 2000);
 
         // خلي الـ #game div شفاف
-        const gameDivEl = document.getElementById("game");
-        if (gameDivEl) {
-            gameDivEl.style.background = "transparent";
-            gameDivEl.style.position   = "fixed";
-            gameDivEl.style.top        = "0";
-            gameDivEl.style.left       = "0";
-            gameDivEl.style.width      = "100%";
-            gameDivEl.style.height     = "100%";
-            gameDivEl.style.zIndex     = "10";
+        const gameDiv = document.getElementById("game");
+        if (gameDiv) {
+            gameDiv.style.background = "transparent";
+            gameDiv.style.position   = "fixed";
+            gameDiv.style.top        = "0";
+            gameDiv.style.left       = "0";
+            gameDiv.style.width      = "100%";
+            gameDiv.style.height     = "100%";
+            gameDiv.style.zIndex     = "10";
         }
 
         // ─── الفيديو تحت الـ canvas مباشرة ───
