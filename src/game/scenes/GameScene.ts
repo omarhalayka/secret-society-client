@@ -1218,14 +1218,11 @@ export default class GameScene extends Phaser.Scene {
         this.winOverlay?.destroy();
         this.cameras.main.flash(500, data.winner === "MAFIA" ? 100 : 0, data.winner === "MAFIA" ? 0 : 60, 0);
 
-        // شغّل الفيديو أولاً - النتائج تطلع بعد ما يخلص
-        this.playWinVideo(data.winner, () => {
-            if (this.isMobile) {
-                this.showMobileWinOverlay(data);
-            } else {
-                this.showDesktopWinOverlay(data);
-            }
-        });
+        if (this.isMobile) {
+            this.showMobileWinOverlay(data);
+        } else {
+            this.showDesktopWinOverlay(data);
+        }
     }
 
     private playWinVideo(winner: string, onFinished: () => void) {
