@@ -51,7 +51,7 @@ class AudioManager {
             background:     "rgba(13,17,23,0.82)",
             border:         "1px solid rgba(255,255,255,0.1)",
             borderRadius:   "24px",
-            padding:        "6px 12px 6px 8px",
+            padding:        "8px 14px 8px 10px",
             backdropFilter: "blur(10px)",
             transition:     "opacity 0.2s",
             touchAction:    "none",
@@ -90,8 +90,8 @@ class AudioManager {
         slider.max   = "100";
         slider.value = String(Math.round(this.volume * 100));
         Object.assign(slider.style, {
-            width:       "80px",
-            height:      "4px",
+            width:       "90px",
+            height:      "6px",
             cursor:      "pointer",
             accentColor: "#3b82f6",
             outline:     "none",
@@ -113,22 +113,39 @@ class AudioManager {
         });
 
         // ─── هاتف: نتعامل مع touch يدوياً ───
-        slider.addEventListener("touchstart", (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-        }, { passive: false });
-
         slider.addEventListener("touchmove", (e) => {
             e.stopPropagation();
             e.preventDefault();
             const touch  = e.touches[0];
             const rect   = slider.getBoundingClientRect();
-            const ratio  = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
-            const newVal = Math.round(ratio * 100);
-            slider.value = String(newVal);
-            this.volume  = newVal / 100;
+            // نضمن إن rect.width > 0
+            if (rect.width === 0) return;
+            const offsetX = touch.clientX - rect.left;
+            const ratio   = Math.max(0, Math.min(1, offsetX / rect.width));
+            const newVal  = Math.round(ratio * 100);
+            slider.value  = String(newVal);
+            this.volume   = newVal / 100;
             this.audio.volume = this.volume;
-            this.muted   = newVal === 0;
+            this.muted    = newVal === 0;
+            this.updateIcon();
+            // نطلق input event عشان يتحدث الـ UI
+            slider.dispatchEvent(new Event("input"));
+        }, { passive: false });
+
+        // touchstart كمان يحدد القيمة فوراً عند اللمس
+        slider.addEventListener("touchstart", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const touch  = e.touches[0];
+            const rect   = slider.getBoundingClientRect();
+            if (rect.width === 0) return;
+            const offsetX = touch.clientX - rect.left;
+            const ratio   = Math.max(0, Math.min(1, offsetX / rect.width));
+            const newVal  = Math.round(ratio * 100);
+            slider.value  = String(newVal);
+            this.volume   = newVal / 100;
+            this.audio.volume = this.volume;
+            this.muted    = newVal === 0;
             this.updateIcon();
         }, { passive: false });
 
