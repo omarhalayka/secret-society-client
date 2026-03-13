@@ -36,9 +36,6 @@ export default class LobbyScene extends Phaser.Scene {
 
     constructor() { super("LobbyScene"); }
 
-    // ══════════════════════════════════════════════════════
-    //  CREATE
-    // ══════════════════════════════════════════════════════
     create() {
         this.showSplashScreen();
     }
@@ -49,23 +46,16 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.cameras.main.setBackgroundColor("#060810");
 
-        // خلفية سوداء
         const bg = this.add.rectangle(W/2, H/2, W, H, 0x000000).setDepth(0);
+        const img = this.add.image(W/2, H/2, "welcome").setDepth(1).setAlpha(0);
 
-        // صورة الـ splash
-        const img = this.add.image(W/2, H/2, "welcome")
-            .setDepth(1).setAlpha(0);
-
-        // تناسب الصورة - contain على الديسكتوب، cover على الهاتف
         const isMobile = W < 700;
         const scaleX = W / img.width;
         const scaleY = H / img.height;
         img.setScale(isMobile ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY) * 0.85);
 
-        // fade in الصورة
         this.tweens.add({ targets: img, alpha: 1, duration: 900, delay: 200 });
 
-        // ─── زر HTML عشان النص العربي يطلع صح (RTL) ───
         const btn = document.createElement("button");
         btn.id = "splash-btn";
         btn.textContent = "الدخول إلى المنظمة السوداء";
@@ -90,30 +80,19 @@ export default class LobbyScene extends Phaser.Scene {
             transition:  "opacity 0.6s ease, transform 0.15s ease, background 0.2s ease",
             boxShadow:   "0 4px 20px rgba(59,130,246,0.4)",
         });
-        btn.addEventListener("mouseover", () => {
-            btn.style.background = "#60a5fa";
-        });
-        btn.addEventListener("mouseout", () => {
-            btn.style.background = "#3b82f6";
-        });
-        btn.addEventListener("mousedown", () => {
-            btn.style.transform = "translateX(-50%) scale(0.96)";
-        });
+        btn.addEventListener("mouseover", () => { btn.style.background = "#60a5fa"; });
+        btn.addEventListener("mouseout",  () => { btn.style.background = "#3b82f6"; });
+        btn.addEventListener("mousedown", () => { btn.style.transform = "translateX(-50%) scale(0.96)"; });
         document.body.appendChild(btn);
 
-        // أنشئ زر الـ mute فوراً (مستقل عن الموسيقى)
         audioManager.createMuteButton();
 
-        // fade in الزر بعد الصورة
-        this.time.delayedCall(900, () => {
-            btn.style.opacity = "1";
-        });
+        this.time.delayedCall(900, () => { btn.style.opacity = "1"; });
 
         let entered = false;
         const enterLobby = () => {
             if (entered) return;
             entered = true;
-            // شغّل الموسيقى عند أول ضغطة (browser policy)
             audioManager.play();
             btn.style.opacity = "0";
             this.tweens.add({ targets: [bg, img], alpha: 0, duration: 450 });
@@ -125,13 +104,11 @@ export default class LobbyScene extends Phaser.Scene {
 
         btn.addEventListener("click", enterLobby);
 
-        // fallback: أي ضغطة على الشاشة تشغّل اللوبي
-        const onFirstClick = (e: Event) => {
+        const onFirstClick = (_e: Event) => {
             document.removeEventListener("pointerdown", onFirstClick);
             document.removeEventListener("touchstart",  onFirstClick);
             enterLobby();
         };
-        // نضيفهم بعد ثانية عشان ما يتشتغلوا بدون قصد
         this.time.delayedCall(1000, () => {
             document.addEventListener("pointerdown", onFirstClick, { once: true });
             document.addEventListener("touchstart",  onFirstClick, { once: true, passive: true });
@@ -162,46 +139,108 @@ export default class LobbyScene extends Phaser.Scene {
     }
 
     // ══════════════════════════════════════════════════════
+    //  VIDEO BACKGROUND
+    // ══════════════════════════════════════════════════════
+    private startBgVideo() {
+        document.getElementById("lobby-bg-video")?.remove();
+
+        const vid = document.createElement("video");
+        vid.id             = "lobby-bg-video";
+        vid.src            = "/bg.mp4";
+        vid.autoplay       = true;
+        vid.loop           = true;
+        vid.muted          = true;
+        (vid as any).playsInline = true;
+        Object.assign(vid.style, {
+            position:      "fixed",
+            top:           "0",
+            left:          "0",
+            width:         "100vw",
+            height:        "100vh",
+            objectFit:     "cover",
+            zIndex:        "9990",   // فوق كل شي
+            opacity:       "0",
+            transition:    "opacity 1.5s ease",
+            pointerEvents: "none",
+        });
+
+        // الـ canvas فوق الفيديو + شفاف
+        const canvas = document.querySelector("canvas");
+        if (canvas) {
+            const el = canvas as HTMLElement;
+            el.style.position   = "fixed";
+            el.style.top        = "0";
+            el.style.left       = "0";
+            el.style.zIndex     = "9995";
+            el.style.background = "transparent";
+        }
+        const gameDivEl = document.getElementById("game");
+        if (gameDivEl) {
+            gameDivEl.style.background = "transparent";
+        }
+
+        document.body.appendChild(vid);
+
+        // نشغله بعد ما يكون جاهز فعلاً
+        vid.addEventListener("canplaythrough", () => {
+            vid.style.opacity = "0.55";
+        });
+
+        const tryPlay = () => {
+            vid.play().catch(() => {});
+        };
+
+        // نستنى أول interaction من المستخدم عشان نتجنب autoplay block
+        const onInteract = () => {
+            tryPlay();
+            document.removeEventListener("click",      onInteract);
+            document.removeEventListener("touchstart", onInteract);
+            document.removeEventListener("keydown",    onInteract);
+        };
+
+        // جرب تشغل مباشرة - لو اشتغل تمام، لو لا ننتظر interaction
+        vid.play().then(() => {
+            vid.style.opacity = "0.55";
+        }).catch(() => {
+            // اللابتوب بلوك autoplay - ننتظر أي ضغطة
+            document.addEventListener("click",      onInteract, { once: true });
+            document.addEventListener("touchstart", onInteract, { once: true, passive: true });
+            document.addEventListener("keydown",    onInteract, { once: true });
+        });
+    }
+
+    // ══════════════════════════════════════════════════════
     //  DESKTOP LAYOUT
     // ══════════════════════════════════════════════════════
     private buildDesktopLayout(W: number, H: number) {
         const cy = H / 2;
+        const heroW = Math.floor(W * 0.55);
+        const formW = W - heroW;
+        const heroCx = heroW / 2;
+        const formCx = heroW + formW / 2;
 
-        // ─── القسمة: 55% يسار (hero) | 45% يمين (form card) ───
-        const heroW = Math.floor(W * 0.55);   // عرض منطقة الـ hero
-        const formW = W - heroW;              // عرض منطقة الفورم
-        const heroCx = heroW / 2;             // مركز الـ hero
-        const formCx = heroW + formW / 2;     // مركز الفورم
-
-        // ─── بطاقة الفورم ───
         const cardPad = 40;
         const cardW   = formW - cardPad * 2;
         const cardH   = Math.min(H - 80, 460);
         const cardTop = cy - cardH / 2;
 
-        // بطاقة شفافة - backdrop blur بدل اللون الصلب
         this.add.rectangle(formCx, cy, cardW + 6, cardH + 6, 0x3b82f6, 0.08).setDepth(1);
         const card = this.add.rectangle(formCx, cy, cardW, cardH, 0x060810, 0.35).setDepth(2);
         card.setStrokeStyle(1, this.C.cardBorder);
 
-        // شريط لوني أعلى البطاقة
         this.add.rectangle(formCx, cardTop + 2, cardW - 2, 3, this.C.accent)
             .setOrigin(0.5, 0).setDepth(3);
 
-        // خط رأسي فاصل بين القسمين
         const sepLine = this.add.graphics().setDepth(1);
         sepLine.lineStyle(1, this.C.cardBorder, 0.6);
         sepLine.moveTo(heroW, H * 0.1);
         sepLine.lineTo(heroW, H * 0.9);
         sepLine.strokePath();
 
-        // ─── محتوى البطاقة ───
         const pad  = 28;
-        const fL   = formCx - cardW / 2 + pad;   // حافة يسار
+        const fL   = formCx - cardW / 2 + pad;
         let   posY = cardTop + 30;
 
-        // عنوان صغير داخل البطاقة
-        // عنوان صغير أعلى البطاقة - HTML عشان RTL
         const cardTagEl = document.createElement("div");
         cardTagEl.id = "lobby-card-tag";
         cardTagEl.textContent = "المنظمة السوداء";
@@ -215,58 +254,49 @@ export default class LobbyScene extends Phaser.Scene {
             fontFamily:    "'Courier New', monospace",
             letterSpacing: "2px",
             pointerEvents: "none",
-            zIndex:        "10",
+            zIndex:        "9996",
         });
         document.body.appendChild(cardTagEl);
         posY += 28;
 
-        // USERNAME
         this.addFieldLabel(fL, posY, "USERNAME");
         posY += 18;
         this.createUsernameInput(fL, posY, cardW - pad * 2);
-        posY += 56; // ارتفاع الـ input (44px) + gap (12px)
+        posY += 56;
 
-        // JOIN AS
         this.addFieldLabel(fL, posY, "JOIN  AS");
         posY += 18;
         this.createRoleButtons(formCx, posY + 32, cardW - pad * 2);
-        posY += 90; // ارتفاع الأزرار (64px) + gap (26px)
+        posY += 90;
 
-        // JOIN BUTTON
         const btnY = cardTop + cardH - 72;
         this.createJoinButton(formCx, btnY, cardW - pad * 2);
 
-        // Queue status
         this.queueStatusText = this.add.text(formCx, cardTop + cardH - 32,
             "●  0 / 6 in queue", {
                 fontSize: "11px", color: "#3b4a5c",
                 fontFamily: "'Courier New', monospace", letterSpacing: 1
-            }).setOrigin(0.5).setDepth(3);
+            }).setOrigin(0.5).setDepth(9996);
 
-        // fade in
         card.setAlpha(0);
         this.tweens.add({ targets: card, alpha: 1, duration: 600, delay: 150 });
 
-        // ─── Hero يسار ───
         this.buildDesktopHero(heroCx, cy, heroW);
     }
 
     private buildDesktopHero(cx: number, cy: number, heroW: number) {
-        // ─── أيقونة ماسة ───
-        const s = Math.min(heroW * 0.06, 24); // حجم متناسب مع العرض
+        const s = Math.min(heroW * 0.06, 24);
         const icon = this.add.graphics().setDepth(2).setAlpha(0);
         icon.fillStyle(this.C.accent, 1);
         icon.fillTriangle(cx - s, cy - s*3.2, cx + s, cy - s*3.2, cx, cy - s*1.5);
         icon.fillTriangle(cx - s, cy - s*1.2, cx + s, cy - s*1.2, cx, cy - s*2.9);
         this.tweens.add({ targets: icon, alpha: 0.85, duration: 800, delay: 100 });
 
-        // خط علوي زخرفي
         const lineW = Math.min(heroW * 0.3, 120);
         const g1 = this.add.graphics().setDepth(2);
         g1.lineStyle(1, this.C.accent, 0.22);
         g1.moveTo(cx - lineW/2, cy - s*4.2); g1.lineTo(cx + lineW/2, cy - s*4.2); g1.strokePath();
 
-        // ─── العنوان الرئيسي (HTML عشان RTL يشتغل صح) ───
         const titleSize = Math.min(Math.floor(heroW * 0.055), 28);
         const titleEl = document.createElement("div");
         titleEl.id = "lobby-hero-title";
@@ -284,35 +314,30 @@ export default class LobbyScene extends Phaser.Scene {
             color:      "#f1f5f9",
             lineHeight: "1.2",
             pointerEvents: "none",
-            zIndex:     "10",
+            zIndex:     "9996",
             opacity:    "0",
             transition: "opacity 0.7s ease",
         });
         document.body.appendChild(titleEl);
         this.time.delayedCall(200, () => { titleEl.style.opacity = "1"; });
-        // placeholder شفاف في Phaser للـ spacing
-        const t1 = this.add.rectangle(cx, cy - 10, 10, titleSize * 2.4, 0x000000, 0).setDepth(2);
+        this.add.rectangle(cx, cy - 10, 10, titleSize * 2.4, 0x000000, 0).setDepth(2);
 
-        // subtitle
         const t2 = this.add.text(cx, cy + titleSize + 22, "MULTIPLAYER  ·  SOCIAL DEDUCTION", {
             fontSize: "10px", color: "#3b82f6",
             fontFamily: "'Courier New', monospace", letterSpacing: 3
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: t2, alpha: 1, duration: 600, delay: 400 });
 
-        // خط سفلي زخرفي
         const g2 = this.add.graphics().setDepth(2);
         g2.lineStyle(1, this.C.accent, 0.12);
         g2.moveTo(cx - lineW/2, cy + titleSize + 50); g2.lineTo(cx + lineW/2, cy + titleSize + 50); g2.strokePath();
 
-        // جملة italics
         const t3 = this.add.text(cx, cy + titleSize + 68, "Deceive.  Deduce.  Survive.", {
             fontSize: "13px", color: "#2d3748",
             fontFamily: "'Georgia', serif", fontStyle: "italic"
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: t3, alpha: 1, duration: 600, delay: 550 });
 
-        // ─── Features ───
         const baseY = cy + titleSize + 108;
         [
             { ico: "🔪", text: "Hidden Roles" },
@@ -332,18 +357,14 @@ export default class LobbyScene extends Phaser.Scene {
     // ══════════════════════════════════════════════════════
     private buildMobileLayout(W: number, H: number) {
         const cx  = W / 2;
-        const pad = 16; // padding جانبي
-
-        // ─── رأس ───
+        const pad = 16;
         const headerH = 108;
 
-        // أيقونة ماسة صغيرة
         const icon = this.add.graphics().setDepth(2);
         icon.fillStyle(this.C.accent, 0.9);
         icon.fillTriangle(cx - 10, 28, cx + 10, 28, cx, 44);
         icon.fillTriangle(cx - 10, 50, cx + 10, 50, cx, 34);
 
-        // العنوان العربي كـ HTML عشان RTL
         const mTitleEl = document.createElement("div");
         mTitleEl.id = "lobby-mobile-title";
         mTitleEl.textContent = "المنظمة السوداء";
@@ -360,7 +381,7 @@ export default class LobbyScene extends Phaser.Scene {
             color:      "#f1f5f9",
             letterSpacing: "2px",
             pointerEvents: "none",
-            zIndex:     "10",
+            zIndex:     "9996",
         });
         document.body.appendChild(mTitleEl);
 
@@ -369,38 +390,30 @@ export default class LobbyScene extends Phaser.Scene {
             fontFamily: "'Courier New', monospace", letterSpacing: 2
         }).setOrigin(0.5).setDepth(2);
 
-        // ─── البطاقة ───
         const cardW  = W - pad * 2;
         const cardH  = H - headerH - pad;
         const cardCX = cx;
         const cardCY = headerH + cardH / 2;
-        const cardT  = headerH; // أعلى البطاقة
+        const cardT  = headerH;
 
-        // بطاقة شفافة مع HTML blur overlay
         const card = this.add.rectangle(cardCX, cardCY, cardW, cardH, 0x060810, 0.35).setDepth(1);
         card.setStrokeStyle(1, this.C.cardBorder);
 
-        // شريط لوني أعلى
         this.add.rectangle(cardCX, cardT + 2, cardW - 2, 3, this.C.accent)
             .setOrigin(0.5, 0).setDepth(2);
 
-        // ─── محتوى البطاقة (positioning عمودي ثابت) ───
         const fL   = cardCX - cardW / 2 + 18;
         let   posY = cardT + 24;
 
-        // USERNAME
         this.addFieldLabel(fL, posY, "USERNAME");
         posY += 17;
         this.createUsernameInput(fL, posY, cardW - 36);
-        posY += 58; // input height 44px + gap 14px
+        posY += 58;
 
-        // JOIN AS
         this.addFieldLabel(fL, posY, "JOIN  AS");
         posY += 18;
         this.createRoleButtons(cardCX, posY + 32, cardW - 36);
-        // أزرار الدور ارتفاعها 64px
 
-        // JOIN BUTTON - من أسفل البطاقة
         const btnY   = cardT + cardH - 68;
         const queueY = cardT + cardH - 30;
 
@@ -436,7 +449,7 @@ export default class LobbyScene extends Phaser.Scene {
             width: `${width}px`, padding: "11px 14px", fontSize: "14px",
             fontFamily: "'Courier New', monospace", borderRadius: "6px",
             border: "1px solid #21262d", backgroundColor: "#010409", color: "#f1f5f9",
-            outline: "none", zIndex: "1000", letterSpacing: "1px",
+            outline: "none", zIndex: "9996", letterSpacing: "1px",
             transition: "border-color 0.2s, box-shadow 0.2s",
         });
         this.usernameInput.addEventListener("focus", () => {
@@ -467,7 +480,7 @@ export default class LobbyScene extends Phaser.Scene {
         roles.forEach((role, i) => {
             const bx = sx + i * (btnW + gap);
             const isActive = role.key === this.selectedType;
-            const c = this.add.container(bx, cy).setDepth(3);
+            const c = this.add.container(bx, cy).setDepth(9996);
 
             const bg = this.add.rectangle(0, 0, btnW, btnH,
                 isActive ? 0x0d1f3c : this.C.card);
@@ -531,9 +544,6 @@ export default class LobbyScene extends Phaser.Scene {
         this.selectedType = key;
     }
 
-    // ══════════════════════════════════════════════════════
-    //  ADMIN PASSWORD POPUP
-    // ══════════════════════════════════════════════════════
     private showAdminPasswordPopup() {
         document.getElementById("admin-pass-overlay")?.remove();
 
@@ -541,7 +551,7 @@ export default class LobbyScene extends Phaser.Scene {
         overlay.id = "admin-pass-overlay";
         Object.assign(overlay.style, {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
-            zIndex: "9990", backgroundColor: "rgba(0,0,0,0.78)",
+            zIndex: "9999", backgroundColor: "rgba(0,0,0,0.78)",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontFamily: "'Courier New', monospace",
         });
@@ -618,14 +628,13 @@ export default class LobbyScene extends Phaser.Scene {
             if (passInput.value === ADMIN_PASSWORD) {
                 overlay.remove();
                 this.activateRole("admin", roles);
-                this.showToast("Admin access granted \u2713", "success");
+                this.showToast("Admin access granted ✓", "success");
             } else {
                 errEl.textContent = "Incorrect password";
                 passInput.value = "";
                 passInput.style.borderColor = "#ef4444";
                 passInput.style.boxShadow = "0 0 0 3px rgba(239,68,68,0.1)";
                 passInput.focus();
-                // shake
                 let n = 0;
                 const iv = setInterval(() => {
                     box.style.marginLeft = n % 2 === 0 ? "7px" : "-7px";
@@ -656,12 +665,9 @@ export default class LobbyScene extends Phaser.Scene {
         setTimeout(() => passInput.focus(), 60);
     }
 
-    // ══════════════════════════════════════════════════════
-    //  JOIN BUTTON
-    // ══════════════════════════════════════════════════════
     private createJoinButton(cx: number, cy: number, width: number) {
         const btnH = 48;
-        const c    = this.add.container(cx, cy).setDepth(3);
+        const c    = this.add.container(cx, cy).setDepth(9996);
         const bg   = this.add.rectangle(0, 0, width, btnH, this.C.accent);
         const lbl  = this.add.text(0, 0, "JOIN  QUEUE", {
             fontSize: "12px", color: "#ffffff",
@@ -681,9 +687,6 @@ export default class LobbyScene extends Phaser.Scene {
         this.joinBtnLabel = lbl;
     }
 
-    // ══════════════════════════════════════════════════════
-    //  HANDLE JOIN
-    // ══════════════════════════════════════════════════════
     private handleJoin() {
         const username = this.usernameInput?.value.trim();
         if (!username || username.length < 2) {
@@ -725,9 +728,6 @@ export default class LobbyScene extends Phaser.Scene {
         });
     }
 
-    // ══════════════════════════════════════════════════════
-    //  SOCKET EVENTS
-    // ══════════════════════════════════════════════════════
     private setupSocketEvents() {
         ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined"]
             .forEach(ev => socketService.socket.off(ev));
@@ -751,7 +751,7 @@ export default class LobbyScene extends Phaser.Scene {
             }
         });
 
-        socketService.socket.on("admin_joined", () => this.showToast("Admin panel ready \u2713", "success"));
+        socketService.socket.on("admin_joined", () => this.showToast("Admin panel ready ✓", "success"));
 
         socketService.socket.on("waiting_for_players", (data: any) => {
             this.showToast(data.message || "Waiting for players...", "info");
@@ -778,70 +778,8 @@ export default class LobbyScene extends Phaser.Scene {
             });
         });
 
-        socketService.socket.on("connect",       () => this.showToast("Connected \u2713", "success"));
+        socketService.socket.on("connect",       () => this.showToast("Connected ✓", "success"));
         socketService.socket.on("connect_error", () => this.showToast("Cannot connect to server", "error"));
-    }
-
-    // ══════════════════════════════════════════════════════
-    //  BACKGROUND
-    // ══════════════════════════════════════════════════════
-    // ═══════════════════════════════════════════════════════════════════════════
-    //  VIDEO BACKGROUND
-    // ═══════════════════════════════════════════════════════════════════════════
-    private startBgVideo() {
-        document.getElementById("lobby-bg-video")?.remove();
-
-        // ─── خلي كل شي شفاف ───
-        document.body.style.background = "transparent";
-        document.body.style.margin     = "0";
-
-        const gameDiv = document.getElementById("game");
-        if (gameDiv) {
-            gameDiv.style.background  = "transparent";
-            gameDiv.style.position    = "fixed";
-            gameDiv.style.top         = "0";
-            gameDiv.style.left        = "0";
-            gameDiv.style.width       = "100%";
-            gameDiv.style.height      = "100%";
-        }
-
-        const canvas = document.querySelector("canvas");
-        if (canvas) {
-            const el = canvas as HTMLElement;
-            el.style.background = "transparent";
-            el.style.position   = "fixed";
-            el.style.top        = "0";
-            el.style.left       = "0";
-            el.style.zIndex     = "10";
-        }
-
-        // ─── الفيديو تحت الـ canvas مباشرة ───
-        const vid = document.createElement("video");
-        vid.id             = "lobby-bg-video";
-        vid.src            = "/bg.mp4";
-        vid.autoplay       = true;
-        vid.loop           = true;
-        vid.muted          = true;
-        (vid as any).playsInline = true;
-        Object.assign(vid.style, {
-            position:      "fixed",
-            top:           "0",
-            left:          "0",
-            width:         "100vw",
-            height:        "100vh",
-            objectFit:     "cover",
-            zIndex:        "5",
-            opacity:       "0",
-            transition:    "opacity 1.5s ease",
-            pointerEvents: "none",
-        });
-
-        vid.addEventListener("canplay", () => {
-            vid.style.opacity = "0.55";
-        });
-
-        // أضفه أول عنصر في الـ body
-document.body.appendChild(vid);        vid.play().catch((e) => console.warn("video blocked:", e));
     }
 
     private drawBackground(W: number, H: number) {
@@ -869,9 +807,6 @@ document.body.appendChild(vid);        vid.play().catch((e) => console.warn("vid
         }
     }
 
-    // ══════════════════════════════════════════════════════
-    //  UTILITIES
-    // ══════════════════════════════════════════════════════
     private showToast(message: string, type: "success"|"error"|"info") {
         const cm = { success:{bg:0x052e16,border:0x22c55e,text:"#22c55e"}, error:{bg:0x2d0a0a,border:0xef4444,text:"#ef4444"}, info:{bg:0x0a1628,border:0x3b82f6,text:"#3b82f6"} }[type];
         const W  = this.scale.width;
@@ -898,9 +833,6 @@ document.body.appendChild(vid);        vid.play().catch((e) => console.warn("vid
         }, 50);
     }
 
-    // ══════════════════════════════════════════════════════
-    //  UPDATE
-    // ══════════════════════════════════════════════════════
     update(time: number, _delta: number) {
         const W = this.scale.width;
         const H = this.scale.height;
@@ -922,10 +854,6 @@ document.body.appendChild(vid);        vid.play().catch((e) => console.warn("vid
             }
     }
 
-    // ══════════════════════════════════════════════════════
-    //  SHUTDOWN
-    // ══════════════════════════════════════════════════════
-    // ─── مسح كل HTML elements دفعة واحدة ───
     private cleanupAllLobbyHTML() {
         const ids = [
             "lobby-username",
@@ -939,7 +867,6 @@ document.body.appendChild(vid);        vid.play().catch((e) => console.warn("vid
             "global-mute-btn",
         ];
         ids.forEach(id => document.getElementById(id)?.remove());
-        // ملاحظة: global-audio-ctrl لا يُمسح - يضل ظاهر بكل الشاشات
     }
 
     shutdown() {
