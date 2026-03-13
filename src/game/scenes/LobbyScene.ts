@@ -144,12 +144,7 @@ export default class LobbyScene extends Phaser.Scene {
         const isMobile = W < 700;
 
         this.cameras.main.fadeIn(500, 6, 8, 16);
-        this.cameras.main.setBackgroundColor("rgba(0,0,0,0)");
-        // خلي الـ canvas شفاف عشان يبين الفيديو تحته
-        const canvas = document.querySelector("canvas");
-        if (canvas) {
-            (canvas as HTMLElement).style.background = "transparent";
-        }
+        this.cameras.main.setBackgroundColor(0x00000000);
         this.cleanupAllLobbyHTML();
         this.startBgVideo();
         this.drawBackground(W, H);
@@ -796,32 +791,51 @@ export default class LobbyScene extends Phaser.Scene {
     private startBgVideo() {
         document.getElementById("lobby-bg-video")?.remove();
 
+        // خلي الـ Phaser canvas وحاويته شفافين
+        const canvas = document.querySelector("canvas");
+        if (canvas) {
+            const canvasEl = canvas as HTMLElement;
+            canvasEl.style.background  = "transparent";
+            canvasEl.style.position    = "relative";
+            canvasEl.style.zIndex      = "2";
+        }
+        // خلي الـ #game div شفاف
+        const gameDiv = document.getElementById("game");
+        if (gameDiv) {
+            gameDiv.style.background = "transparent";
+        }
+        // خلي body شفاف
+        document.body.style.background = "#060810";
+
         const vid = document.createElement("video");
-        vid.id         = "lobby-bg-video";
-        vid.src        = "/bg.mp4";
-        vid.autoplay   = true;
-        vid.loop       = true;
-        vid.muted      = true;
+        vid.id           = "lobby-bg-video";
+        vid.src          = "/bg.mp4";
+        vid.autoplay     = true;
+        vid.loop         = true;
+        vid.muted        = true;
         (vid as any).playsInline = true;
         Object.assign(vid.style, {
             position:      "fixed",
             top:           "0", left: "0",
             width:         "100%", height: "100%",
             objectFit:     "cover",
-            zIndex:        "0",
+            zIndex:        "1",        // فوق الـ body تحت الـ canvas
             opacity:       "0",
             transition:    "opacity 1.2s ease",
             pointerEvents: "none",
         });
-        // تأكد إن الـ canvas شفاف عشان يبين الفيديو
-        const canvas = document.querySelector("canvas");
-        if (canvas) {
-            (canvas as HTMLElement).style.background = "transparent";
-        }
+
         vid.addEventListener("canplay", () => {
-            vid.style.opacity = "0.15";
+            vid.style.opacity = "0.5";
         });
-        document.body.insertBefore(vid, document.body.firstChild);
+
+        // أضفه بعد الـ canvas مباشرة
+        if (canvas && canvas.parentNode) {
+            canvas.parentNode.insertBefore(vid, canvas);
+        } else {
+            document.body.insertBefore(vid, document.body.firstChild);
+        }
+
         vid.play().catch(() => {});
     }
 
