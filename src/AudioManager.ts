@@ -54,6 +54,7 @@ class AudioManager {
             padding:        "6px 12px 6px 8px",
             backdropFilter: "blur(10px)",
             transition:     "opacity 0.2s",
+            touchAction:    "none",
         });
 
         // ─── أيقونة الصوت (قابلة للضغط للميوت) ───
@@ -69,6 +70,18 @@ class AudioManager {
         icon.addEventListener("click", () => this.toggleMute());
         icon.addEventListener("mousedown", () => { icon.style.transform = "scale(0.82)"; });
         icon.addEventListener("mouseup",   () => { icon.style.transform = "scale(1)"; });
+        // هاتف
+        icon.addEventListener("touchstart", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            icon.style.transform = "scale(0.82)";
+        }, { passive: false });
+        icon.addEventListener("touchend", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            icon.style.transform = "scale(1)";
+            this.toggleMute();
+        }, { passive: false });
 
         // ─── Slider ───
         const slider = document.createElement("input");
@@ -77,15 +90,17 @@ class AudioManager {
         slider.max   = "100";
         slider.value = String(Math.round(this.volume * 100));
         Object.assign(slider.style, {
-            width:      "80px",
-            height:     "4px",
-            cursor:     "pointer",
-            accentColor:"#3b82f6",
-            outline:    "none",
-            border:     "none",
-            background: "transparent",
-            margin:     "0",
-            padding:    "0",
+            width:       "80px",
+            height:      "4px",
+            cursor:      "pointer",
+            accentColor: "#3b82f6",
+            outline:     "none",
+            border:      "none",
+            background:  "transparent",
+            margin:      "0",
+            padding:     "0",
+            touchAction: "none",        // هام للهاتف
+            webkitUserSelect: "none",
         });
 
         // تغيير الصوت عند تحريك الـ slider
@@ -97,10 +112,29 @@ class AudioManager {
             this.updateIcon();
         });
 
-        // على الهاتف - منع Phaser من يسرق الـ touch events
-        slider.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
-        slider.addEventListener("touchmove",  (e) => e.stopPropagation(), { passive: true });
-        slider.addEventListener("touchend",   (e) => e.stopPropagation(), { passive: true });
+        // ─── هاتف: نتعامل مع touch يدوياً ───
+        slider.addEventListener("touchstart", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+        }, { passive: false });
+
+        slider.addEventListener("touchmove", (e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            const touch  = e.touches[0];
+            const rect   = slider.getBoundingClientRect();
+            const ratio  = Math.max(0, Math.min(1, (touch.clientX - rect.left) / rect.width));
+            const newVal = Math.round(ratio * 100);
+            slider.value = String(newVal);
+            this.volume  = newVal / 100;
+            this.audio.volume = this.volume;
+            this.muted   = newVal === 0;
+            this.updateIcon();
+        }, { passive: false });
+
+        slider.addEventListener("touchend", (e) => {
+            e.stopPropagation();
+        }, { passive: true });
 
         wrap.appendChild(icon);
         wrap.appendChild(slider);
