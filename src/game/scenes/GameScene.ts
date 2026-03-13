@@ -1218,43 +1218,69 @@ export default class GameScene extends Phaser.Scene {
         this.winOverlay?.destroy();
         this.cameras.main.flash(500, data.winner === "MAFIA" ? 100 : 0, data.winner === "MAFIA" ? 0 : 60, 0);
 
-        // ─── شغّل فيديو الفوز ───
-        this.playWinVideo(data.winner);
-
-        if (this.isMobile) {
-            this.showMobileWinOverlay(data);
-        } else {
-            this.showDesktopWinOverlay(data);
-        }
+        // شغّل الفيديو أولاً - النتائج تطلع بعد ما يخلص
+        this.playWinVideo(data.winner, () => {
+            if (this.isMobile) {
+                this.showMobileWinOverlay(data);
+            } else {
+                this.showDesktopWinOverlay(data);
+            }
+        });
     }
 
-    private playWinVideo(winner: string) {
+    private playWinVideo(winner: string, onFinished: () => void) {
         document.getElementById("win-bg-video")?.remove();
 
         const src = winner === "MAFIA" ? "/mafia-win.mp4" : "/citizens-win.mp4";
 
         const vid = document.createElement("video");
-        vid.id         = "win-bg-video";
-        vid.src        = src;
-        vid.autoplay   = true;
-        vid.loop       = true;
-        vid.muted      = true;
+        vid.id             = "win-bg-video";
+        vid.src            = src;
+        vid.autoplay       = true;
+        vid.loop           = false;   // لا يلف - يشتغل مرة وحدة
+        vid.muted          = false;   // مع الصوت
+        vid.volume         = 0.9;
         (vid as any).playsInline = true;
         Object.assign(vid.style, {
             position:      "fixed",
             top:           "0", left: "0",
             width:         "100%", height: "100%",
             objectFit:     "cover",
-            zIndex:        "9998",   // تحت الـ overlay (9999) وفوق كل شي
+            zIndex:        "99999",
             opacity:       "0",
-            transition:    "opacity 1s ease",
+            transition:    "opacity 0.8s ease",
             pointerEvents: "none",
         });
+
+        // لما يبدأ - يطلع
         vid.addEventListener("canplay", () => {
             vid.style.opacity = "1";
         });
+
+        // لما يخلص - يختفي وتطلع النتائج
+        vid.addEventListener("ended", () => {
+            vid.style.transition = "opacity 0.6s ease";
+            vid.style.opacity    = "0";
+            setTimeout(() => {
+                vid.remove();
+                onFinished();
+            }, 650);
+        });
+
+        // لو الفيديو قصير جداً أو خطأ - اطلع النتائج بعد 8 ثواني على الأكثر
+        const fallback = setTimeout(() => {
+            vid.remove();
+            onFinished();
+        }, 8000);
+        vid.addEventListener("ended",   () => clearTimeout(fallback));
+        vid.addEventListener("error",   () => { clearTimeout(fallback); onFinished(); });
+
         document.body.appendChild(vid);
-        vid.play().catch(() => {});
+        vid.play().catch(() => {
+            // لو بلوك - اطلع النتائج مباشرة
+            vid.remove();
+            onFinished();
+        });
     }
 
     private showDesktopWinOverlay(data: any) {
@@ -1708,7 +1734,7 @@ export default class GameScene extends Phaser.Scene {
             fontFamily: "'Courier New', monospace", fontWeight: "bold", letterSpacing: "2px",
             color: "#f59e0b", backgroundColor: "#0d0f14",
             border: "1px solid #f59e0b", borderRadius: "4px",
-            cursor: "pointer", zIndex: "2000",
+            cursor: "pointer", zIndex: "9999999",
         });
         this.adminToggleBtn.addEventListener("click", () => this.toggleAdminDrawer());
         document.body.appendChild(this.adminToggleBtn);
@@ -1723,7 +1749,7 @@ export default class GameScene extends Phaser.Scene {
             backgroundColor: "#080c12",
             borderLeft: "1px solid rgba(245,158,11,0.25)",
             boxShadow: "-8px 0 40px rgba(0,0,0,0.6)",
-            zIndex: "1500", overflowY: "auto",
+            zIndex: "999999", overflowY: "auto",
             transition: "right 0.35s cubic-bezier(0.4,0,0.2,1)",
             fontFamily: "'Courier New', monospace",
             display: "flex", flexDirection: "column",
