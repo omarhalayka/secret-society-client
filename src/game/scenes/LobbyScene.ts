@@ -805,34 +805,14 @@ export default class LobbyScene extends Phaser.Scene {
             gameDiv.style.height      = "100%";
         }
 
-        // force canvas transparent - نكرر كل frame أول ثانيتين
-        const forceCanvasTransparent = () => {
-            const canvas = document.querySelector("canvas");
-            if (canvas) {
-                const el = canvas as HTMLElement;
-                el.style.background    = "transparent";
-                el.style.position      = "fixed";
-                el.style.top           = "0";
-                el.style.left          = "0";
-                el.style.zIndex        = "10";
-                el.style.pointerEvents = "auto";
-            }
-        };
-        forceCanvasTransparent();
-        // نكرر عشان Phaser ممكن يعيد set الـ style
-        const canvasTimer = setInterval(forceCanvasTransparent, 100);
-        setTimeout(() => clearInterval(canvasTimer), 2000);
-
-        // خلي الـ #game div شفاف
-        const gameDiv = document.getElementById("game");
-        if (gameDiv) {
-            gameDiv.style.background = "transparent";
-            gameDiv.style.position   = "fixed";
-            gameDiv.style.top        = "0";
-            gameDiv.style.left       = "0";
-            gameDiv.style.width      = "100%";
-            gameDiv.style.height     = "100%";
-            gameDiv.style.zIndex     = "10";
+        const canvas = document.querySelector("canvas");
+        if (canvas) {
+            const el = canvas as HTMLElement;
+            el.style.background = "transparent";
+            el.style.position   = "fixed";
+            el.style.top        = "0";
+            el.style.left       = "0";
+            el.style.zIndex     = "10";
         }
 
         // ─── الفيديو تحت الـ canvas مباشرة ───
@@ -858,19 +838,11 @@ export default class LobbyScene extends Phaser.Scene {
 
         vid.addEventListener("canplay", () => {
             vid.style.opacity = "0.55";
-            // نشغّل بس بعد ما يكون جاهز
-            if (vid.paused) {
-                vid.play().catch(() => {});
-            }
         });
 
         // أضفه أول عنصر في الـ body
         document.body.insertBefore(vid, document.body.firstChild);
-
-        // نستنى loadedmetadata قبل play عشان نتجنب AbortError
-        vid.addEventListener("loadedmetadata", () => {
-            vid.play().catch(() => {});
-        });
+        vid.play().catch((e) => console.warn("video blocked:", e));
     }
 
     private drawBackground(W: number, H: number) {
