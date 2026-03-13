@@ -4,17 +4,24 @@ class AudioManager {
     private static instance: AudioManager;
     private audio: HTMLAudioElement;
     private controlEl: HTMLElement | null = null;
-    private sliderEl: HTMLInputElement | null = null;
-    private iconEl: HTMLElement | null = null;
     private volume: number = 0.28;
     private muted: boolean = false;
+    private currentLevel: number = 3; // index في المصفوفة
+
+    // مستويات الصوت المتاحة
+    private readonly LEVELS = [
+        { label: "🔇", value: 0   },
+        { label: "🔈", value: 0.05 },
+        { label: "🔉", value: 0.10 },
+        { label: "🔉", value: 0.15 },
+        { label: "🔊", value: 0.25 },
+        { label: "🔊", value: 0.40 },
+    ];
 
     private constructor() {
         this.audio = new Audio("/music.mp3");
         this.audio.loop   = true;
-        this.audio.volume = this.volume;
-
-        // لو خلص المقطع يرجع يشتغل (backup للـ loop)
+        this.audio.volume = this.LEVELS[this.currentLevel].value;
         this.audio.addEventListener("ended", () => {
             this.audio.currentTime = 0;
             if (!this.muted) this.audio.play().catch(() => {});
@@ -30,68 +37,136 @@ class AudioManager {
 
     play() {
         if (this.muted) return;
-        const p = this.audio.play();
-        if (p !== undefined) p.catch((err) => console.warn("Audio blocked:", err));
+        this.audio.play().catch((err) => console.warn("Audio blocked:", err));
     }
 
     createMuteButton() {
         if (document.getElementById("global-audio-ctrl")) return;
 
-        // ─── الحاوية الرئيسية ───
+        const isMobile = window.innerWidth < 700;
+
         const wrap = document.createElement("div");
         wrap.id = "global-audio-ctrl";
         Object.assign(wrap.style, {
             position:       "fixed",
-            top:            "14px",
-            right:          "14px",
+            top:            "12px",
+            right:          "12px",
             zIndex:         "9999",
             display:        "flex",
             alignItems:     "center",
-            gap:            "8px",
-            background:     "rgba(13,17,23,0.82)",
+            gap:            "4px",
+            background:     "rgba(13,17,23,0.88)",
             border:         "1px solid rgba(255,255,255,0.1)",
             borderRadius:   "24px",
-            padding:        "8px 14px 8px 10px",
+            padding:        "5px 8px",
             backdropFilter: "blur(10px)",
-            transition:     "opacity 0.2s",
-            touchAction:    "none",
         });
 
-        // ─── أيقونة الصوت (قابلة للضغط للميوت) ───
+        if (isMobile) {
+            // ─── هاتف: أزرار نصية واضحة ───
+            this.buildMobileButtons(wrap);
+        } else {
+            // ─── لابتوب: slider ───
+            this.buildDesktopSlider(wrap);
+        }
+
+        document.body.appendChild(wrap);
+        this.controlEl = wrap;
+    }
+
+    // ══════════════════════════════════════════
+    //  MOBILE - أزرار
+    // ══════════════════════════════════════════
+    private buildMobileButtons(wrap: HTMLElement) {
+        const levels = [0, 5, 10, 15, 25];   // النسب المئوية
+
+        // أيقونة يسار
+        const iconEl = document.createElement("span");
+        iconEl.id = "audio-icon";
+        iconEl.textContent = "🔊";
+        Object.assign(iconEl.style, {
+            fontSize: "15px", marginRight: "4px", lineHeight: "1"
+        });
+        wrap.appendChild(iconEl);
+
+        levels.forEach((pct) => {
+            const btn = document.createElement("button");
+            btn.textContent = `${pct}`;
+            const isActive = Math.round(this.LEVELS[this.currentLevel].value * 100) === pct
+                || (pct === 25 && this.currentLevel === 4);
+
+            Object.assign(btn.style, {
+                minWidth:     "32px",
+                height:       "28px",
+                padding:      "0 6px",
+                borderRadius: "14px",
+                border:       "1px solid " + (isActive ? "#3b82f6" : "rgba(255,255,255,0.1)"),
+                background:   isActive ? "#3b82f6" : "transparent",
+                color:        isActive ? "#fff" : "#8b949e",
+                fontSize:     "11px",
+                fontFamily:   "'Courier New', monospace",
+                cursor:       "pointer",
+                transition:   "background 0.15s, color 0.15s",
+                lineHeight:   "1",
+            });
+
+            const setLevel = (e: Event) => {
+                e.stopPropagation();
+                const val = pct / 100;
+                this.audio.volume = val;
+                this.muted = pct === 0;
+                if (pct === 0) {
+                    this.audio.pause();
+                } else if (this.muted === false) {
+                    this.audio.play().catch(() => {});
+                }
+
+                // أيقونة
+                const ic = document.getElementById("audio-icon");
+                if (ic) ic.textContent = pct === 0 ? "🔇" : pct <= 10 ? "🔉" : "🔊";
+
+                // تحديث لون الأزرار
+                wrap.querySelectorAll("button").forEach((b: Element) => {
+                    const bEl = b as HTMLElement;
+                    const isThis = bEl.textContent === `${pct}`;
+                    bEl.style.background   = isThis ? "#3b82f6" : "transparent";
+                    bEl.style.color        = isThis ? "#fff"    : "#8b949e";
+                    bEl.style.borderColor  = isThis ? "#3b82f6" : "rgba(255,255,255,0.1)";
+                });
+            };
+
+            btn.addEventListener("click",      setLevel);
+            btn.addEventListener("touchend",   (e) => { e.preventDefault(); setLevel(e); }, { passive: false });
+            btn.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: true });
+
+            wrap.appendChild(btn);
+        });
+    }
+
+    // ══════════════════════════════════════════
+    //  DESKTOP - slider
+    // ══════════════════════════════════════════
+    private buildDesktopSlider(wrap: HTMLElement) {
         const icon = document.createElement("span");
+        icon.id = "audio-icon";
         icon.textContent = "🔊";
         Object.assign(icon.style, {
             fontSize:  "17px",
             cursor:    "pointer",
             userSelect:"none",
             lineHeight:"1",
-            transition:"transform 0.12s",
+            marginRight: "4px",
         });
-        icon.addEventListener("click", () => this.toggleMute());
-        icon.addEventListener("mousedown", () => { icon.style.transform = "scale(0.82)"; });
-        icon.addEventListener("mouseup",   () => { icon.style.transform = "scale(1)"; });
-        // هاتف
-        icon.addEventListener("touchstart", (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            icon.style.transform = "scale(0.82)";
-        }, { passive: false });
-        icon.addEventListener("touchend", (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            icon.style.transform = "scale(1)";
-            this.toggleMute();
-        }, { passive: false });
+        icon.addEventListener("click", () => this.toggleMuteDesktop(icon));
 
-        // ─── Slider ───
         const slider = document.createElement("input");
         slider.type  = "range";
         slider.min   = "0";
         slider.max   = "100";
-        slider.value = String(Math.round(this.volume * 100));
+        slider.value = String(Math.round(this.LEVELS[this.currentLevel].value * 100));
         Object.assign(slider.style, {
-            width:       "90px",
-            height:      "6px",
+            width:       "80px",
+            height:      "4px",
             cursor:      "pointer",
             accentColor: "#3b82f6",
             outline:     "none",
@@ -99,91 +174,31 @@ class AudioManager {
             background:  "transparent",
             margin:      "0",
             padding:     "0",
-            touchAction: "none",        // هام للهاتف
-            webkitUserSelect: "none",
         });
 
-        // تغيير الصوت عند تحريك الـ slider
         slider.addEventListener("input", () => {
             const val = parseInt(slider.value) / 100;
-            this.volume = val;
             this.audio.volume = val;
             this.muted = val === 0;
-            this.updateIcon();
+            if (val === 0) this.audio.pause();
+            else this.audio.play().catch(() => {});
+            const ic = document.getElementById("audio-icon");
+            if (ic) ic.textContent = val === 0 ? "🔇" : val < 0.15 ? "🔉" : "🔊";
         });
-
-        // ─── هاتف: نتعامل مع touch يدوياً ───
-        slider.addEventListener("touchmove", (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            const touch  = e.touches[0];
-            const rect   = slider.getBoundingClientRect();
-            // نضمن إن rect.width > 0
-            if (rect.width === 0) return;
-            const offsetX = touch.clientX - rect.left;
-            const ratio   = Math.max(0, Math.min(1, offsetX / rect.width));
-            const newVal  = Math.round(ratio * 100);
-            slider.value  = String(newVal);
-            this.volume   = newVal / 100;
-            this.audio.volume = this.volume;
-            this.muted    = newVal === 0;
-            this.updateIcon();
-            // نطلق input event عشان يتحدث الـ UI
-            slider.dispatchEvent(new Event("input"));
-        }, { passive: false });
-
-        // touchstart كمان يحدد القيمة فوراً عند اللمس
-        slider.addEventListener("touchstart", (e) => {
-            e.stopPropagation();
-            e.preventDefault();
-            const touch  = e.touches[0];
-            const rect   = slider.getBoundingClientRect();
-            if (rect.width === 0) return;
-            const offsetX = touch.clientX - rect.left;
-            const ratio   = Math.max(0, Math.min(1, offsetX / rect.width));
-            const newVal  = Math.round(ratio * 100);
-            slider.value  = String(newVal);
-            this.volume   = newVal / 100;
-            this.audio.volume = this.volume;
-            this.muted    = newVal === 0;
-            this.updateIcon();
-        }, { passive: false });
-
-        slider.addEventListener("touchend", (e) => {
-            e.stopPropagation();
-        }, { passive: true });
 
         wrap.appendChild(icon);
         wrap.appendChild(slider);
-        document.body.appendChild(wrap);
-
-        this.controlEl = wrap;
-        this.sliderEl  = slider;
-        this.iconEl    = icon;
     }
 
-    private toggleMute() {
+    private toggleMuteDesktop(iconEl: HTMLElement) {
         this.muted = !this.muted;
         if (this.muted) {
             this.audio.pause();
-            if (this.sliderEl) this.sliderEl.value = "0";
+            iconEl.textContent = "🔇";
         } else {
-            this.audio.volume = this.volume;
-            if (this.sliderEl) this.sliderEl.value = String(Math.round(this.volume * 100));
+            this.audio.volume = this.LEVELS[this.currentLevel].value;
             this.audio.play().catch(() => {});
-        }
-        this.updateIcon();
-    }
-
-    private updateIcon() {
-        if (!this.iconEl) return;
-        const val = parseInt(this.sliderEl?.value ?? "0");
-        if (val === 0 || this.muted) {
-            this.iconEl.textContent = "🔇";
-        } else if (val < 40) {
-            this.iconEl.textContent = "🔉";
-        } else {
-            this.iconEl.textContent = "🔊";
+            iconEl.textContent = "🔊";
         }
     }
 }
