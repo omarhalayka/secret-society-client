@@ -7,7 +7,7 @@ export default class BootScene extends Phaser.Scene {
     }
 
     preload(): void {
-        // سنستخدم هذا لاحقاً لتحميل الصور
+        this.load.image("welcome", "/welcome.jpg");
     }
 
     create(): void {

@@ -48,54 +48,74 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.cameras.main.setBackgroundColor("#060810");
 
-        // خلفية سوداء للـ splash
+        // خلفية سوداء
         const bg = this.add.rectangle(W/2, H/2, W, H, 0x000000).setDepth(0);
 
         // صورة الـ splash
         const img = this.add.image(W/2, H/2, "welcome")
             .setDepth(1).setAlpha(0);
 
-        // تناسب الصورة مع الشاشة
+        // تناسب الصورة مع الشاشة (cover)
         const scaleX = W / img.width;
         const scaleY = H / img.height;
-        const scale  = Math.min(scaleX, scaleY);
-        img.setScale(scale);
+        img.setScale(Math.max(scaleX, scaleY));
 
-        // زر الدخول
-        const btnBg = this.add.rectangle(W/2, H - 80, 260, 50, 0x3b82f6)
-            .setDepth(2).setAlpha(0);
-        const btnTxt = this.add.text(W/2, H - 80, "ادخل المجتمع السري", {
-            fontSize: "18px", color: "#ffffff",
-            fontFamily: "'Georgia', serif", fontStyle: "bold"
-        }).setOrigin(0.5).setDepth(2).setAlpha(0);
+        // fade in الصورة
+        this.tweens.add({ targets: img, alpha: 1, duration: 900, delay: 200 });
 
-        // fade in
-        this.tweens.add({ targets: [img], alpha: 1, duration: 800, delay: 200 });
-        this.tweens.add({ targets: [btnBg, btnTxt], alpha: 1, duration: 600, delay: 800 });
+        // ─── زر HTML عشان النص العربي يطلع صح (RTL) ───
+        const btn = document.createElement("button");
+        btn.id = "splash-btn";
+        btn.textContent = "ادخل المجتمع السري";
+        Object.assign(btn.style, {
+            position:    "fixed",
+            bottom:      "60px",
+            left:        "50%",
+            transform:   "translateX(-50%)",
+            zIndex:      "2000",
+            padding:     "14px 36px",
+            fontSize:    "20px",
+            fontFamily:  "'Georgia', serif",
+            fontWeight:  "bold",
+            color:       "#ffffff",
+            background:  "#3b82f6",
+            border:      "none",
+            borderRadius:"8px",
+            cursor:      "pointer",
+            direction:   "rtl",
+            letterSpacing: "1px",
+            opacity:     "0",
+            transition:  "opacity 0.6s ease, transform 0.15s ease, background 0.2s ease",
+            boxShadow:   "0 4px 20px rgba(59,130,246,0.4)",
+        });
+        btn.addEventListener("mouseover", () => {
+            btn.style.background = "#60a5fa";
+        });
+        btn.addEventListener("mouseout", () => {
+            btn.style.background = "#3b82f6";
+        });
+        btn.addEventListener("mousedown", () => {
+            btn.style.transform = "translateX(-50%) scale(0.96)";
+        });
+        document.body.appendChild(btn);
 
-        // اهتزاز خفيف للزر
-        this.tweens.add({
-            targets: btnBg,
-            scaleX: 1.03, scaleY: 1.03,
-            duration: 900, yoyo: true, repeat: -1, delay: 1400
+        // fade in الزر بعد الصورة
+        this.time.delayedCall(900, () => {
+            btn.style.opacity = "1";
         });
 
-        // عند الضغط - ادخل اللوبي
         const enterLobby = () => {
-            [bg, img, btnBg, btnTxt].forEach(o => {
-                this.tweens.add({ targets: o, alpha: 0, duration: 400 });
+            btn.style.opacity = "0";
+            this.tweens.add({ targets: [bg, img], alpha: 0, duration: 450 });
+            this.time.delayedCall(500, () => {
+                document.getElementById("splash-btn")?.remove();
+        document.getElementById("lobby-hero-title")?.remove();
+        document.getElementById("lobby-mobile-title")?.remove();
+                this.initLobby();
             });
-            this.time.delayedCall(450, () => this.initLobby());
         };
 
-        btnBg.setInteractive().on("pointerdown", enterLobby);
-        btnTxt.setInteractive().on("pointerdown", enterLobby);
-
-        // أو اضغط أي مكان
-        this.input.once("pointerdown", (_p: any, _go: any, e: any) => {
-            // تجاهل لو ضغط الزر (handled above)
-            enterLobby();
-        });
+        btn.addEventListener("click", enterLobby);
     }
 
     private initLobby() {
@@ -104,6 +124,9 @@ export default class LobbyScene extends Phaser.Scene {
         const isMobile = W < 700;
 
         this.cameras.main.fadeIn(500, 6, 8, 16);
+        // cleanup عناصر قديمة لو كانت موجودة
+        document.getElementById("lobby-hero-title")?.remove();
+        document.getElementById("lobby-mobile-title")?.remove();
 
         this.drawBackground(W, H);
 
@@ -210,14 +233,32 @@ export default class LobbyScene extends Phaser.Scene {
         g1.lineStyle(1, this.C.accent, 0.22);
         g1.moveTo(cx - lineW/2, cy - s*4.2); g1.lineTo(cx + lineW/2, cy - s*4.2); g1.strokePath();
 
-        // ─── العنوان الرئيسي ───
+        // ─── العنوان الرئيسي (HTML عشان RTL يشتغل صح) ───
         const titleSize = Math.min(Math.floor(heroW * 0.11), 52);
-        const t1 = this.add.text(cx, cy - 10, "المنظمة\nالسوداء", {
-            fontSize: `${titleSize}px`, color: "#f1f5f9",
-            fontFamily: "'Georgia', serif", fontStyle: "bold",
-            letterSpacing: Math.floor(titleSize * 0.1), align: "center", lineSpacing: 4
-        }).setOrigin(0.5).setDepth(2).setAlpha(0);
-        this.tweens.add({ targets: t1, alpha: 1, y: t1.y - 8, duration: 700, delay: 200, ease: "Cubic.easeOut" });
+        const titleEl = document.createElement("div");
+        titleEl.id = "lobby-hero-title";
+        titleEl.textContent = "المنظمة السوداء";
+        Object.assign(titleEl.style, {
+            position:   "fixed",
+            top:        `${cy - 10 - titleSize}px`,
+            left:       `${cx - heroW * 0.4}px`,
+            width:      `${heroW * 0.8}px`,
+            textAlign:  "center",
+            direction:  "rtl",
+            fontSize:   `${titleSize}px`,
+            fontFamily: "'Georgia', serif",
+            fontWeight: "bold",
+            color:      "#f1f5f9",
+            lineHeight: "1.2",
+            pointerEvents: "none",
+            zIndex:     "10",
+            opacity:    "0",
+            transition: "opacity 0.7s ease",
+        });
+        document.body.appendChild(titleEl);
+        this.time.delayedCall(200, () => { titleEl.style.opacity = "1"; });
+        // placeholder شفاف في Phaser للـ spacing
+        const t1 = this.add.rectangle(cx, cy - 10, 10, titleSize * 2.4, 0x000000, 0).setDepth(2);
 
         // subtitle
         const t2 = this.add.text(cx, cy + titleSize + 22, "MULTIPLAYER  ·  SOCIAL DEDUCTION", {
@@ -269,10 +310,26 @@ export default class LobbyScene extends Phaser.Scene {
         icon.fillTriangle(cx - 10, 28, cx + 10, 28, cx, 44);
         icon.fillTriangle(cx - 10, 50, cx + 10, 50, cx, 34);
 
-        this.add.text(cx, 64, "المنظمة السوداء", {
-            fontSize: "20px", color: "#f1f5f9",
-            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 4
-        }).setOrigin(0.5).setDepth(2);
+        // العنوان العربي كـ HTML عشان RTL
+        const mTitleEl = document.createElement("div");
+        mTitleEl.id = "lobby-mobile-title";
+        mTitleEl.textContent = "المنظمة السوداء";
+        Object.assign(mTitleEl.style, {
+            position:   "fixed",
+            top:        "46px",
+            left:       "0",
+            right:      "0",
+            textAlign:  "center",
+            direction:  "rtl",
+            fontSize:   "20px",
+            fontFamily: "'Georgia', serif",
+            fontWeight: "bold",
+            color:      "#f1f5f9",
+            letterSpacing: "2px",
+            pointerEvents: "none",
+            zIndex:     "10",
+        });
+        document.body.appendChild(mTitleEl);
 
         this.add.text(cx, 86, "MULTIPLAYER  ·  SOCIAL DEDUCTION", {
             fontSize: "8px", color: "#3b82f6",
@@ -779,6 +836,9 @@ export default class LobbyScene extends Phaser.Scene {
         if (this.playerCountInterval) clearInterval(this.playerCountInterval);
         document.getElementById("lobby-username")?.remove();
         document.getElementById("admin-pass-overlay")?.remove();
+        document.getElementById("splash-btn")?.remove();
+        document.getElementById("lobby-hero-title")?.remove();
+        document.getElementById("lobby-mobile-title")?.remove();
         this.particles.forEach(p => p.gfx.destroy());
         this.particles = [];
         ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined"]
