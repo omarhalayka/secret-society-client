@@ -624,14 +624,8 @@ export default class GameScene extends Phaser.Scene {
         const gap    = 6;
         const maxCards = 10;
 
-        // نحرك الكروت القديمة للأسفل
-        this.eventLogItems.forEach((item, i) => {
-            const targetY = baseY + (i + 1) * (cardH + gap);
-            this.tweens.add({ targets: item, y: targetY, duration: 220, ease: "Cubic.easeOut" });
-        });
-
         // ─── Container الكرت الجديد ───
-        const container = this.add.container(cardX, baseY - cardH).setDepth(3).setAlpha(0);
+        const container = this.add.container(cardX, baseY).setDepth(3).setAlpha(0);
 
         // خلفية الكرت
         const bg = this.add.graphics();
@@ -676,21 +670,29 @@ export default class GameScene extends Phaser.Scene {
 
         container.add([bg, bar, icon, labelTxt, mainTxt, timeTxt]);
 
-        // أنيميشن دخول من الأعلى
-        this.tweens.add({
-            targets: container,
-            alpha: 1,
-            y: baseY,
-            duration: 350,
-            ease: "Back.easeOut"
-        });
-
+        // أضف الكرت للقائمة أولاً
         this.eventLogItems.push(container as any);
+
+        // رتّب كل الكروت بالترتيب الصح من فوق لتحت
+        this.eventLogItems.forEach((item, i) => {
+            const targetY = baseY + i * (cardH + gap);
+            if (i === this.eventLogItems.length - 1) {
+                // الكرت الجديد — أنيميشن دخول
+                this.tweens.add({ targets: item, alpha: 1, y: targetY, duration: 350, ease: "Back.easeOut" });
+            } else {
+                // الكروت القديمة — تنزل بسلاسة
+                this.tweens.add({ targets: item, y: targetY, duration: 220, ease: "Cubic.easeOut" });
+            }
+        });
 
         // نشيل الكروت الزيادة
         if (this.eventLogItems.length > maxCards) {
             const old = this.eventLogItems.shift()!;
             this.tweens.add({ targets: old, alpha: 0, duration: 200, onComplete: () => (old as any).destroy() });
+            // نعيد ترتيب الباقيين بعد الحذف
+            this.eventLogItems.forEach((item, i) => {
+                this.tweens.add({ targets: item, y: baseY + i * (cardH + gap), duration: 180, ease: "Cubic.easeOut" });
+            });
         }
     }
 
