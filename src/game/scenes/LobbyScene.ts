@@ -469,14 +469,15 @@ export default class LobbyScene extends Phaser.Scene {
             const isActive = role.key === this.selectedType;
             const c = this.add.container(bx, cy).setDepth(3);
 
+            // موبايل: خلفية أغمق وأوضح عشان تبرز فوق الفيديو
             const bg = this.add.rectangle(0, 0, btnW, btnH,
-                isActive ? 0x0d1f3c : this.C.card);
+                isActive ? 0x0d1f3c : 0x0a0f1a, isActive ? 1 : 0.92);
             bg.setStrokeStyle(isActive ? 2 : 1,
-                isActive ? role.colHex : this.C.cardBorder);
+                isActive ? role.colHex : 0x2d3748);
 
             const iconTxt = this.add.text(0, -12, role.icon, { fontSize: "20px" }).setOrigin(0.5);
             const lbl     = this.add.text(0, 14, role.label, {
-                fontSize: "9px", color: isActive ? role.hex : "#4a5568",
+                fontSize: "9px", color: isActive ? role.hex : "#6b7280",
                 fontFamily: "'Courier New', monospace", letterSpacing: 1, fontStyle: "bold"
             }).setOrigin(0.5);
 
@@ -490,15 +491,15 @@ export default class LobbyScene extends Phaser.Scene {
 
             c.on("pointerover", () => {
                 if (this.selectedType !== role.key) {
-                    bg.setFillStyle(0x0d1117); bg.setStrokeStyle(1, role.colHex);
+                    bg.setFillStyle(0x111827, 0.95); bg.setStrokeStyle(1, role.colHex);
                     lbl.setColor(role.hex);
                 }
                 this.tweens.add({ targets: c, scaleX: 1.04, scaleY: 1.04, duration: 100 });
             });
             c.on("pointerout", () => {
                 if (this.selectedType !== role.key) {
-                    bg.setFillStyle(this.C.card); bg.setStrokeStyle(1, this.C.cardBorder);
-                    lbl.setColor("#4a5568");
+                    bg.setFillStyle(0x0a0f1a, 0.92); bg.setStrokeStyle(1, 0x2d3748);
+                    lbl.setColor("#6b7280");
                 }
                 this.tweens.add({ targets: c, scaleX: 1, scaleY: 1, duration: 100 });
             });
@@ -517,15 +518,15 @@ export default class LobbyScene extends Phaser.Scene {
         Object.values(this.roleButtons).forEach(rc => {
             const b  = rc.list[0] as Phaser.GameObjects.Rectangle;
             const lt = rc.list[2] as Phaser.GameObjects.Text;
-            b.setFillStyle(this.C.card); b.setStrokeStyle(1, this.C.cardBorder);
-            lt.setColor("#4a5568");
+            b.setFillStyle(0x0a0f1a, 0.92); b.setStrokeStyle(1, 0x2d3748);
+            lt.setColor("#6b7280");
         });
         const rb = this.roleButtons[key];
         if (rb) {
             const r  = roles.find(r => r.key === key)!;
             const b  = rb.list[0] as Phaser.GameObjects.Rectangle;
             const lt = rb.list[2] as Phaser.GameObjects.Text;
-            b.setFillStyle(0x0d1f3c); b.setStrokeStyle(2, r.colHex);
+            b.setFillStyle(0x0d1f3c, 1); b.setStrokeStyle(2, r.colHex);
             lt.setColor(r.hex);
         }
         this.selectedType = key;
@@ -662,12 +663,15 @@ export default class LobbyScene extends Phaser.Scene {
     private createJoinButton(cx: number, cy: number, width: number) {
         const btnH = 48;
         const c    = this.add.container(cx, cy).setDepth(3);
-        const bg   = this.add.rectangle(0, 0, width, btnH, this.C.accent);
+        // موبايل: خلفية solid واضحة مع shadow وهمي
+        const shadow = this.add.rectangle(2, 3, width, btnH, 0x000000, 0.5);
+        const bg   = this.add.rectangle(0, 0, width, btnH, this.C.accent, 1);
+        bg.setStrokeStyle(2, 0x60a5fa);
         const lbl  = this.add.text(0, 0, "JOIN  QUEUE", {
-            fontSize: "12px", color: "#ffffff",
+            fontSize: "13px", color: "#ffffff",
             fontFamily: "'Courier New', monospace", letterSpacing: 4, fontStyle: "bold"
         }).setOrigin(0.5);
-        c.add([bg, lbl]);
+        c.add([shadow, bg, lbl]);
         c.setInteractive(
             new Phaser.Geom.Rectangle(-width/2, -btnH/2, width, btnH),
             Phaser.Geom.Rectangle.Contains

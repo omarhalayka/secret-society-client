@@ -48,7 +48,9 @@ class AudioManager {
         btn.textContent = "🔊";
         Object.assign(btn.style, {
             position:       "fixed",
-            bottom:         "18px",
+            // موبايل: أعلى اليمين — ديسكتوب: أسفل اليمين
+            top:            isMobile ? "14px" : "auto",
+            bottom:         isMobile ? "auto" : "18px",
             right:          "18px",
             zIndex:         "9999",
             width:          "34px",
@@ -73,7 +75,9 @@ class AudioManager {
         menu.id = "audio-vol-menu";
         Object.assign(menu.style, {
             position:       "fixed",
-            bottom:         "60px",
+            // موبايل: تنزل تحت الزر — ديسكتوب: فوق الزر
+            top:            isMobile ? "56px" : "auto",
+            bottom:         isMobile ? "auto" : "60px",
             right:          "18px",
             zIndex:         "9998",
             display:        "none",
