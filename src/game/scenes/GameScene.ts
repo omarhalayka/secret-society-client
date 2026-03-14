@@ -595,51 +595,199 @@ export default class GameScene extends Phaser.Scene {
     // ══════════════════════════════════════
     //  Event Log
     // ══════════════════════════════════════
+    // ─── helper: نحدد نوع الـ event من اللون والنص ───
+    private getEventMeta(msg: string, color: string): { icon: string; label: string; bgAlpha: number; glowColor: number } {
+        if (color === "#f87171" && msg.toLowerCase().includes("kill"))
+            return { icon: "🔪", label: "ELIMINATED", bgAlpha: 0.18, glowColor: 0xef4444 };
+        if (color === "#f87171" && msg.toLowerCase().includes("eliminat"))
+            return { icon: "⚖️", label: "VOTED OUT",  bgAlpha: 0.16, glowColor: 0xef4444 };
+        if (color === "#fbbf24")
+            return { icon: "🗳", label: "VOTE",       bgAlpha: 0.14, glowColor: 0xf59e0b };
+        if (color === "#c084fc")
+            return { icon: "📖", label: "STORY",      bgAlpha: 0.14, glowColor: 0xa855f7 };
+        if (color === "#3b82f6")
+            return { icon: "⟳",  label: "SYSTEM",     bgAlpha: 0.12, glowColor: 0x3b82f6 };
+        return   { icon: "◉",  label: "EVENT",      bgAlpha: 0.12, glowColor: 0x64748b };
+    }
+
     private addEventLog(msg: string, color: string) {
         if (this.isMobile) {
             this.addMobileEvent(msg, color);
             return;
         }
-        const ex = this.PLAYERS_W + 16;
-        const baseY = this.TOPBAR_H + 50;
-        const lineH = 26;
-        const maxL = 14;
-        this.eventLogItems.forEach((t, i) =>
-            this.tweens.add({ targets: t, y: baseY + i * lineH, duration: 180 })
-        );
-        const text = this.add.text(ex, baseY + this.eventLogItems.length * lineH + lineH,
-            `›  ${msg}`,
-            { fontSize: "13px", color, fontFamily: "'Courier New', monospace", wordWrap: { width: this.EVENTS_W - 32 } }
-        ).setDepth(3).setAlpha(0);
-        this.tweens.add({ targets: text, alpha: 1, y: text.y - lineH, duration: 320, ease: "Back.easeOut" });
-        this.eventLogItems.push(text);
-        if (this.eventLogItems.length > 14) {
+
+        const meta   = this.getEventMeta(msg, color);
+        const cardH  = 44;
+        const cardW  = this.EVENTS_W - 24;
+        const cardX  = this.PLAYERS_W + 12;
+        const baseY  = this.TOPBAR_H + 46;
+        const gap    = 6;
+        const maxCards = 10;
+
+        // نحرك الكروت القديمة للأسفل
+        this.eventLogItems.forEach((item, i) => {
+            const targetY = baseY + (i + 1) * (cardH + gap);
+            this.tweens.add({ targets: item, y: targetY, duration: 220, ease: "Cubic.easeOut" });
+        });
+
+        // ─── Container الكرت الجديد ───
+        const container = this.add.container(cardX, baseY - cardH).setDepth(3).setAlpha(0);
+
+        // خلفية الكرت
+        const bg = this.add.graphics();
+        const colorInt = parseInt(color.replace("#", ""), 16);
+        bg.fillStyle(colorInt, meta.bgAlpha);
+        bg.fillRoundedRect(0, 0, cardW, cardH, 6);
+        bg.lineStyle(1, meta.glowColor, 0.35);
+        bg.strokeRoundedRect(0, 0, cardW, cardH, 6);
+
+        // شريط لوني على اليسار
+        const bar = this.add.graphics();
+        bar.fillStyle(meta.glowColor, 0.9);
+        bar.fillRoundedRect(0, 6, 3, cardH - 12, 2);
+
+        // أيقونة
+        const icon = this.add.text(14, cardH / 2, meta.icon, {
+            fontSize: "16px"
+        }).setOrigin(0, 0.5);
+
+        // نوع الحدث
+        const labelTxt = this.add.text(36, 9, meta.label, {
+            fontSize: "8px", color: color,
+            fontFamily: "'Courier New', monospace",
+            fontStyle: "bold", letterSpacing: 2,
+        }).setOrigin(0, 0);
+
+        // النص الرئيسي
+        const cleanMsg = msg.replace(/^[📖⟳◉›\s]+/, "").trim();
+        const mainTxt = this.add.text(36, 20, cleanMsg, {
+            fontSize: "12px", color: "#e2e8f0",
+            fontFamily: "'Courier New', monospace",
+            wordWrap: { width: cardW - 55 },
+        }).setOrigin(0, 0);
+
+        // timestamp
+        const now = new Date();
+        const time = `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`;
+        const timeTxt = this.add.text(cardW - 8, 9, time, {
+            fontSize: "8px", color: "#374151",
+            fontFamily: "'Courier New', monospace",
+        }).setOrigin(1, 0);
+
+        container.add([bg, bar, icon, labelTxt, mainTxt, timeTxt]);
+
+        // أنيميشن دخول من الأعلى
+        this.tweens.add({
+            targets: container,
+            alpha: 1,
+            y: baseY,
+            duration: 350,
+            ease: "Back.easeOut"
+        });
+
+        this.eventLogItems.push(container as any);
+
+        // نشيل الكروت الزيادة
+        if (this.eventLogItems.length > maxCards) {
             const old = this.eventLogItems.shift()!;
-            this.tweens.add({ targets: old, alpha: 0, duration: 180, onComplete: () => old.destroy() });
+            this.tweens.add({ targets: old, alpha: 0, duration: 200, onComplete: () => (old as any).destroy() });
         }
     }
 
     private addMobileEvent(msg: string, color: string) {
-        // نخزن الحدث دائماً في الـ buffer
         this.mobileEventBuffer.push({ msg, color });
         if (this.mobileEventBuffer.length > 30) this.mobileEventBuffer.shift();
 
         const panel = document.getElementById("tab-panel-events");
-        if (!panel) return; // panel غير موجود - الحدث محفوظ في buffer
+        if (!panel) return;
 
-        const el = document.createElement("div");
-        Object.assign(el.style, {
-            padding: "8px 10px", borderRadius: "4px",
-            backgroundColor: "rgba(17,24,39,0.5)",
-            borderLeft: `3px solid ${color}`,
-            fontFamily: "'Courier New', monospace", fontSize: "12px",
-            color: "#cbd5e1",
-        });
-        el.textContent = `› ${msg}`;
-        panel.appendChild(el);
+        panel.appendChild(this.buildMobileEventCard(msg, color));
         panel.scrollTop = panel.scrollHeight;
         while (panel.children.length > 30) panel.removeChild(panel.firstChild!);
         this.showMobileTabBadge("events", "NEW");
+    }
+
+    private buildMobileEventCard(msg: string, color: string): HTMLElement {
+        // تحديد نوع الحدث
+        type EventType = { icon: string; label: string; bg: string; border: string };
+        let meta: EventType;
+        if (color === "#f87171" && msg.toLowerCase().includes("kill"))
+            meta = { icon: "🔪", label: "ELIMINATED", bg: "rgba(239,68,68,0.1)",  border: "#ef4444" };
+        else if (color === "#f87171")
+            meta = { icon: "⚖️", label: "VOTED OUT",  bg: "rgba(239,68,68,0.1)",  border: "#ef4444" };
+        else if (color === "#fbbf24")
+            meta = { icon: "🗳", label: "VOTE",        bg: "rgba(245,158,11,0.1)", border: "#f59e0b" };
+        else if (color === "#c084fc")
+            meta = { icon: "📖", label: "STORY",       bg: "rgba(168,85,247,0.1)", border: "#a855f7" };
+        else if (color === "#3b82f6")
+            meta = { icon: "⟳",  label: "SYSTEM",      bg: "rgba(59,130,246,0.1)", border: "#3b82f6" };
+        else
+            meta = { icon: "◉",  label: "EVENT",       bg: "rgba(100,116,139,0.1)",border: "#64748b" };
+
+        const now  = new Date();
+        const time = `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`;
+        const cleanMsg = msg.replace(/^[📖⟳◉›\s]+/, "").trim();
+
+        const card = document.createElement("div");
+        Object.assign(card.style, {
+            display:         "flex",
+            alignItems:      "flex-start",
+            gap:             "10px",
+            padding:         "10px 12px",
+            borderRadius:    "8px",
+            backgroundColor: meta.bg,
+            border:          `1px solid ${meta.border}44`,
+            borderLeft:      `3px solid ${meta.border}`,
+            animation:       "eventSlideIn 0.3s ease-out",
+        });
+
+        // أيقونة
+        const iconEl = document.createElement("div");
+        iconEl.textContent = meta.icon;
+        iconEl.style.cssText = "font-size:18px;line-height:1;margin-top:1px;min-width:22px;text-align:center";
+
+        // المحتوى
+        const body = document.createElement("div");
+        body.style.cssText = "flex:1;min-width:0";
+
+        const labelRow = document.createElement("div");
+        labelRow.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:3px";
+
+        const labelEl = document.createElement("span");
+        labelEl.textContent = meta.label;
+        labelEl.style.cssText = `font-size:9px;font-weight:bold;letter-spacing:2px;color:${color};font-family:'Courier New',monospace`;
+
+        const timeEl = document.createElement("span");
+        timeEl.textContent = time;
+        timeEl.style.cssText = "font-size:9px;color:#374151;font-family:'Courier New',monospace";
+
+        labelRow.appendChild(labelEl);
+        labelRow.appendChild(timeEl);
+
+        const textEl = document.createElement("div");
+        textEl.textContent = cleanMsg;
+        textEl.style.cssText = "font-size:13px;color:#e2e8f0;font-family:'Courier New',monospace;line-height:1.4;word-break:break-word";
+
+        body.appendChild(labelRow);
+        body.appendChild(textEl);
+        card.appendChild(iconEl);
+        card.appendChild(body);
+
+        // أضف الـ CSS animation لو ما موجودة
+        if (!document.getElementById("event-card-style")) {
+            const style = document.createElement("style");
+            style.id = "event-card-style";
+            style.textContent = `
+                @keyframes eventSlideIn {
+                    from { opacity: 0; transform: translateY(-8px); }
+                    to   { opacity: 1; transform: translateY(0);    }
+                }
+                #tab-panel-events { display:flex; flex-direction:column; gap:6px; padding:10px; overflow-y:auto; }
+            `;
+            document.head.appendChild(style);
+        }
+
+        return card;
     }
 
     private flushMobileEventBuffer() {
@@ -647,16 +795,7 @@ export default class GameScene extends Phaser.Scene {
         if (!panel || !this.mobileEventBuffer.length) return;
         panel.innerHTML = "";
         this.mobileEventBuffer.forEach(({ msg, color }) => {
-            const el = document.createElement("div");
-            Object.assign(el.style, {
-                padding: "8px 10px", borderRadius: "4px",
-                backgroundColor: "rgba(17,24,39,0.5)",
-                borderLeft: `3px solid ${color}`,
-                fontFamily: "'Courier New', monospace", fontSize: "12px",
-                color: "#cbd5e1",
-            });
-            el.textContent = `› ${msg}`;
-            panel.appendChild(el);
+            panel.appendChild(this.buildMobileEventCard(msg, color));
         });
         panel.scrollTop = panel.scrollHeight;
     }
