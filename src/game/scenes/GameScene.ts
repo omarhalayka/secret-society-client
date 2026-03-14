@@ -1770,6 +1770,9 @@ export default class GameScene extends Phaser.Scene {
             .nr-label{color:#64748b}.nr-value{font-weight:bold}
             .adr-story-textarea{width:100%;box-sizing:border-box;min-height:100px;background:#0a0e14;color:#e2e8f0;border:1px solid #1e2d45;border-radius:5px;padding:12px;font-family:'Courier New',monospace;font-size:13px;resize:vertical;outline:none}
             .adr-reveal-btn{width:100%;margin-top:10px;padding:12px;background:transparent;color:#c084fc;border:1px solid #a855f7;border-radius:5px;font-family:'Courier New',monospace;font-size:13px;font-weight:bold;cursor:pointer}
+            .ns-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid rgba(30,45,69,0.4);font-size:12px}
+            .ns-row:last-child{border-bottom:none}
+            .ns-label{color:#64748b;letter-spacing:1px}
         </style>
         <div class="adr-header">
             <div class="adr-title">👑  ADMIN  CONTROL  PANEL</div>
@@ -1784,6 +1787,14 @@ export default class GameScene extends Phaser.Scene {
                 <button class="adr-btn adr-btn-stopvote" data-event="admin_end_voting">⏹ END VOTING</button>
                 <button class="adr-btn adr-btn-danger"   data-event="admin_end_game">⚡ FORCE END</button>
                 <button class="adr-btn adr-btn-restart"  data-event="restart_game">🔄 RESTART</button>
+            </div>
+        </div>
+        <div class="adr-section" id="adr-status-section" style="display:none">
+            <div class="adr-section-title" style="color:#60a5fa">🌙 Night Actions</div>
+            <div style="background:#0a0e14;border:1px solid #1e2d45;border-radius:6px;overflow:hidden" id="adr-night-status">
+                <div class="ns-row"><span class="ns-label">🔪 Mafia</span><span style="color:#374151">⏳ Waiting...</span></div>
+                <div class="ns-row"><span class="ns-label">✚ Doctor</span><span style="color:#374151">⏳ Waiting...</span></div>
+                <div class="ns-row"><span class="ns-label">🔍 Detective</span><span style="color:#374151">⏳ Waiting...</span></div>
             </div>
         </div>
         <div class="adr-section" id="adr-night-section" style="display:none">
@@ -1879,6 +1890,27 @@ export default class GameScene extends Phaser.Scene {
         // noop for mobile admin bar, can add phase display if needed
     }
 
+    private updateNightActionStatus(status: any) {
+        if (!this.adminDrawer) return;
+        const statusEl = this.adminDrawer.querySelector<HTMLElement>("#adr-night-status");
+        if (!statusEl) return;
+
+        const render = (done: boolean, username: string | null) =>
+            done
+                ? `<span style="color:#4ade80">✓ ${username}</span>`
+                : `<span style="color:#374151">⏳ Waiting...</span>`;
+
+        statusEl.innerHTML = `
+            <div class="ns-row"><span class="ns-label">🔪 Mafia</span>${render(status.mafia.done, status.mafia.username)}</div>
+            <div class="ns-row"><span class="ns-label">✚ Doctor</span>${render(status.doctor.done, status.doctor.username)}</div>
+            <div class="ns-row"><span class="ns-label">🔍 Detective</span>${render(status.detective.done, status.detective.username)}</div>
+        `;
+
+        // نظهر الـ section تلقائياً لو كان مخفي
+        const section = this.adminDrawer.querySelector<HTMLElement>("#adr-status-section");
+        if (section) section.style.display = "block";
+    }
+
     private showNightReviewInDrawer(data: any) {
         if (!this.isAdmin || !this.adminDrawer) return;
         const mafiaTarget = this.currentPlayers.find(p => p.id === data.mafiaTarget);
@@ -1906,7 +1938,7 @@ export default class GameScene extends Phaser.Scene {
             "room_state", "phase_changed", "game_over", "game_started",
             "vote_update", "player_killed", "receive_message",
             "detective_result", "voting_result", "voting_started",
-            "night_review", "night_story", "back_to_lobby"
+            "night_review", "night_story", "back_to_lobby", "night_action_status"
         ];
         evts.forEach(e => socketService.socket.off(e));
 
@@ -1947,6 +1979,19 @@ export default class GameScene extends Phaser.Scene {
                     this.time.delayedCall(500, () => this.scene.start(targetScene, { roomId: this.roomId, players: this.currentPlayers }));
                     return;
                 }
+            }
+            // reset حالة الـ night actions للأدمن عند بداية الليل
+            if (data.phase === "NIGHT" && this.isAdmin && this.adminDrawer) {
+                const statusEl = this.adminDrawer.querySelector<HTMLElement>("#adr-night-status");
+                if (statusEl) {
+                    statusEl.innerHTML = `
+                        <div class="ns-row"><span class="ns-label">🔪 Mafia</span><span style="color:#374151">⏳ Waiting...</span></div>
+                        <div class="ns-row"><span class="ns-label">✚ Doctor</span><span style="color:#374151">⏳ Waiting...</span></div>
+                        <div class="ns-row"><span class="ns-label">🔍 Detective</span><span style="color:#374151">⏳ Waiting...</span></div>
+                    `;
+                }
+                const section = this.adminDrawer.querySelector<HTMLElement>("#adr-status-section");
+                if (section) section.style.display = "block";
             }
             if (data.phase !== "NIGHT") this.isNightSceneActive = false;
             this.showPhaseTransition(data.phase);
@@ -1991,8 +2036,15 @@ export default class GameScene extends Phaser.Scene {
         });
 
         socketService.socket.on("night_review", (data: any) => {
-            this.showNightReviewInDrawer(data);
-            this.showNightResultOverlay(data);
+            // night_review بوصل للأدمن بس — الـ clients ما يشوفوا النتائج
+            if (this.isAdmin) {
+                this.showNightReviewInDrawer(data);
+            }
+        });
+
+        socketService.socket.on("night_action_status", (status: any) => {
+            if (!this.isAdmin) return;
+            this.updateNightActionStatus(status);
         });
 
         socketService.socket.on("night_story", (data: any) => {
@@ -2041,7 +2093,7 @@ export default class GameScene extends Phaser.Scene {
             "room_state", "phase_changed", "game_over", "game_started",
             "vote_update", "player_killed", "receive_message",
             "detective_result", "voting_result", "voting_started",
-            "night_review", "night_story", "back_to_lobby"
+            "night_review", "night_story", "back_to_lobby", "night_action_status"
         ];
         evts.forEach(e => socketService.socket.off(e));
         this.tweens.killAll();
