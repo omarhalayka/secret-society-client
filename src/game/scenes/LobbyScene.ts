@@ -65,33 +65,6 @@ export default class LobbyScene extends Phaser.Scene {
         // fade in الصورة
         this.tweens.add({ targets: img, alpha: 1, duration: 900, delay: 200 });
 
-        // ─── نحضّر الفيديو مسبقاً (preload بس، بدون play) ───
-        document.getElementById("lobby-bg-video")?.remove();
-        const vid = document.createElement("video");
-        vid.id      = "lobby-bg-video";
-        vid.src     = "/bg.mp4";
-        vid.loop    = true;
-        vid.muted   = true;
-        vid.preload = "auto";
-        vid.autoplay = false; // ما نشغّله هون
-        (vid as any).playsInline = true;
-        vid.setAttribute("muted", "");
-        vid.setAttribute("playsinline", "");
-        Object.assign(vid.style, {
-            position: "fixed", top: "0", left: "0",
-            width: "100%", height: "100%",
-            objectFit: "cover", zIndex: "1",
-            opacity: "0", transition: "opacity 1.5s ease",
-            pointerEvents: "none",
-        });
-        const showVideo = () => { vid.style.opacity = "0.55"; };
-        vid.addEventListener("canplay",    showVideo, { once: true });
-        vid.addEventListener("playing",    showVideo, { once: true });
-        vid.addEventListener("loadeddata", showVideo, { once: true });
-        document.body.insertBefore(vid, document.body.firstChild);
-        // load بس، بدون play
-        vid.load();
-
         // ─── زر HTML عشان النص العربي يطلع صح (RTL) ───
         const btn = document.createElement("button");
         btn.id = "splash-btn";
@@ -140,12 +113,8 @@ export default class LobbyScene extends Phaser.Scene {
         const enterLobby = () => {
             if (entered) return;
             entered = true;
+            // شغّل الموسيقى عند أول ضغطة (browser policy)
             audioManager.play();
-
-            // ─── شغّل الفيديو فوراً ضمن user gesture — قبل أي delay ───
-            const vid = document.getElementById("lobby-bg-video") as HTMLVideoElement | null;
-            if (vid) vid.play().catch(() => {});
-
             btn.style.opacity = "0";
             this.tweens.add({ targets: [bg, img], alpha: 0, duration: 450 });
             this.time.delayedCall(500, () => {
@@ -820,18 +789,20 @@ export default class LobbyScene extends Phaser.Scene {
     //  VIDEO BACKGROUND
     // ═══════════════════════════════════════════════════════════════════════════
     private startBgVideo() {
-        // الفيديو موجود ومشغّل من showSplashScreen + enterLobby
-        // هنا فقط نخلي الـ canvas شفاف عشان يبيّن الفيديو من تحته
+        document.getElementById("lobby-bg-video")?.remove();
 
+        // ─── خلي كل شي شفاف ───
         document.body.style.background = "transparent";
         document.body.style.margin     = "0";
 
         const gameDiv = document.getElementById("game");
         if (gameDiv) {
-            gameDiv.style.background = "transparent";
-            gameDiv.style.position   = "fixed";
-            gameDiv.style.top = "0"; gameDiv.style.left = "0";
-            gameDiv.style.width = "100%"; gameDiv.style.height = "100%";
+            gameDiv.style.background  = "transparent";
+            gameDiv.style.position    = "fixed";
+            gameDiv.style.top         = "0";
+            gameDiv.style.left        = "0";
+            gameDiv.style.width       = "100%";
+            gameDiv.style.height      = "100%";
         }
 
         const canvas = document.querySelector("canvas");
@@ -839,9 +810,56 @@ export default class LobbyScene extends Phaser.Scene {
             const el = canvas as HTMLElement;
             el.style.background = "transparent";
             el.style.position   = "fixed";
-            el.style.top = "0"; el.style.left = "0";
-            el.style.zIndex = "10";
+            el.style.top        = "0";
+            el.style.left       = "0";
+            el.style.zIndex     = "10";
         }
+
+        // ─── الفيديو تحت الـ canvas مباشرة ───
+        const vid = document.createElement("video");
+        vid.id             = "lobby-bg-video";
+        vid.src            = "/bg.mp4";
+        vid.autoplay       = true;
+        vid.loop           = true;
+        vid.muted          = true;
+        (vid as any).playsInline = true;
+        vid.setAttribute("muted", "");
+        vid.setAttribute("playsinline", "");
+        Object.assign(vid.style, {
+            position:      "fixed",
+            top:           "0",
+            left:          "0",
+            width:         "100%",
+            height:        "100%",
+            objectFit:     "cover",
+            zIndex:        "1",
+            opacity:       "0",
+            transition:    "opacity 1.5s ease",
+            pointerEvents: "none",
+        });
+
+        // نظهر الفيديو عند أي من هذه الأحداث
+        const showVideo = () => { vid.style.opacity = "0.55"; };
+        vid.addEventListener("canplay",    showVideo, { once: true });
+        vid.addEventListener("playing",    showVideo, { once: true });
+        vid.addEventListener("loadeddata", showVideo, { once: true });
+
+        // نضيف الفيديو أول شي في الـ body (تحت كل شي)
+        document.body.insertBefore(vid, document.body.firstChild);
+
+        // نشغّله مباشرة — بعد user interaction دايماً ينجح
+        vid.play().then(() => {
+            showVideo();
+        }).catch(() => {
+            // fallback نادر — نشغّله عند أول تفاعل
+            const onInteract = () => {
+                vid.play().catch(() => {});
+                document.removeEventListener("click",   onInteract);
+                document.removeEventListener("keydown", onInteract);
+            };
+            document.addEventListener("click",   onInteract, { once: true });
+            document.addEventListener("keydown", onInteract, { once: true });
+        });
     }
 
     private drawBackground(W: number, H: number) {
