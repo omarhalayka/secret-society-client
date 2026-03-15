@@ -115,6 +115,11 @@ export default class LobbyScene extends Phaser.Scene {
             entered = true;
             // شغّل الموسيقى عند أول ضغطة (browser policy)
             audioManager.play();
+
+            // ─── شغّل الفيديو فوراً هنا — لازم يكون في نفس لحظة الـ click ───
+            // لو انتظرنا الـ delayedCall المتصفح بيمنع autoplay على الديسكتوب
+            this.prepareBackgroundVideo();
+
             btn.style.opacity = "0";
             this.tweens.add({ targets: [bg, img], alpha: 0, duration: 450 });
             this.time.delayedCall(500, () => {
@@ -788,10 +793,45 @@ export default class LobbyScene extends Phaser.Scene {
     // ═══════════════════════════════════════════════════════════════════════════
     //  VIDEO BACKGROUND
     // ═══════════════════════════════════════════════════════════════════════════
-    private startBgVideo() {
+    // ─── ينادى مباشرة عند الـ click — يشغّل الفيديو ضمن user gesture ───
+    private prepareBackgroundVideo() {
         document.getElementById("lobby-bg-video")?.remove();
 
-        // ─── خلي كل شي شفاف ───
+        const vid = document.createElement("video");
+        vid.id    = "lobby-bg-video";
+        vid.src   = "/bg.mp4";
+        vid.loop  = true;
+        vid.muted = true;
+        (vid as any).playsInline = true;
+        vid.setAttribute("muted", "");
+        vid.setAttribute("playsinline", "");
+        Object.assign(vid.style, {
+            position:      "fixed",
+            top:           "0", left: "0",
+            width:         "100%", height: "100%",
+            objectFit:     "cover",
+            zIndex:        "1",
+            opacity:       "0",
+            transition:    "opacity 1.5s ease",
+            pointerEvents: "none",
+        });
+
+        const showVideo = () => { vid.style.opacity = "0.55"; };
+        vid.addEventListener("canplay",    showVideo, { once: true });
+        vid.addEventListener("playing",    showVideo, { once: true });
+        vid.addEventListener("loadeddata", showVideo, { once: true });
+
+        // نضيفه أول شي في الـ body
+        document.body.insertBefore(vid, document.body.firstChild);
+
+        // هذا بيشتغل ضمن user gesture chain — بينجح على كل المتصفحات
+        vid.play().then(showVideo).catch((e) => console.warn("Video play failed:", e));
+    }
+
+    private startBgVideo() {
+        // الفيديو اتحضّر مسبقاً في prepareBackgroundVideo()
+        // هنا بس نتأكد من الـ canvas والـ body شفافين
+
         document.body.style.background = "transparent";
         document.body.style.margin     = "0";
 
@@ -814,52 +854,6 @@ export default class LobbyScene extends Phaser.Scene {
             el.style.left       = "0";
             el.style.zIndex     = "10";
         }
-
-        // ─── الفيديو تحت الـ canvas مباشرة ───
-        const vid = document.createElement("video");
-        vid.id             = "lobby-bg-video";
-        vid.src            = "/bg.mp4";
-        vid.autoplay       = true;
-        vid.loop           = true;
-        vid.muted          = true;
-        (vid as any).playsInline = true;
-        vid.setAttribute("muted", "");
-        vid.setAttribute("playsinline", "");
-        Object.assign(vid.style, {
-            position:      "fixed",
-            top:           "0",
-            left:          "0",
-            width:         "100%",
-            height:        "100%",
-            objectFit:     "cover",
-            zIndex:        "1",
-            opacity:       "0",
-            transition:    "opacity 1.5s ease",
-            pointerEvents: "none",
-        });
-
-        // نظهر الفيديو عند أي من هذه الأحداث
-        const showVideo = () => { vid.style.opacity = "0.55"; };
-        vid.addEventListener("canplay",    showVideo, { once: true });
-        vid.addEventListener("playing",    showVideo, { once: true });
-        vid.addEventListener("loadeddata", showVideo, { once: true });
-
-        // نضيف الفيديو أول شي في الـ body (تحت كل شي)
-        document.body.insertBefore(vid, document.body.firstChild);
-
-        // نشغّله مباشرة — بعد user interaction دايماً ينجح
-        vid.play().then(() => {
-            showVideo();
-        }).catch(() => {
-            // fallback نادر — نشغّله عند أول تفاعل
-            const onInteract = () => {
-                vid.play().catch(() => {});
-                document.removeEventListener("click",   onInteract);
-                document.removeEventListener("keydown", onInteract);
-            };
-            document.addEventListener("click",   onInteract, { once: true });
-            document.addEventListener("keydown", onInteract, { once: true });
-        });
     }
 
     private drawBackground(W: number, H: number) {
