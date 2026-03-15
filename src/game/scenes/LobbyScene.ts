@@ -931,6 +931,32 @@ export default class LobbyScene extends Phaser.Scene {
     shutdown() {
         if (this.playerCountInterval) clearInterval(this.playerCountInterval);
         this.cleanupAllLobbyHTML();
+
+        // ─── مسح الفيديو وإرجاع كل شي لحالته الطبيعية ───
+        document.getElementById("lobby-bg-video")?.remove();
+        document.body.style.background = "";
+        document.body.style.margin     = "";
+
+        const gameDiv = document.getElementById("game");
+        if (gameDiv) {
+            gameDiv.style.background = "";
+            gameDiv.style.position   = "";
+            gameDiv.style.top        = "";
+            gameDiv.style.left       = "";
+            gameDiv.style.width      = "";
+            gameDiv.style.height     = "";
+        }
+
+        const canvas = document.querySelector("canvas");
+        if (canvas) {
+            const el = canvas as HTMLElement;
+            el.style.background = "";
+            el.style.position   = "";
+            el.style.top        = "";
+            el.style.left       = "";
+            el.style.zIndex     = "";
+        }
+
         this.particles.forEach(p => p.gfx.destroy());
         this.particles = [];
         ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined"]
