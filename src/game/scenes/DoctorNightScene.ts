@@ -324,8 +324,9 @@ export default class DoctorNightScene extends Phaser.Scene {
         });
     }
 
-    // ─── helper: نضيف الـ event للموبايل panel لو موجود ───
+    // ─── helper: نحفظ الـ event عشان GameScene تعرضه لما ترجع ───
     private addNightEventToMobilePanel(msg: string, color: string) {
+        socketService.pendingEvents.push({ msg, color });
         const panel = document.getElementById("tab-panel-events");
         if (!panel) return;
         const now  = new Date();

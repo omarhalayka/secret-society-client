@@ -115,6 +115,16 @@ export default class GameScene extends Phaser.Scene {
 
         this.setupSocketListeners();
         socketService.socket.emit("request_room_state");
+
+        // عرض الأحداث المعلقة من NightScene (مثل player_killed)
+        if (socketService.pendingEvents.length > 0) {
+            const pending = [...socketService.pendingEvents];
+            socketService.pendingEvents = [];
+            // نأخر قليلاً عشان الـ scene تخلص setup
+            this.time.delayedCall(300, () => {
+                pending.forEach(({ msg, color }) => this.addEventLog(msg, color));
+            });
+        }
     }
 
     // ══════════════════════════════════════

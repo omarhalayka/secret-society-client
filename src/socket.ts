@@ -6,8 +6,10 @@ class SocketService {
     public roomId: string | null = null;
     public isAdmin: boolean = false;
 
+    // أحداث معلقة تُعرض لما GameScene تفتح
+    public pendingEvents: Array<{ msg: string; color: string }> = [];
+
     constructor() {
-        // تأكد من أن العنوان صحيح - استخدم localhost:3000
         this.socket = io("https://secret-society-server.onrender.com");
 
         this.socket.on("game_started", (data: any) => {
@@ -38,6 +40,7 @@ class SocketService {
         this.role = null;
         this.roomId = null;
         this.isAdmin = false;
+        this.pendingEvents = [];
     }
 }
 

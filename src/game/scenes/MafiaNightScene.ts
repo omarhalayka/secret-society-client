@@ -359,8 +359,12 @@ export default class MafiaNightScene extends Phaser.Scene {
         });
     }
 
-    // ─── helper: نضيف الـ event للموبايل panel لو موجود ───
+    // ─── helper: نحفظ الـ event عشان GameScene تعرضه لما ترجع ───
     private addNightEventToMobilePanel(msg: string, color: string) {
+        // نحفظ في socketService عشان GameScene تعرضه لما تفتح
+        socketService.pendingEvents.push({ msg, color });
+
+        // لو الـ panel موجود (موبايل) نضيفه مباشرة
         const panel = document.getElementById("tab-panel-events");
         if (!panel) return;
         const now  = new Date();

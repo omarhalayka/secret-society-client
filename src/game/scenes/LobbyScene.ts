@@ -823,44 +823,43 @@ export default class LobbyScene extends Phaser.Scene {
         vid.loop           = true;
         vid.muted          = true;
         (vid as any).playsInline = true;
-        // setAttribute عشان بعض المتصفحات تحتاجه صريح
         vid.setAttribute("muted", "");
         vid.setAttribute("playsinline", "");
         Object.assign(vid.style, {
             position:      "fixed",
             top:           "0",
             left:          "0",
-            width:         "100vw",
-            height:        "100vh",
+            width:         "100%",
+            height:        "100%",
             objectFit:     "cover",
-            zIndex:        "5",
+            zIndex:        "1",
             opacity:       "0",
             transition:    "opacity 1.5s ease",
             pointerEvents: "none",
         });
 
-        vid.addEventListener("canplay", () => {
-            vid.style.opacity = "0.55";
+        // نظهر الفيديو عند أي من هذه الأحداث
+        const showVideo = () => { vid.style.opacity = "0.55"; };
+        vid.addEventListener("canplay",    showVideo, { once: true });
+        vid.addEventListener("playing",    showVideo, { once: true });
+        vid.addEventListener("loadeddata", showVideo, { once: true });
+
+        // نضيف الفيديو أول شي في الـ body (تحت كل شي)
+        document.body.insertBefore(vid, document.body.firstChild);
+
+        // نشغّله مباشرة — بعد user interaction دايماً ينجح
+        vid.play().then(() => {
+            showVideo();
+        }).catch(() => {
+            // fallback نادر — نشغّله عند أول تفاعل
+            const onInteract = () => {
+                vid.play().catch(() => {});
+                document.removeEventListener("click",   onInteract);
+                document.removeEventListener("keydown", onInteract);
+            };
+            document.addEventListener("click",   onInteract, { once: true });
+            document.addEventListener("keydown", onInteract, { once: true });
         });
-
-        document.body.appendChild(vid);
-
-        // نحاول نشغّل فوراً — على الموبايل بينجح، على الديسكتوب ممكن يفشل
-        const tryPlay = () => {
-            vid.play().catch(() => {
-                // لو فشل (الديسكتوب قبل interaction) — نستنى أول click
-                const onInteract = () => {
-                    vid.play().catch(() => {});
-                    document.removeEventListener("click",      onInteract);
-                    document.removeEventListener("touchstart", onInteract);
-                    document.removeEventListener("keydown",    onInteract);
-                };
-                document.addEventListener("click",      onInteract, { once: true });
-                document.addEventListener("touchstart", onInteract, { once: true, passive: true });
-                document.addEventListener("keydown",    onInteract, { once: true });
-            });
-        };
-        tryPlay();
     }
 
     private drawBackground(W: number, H: number) {
