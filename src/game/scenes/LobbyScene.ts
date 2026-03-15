@@ -126,7 +126,7 @@ export default class LobbyScene extends Phaser.Scene {
                 opacity: "0", transition: "opacity 1.5s ease",
                 pointerEvents: "none",
             });
-            const showVideo = () => { vid.style.opacity = "0.8"; };
+            const showVideo = () => { vid.style.opacity = "0.55"; };
             vid.addEventListener("canplay",    showVideo, { once: true });
             vid.addEventListener("playing",    showVideo, { once: true });
             vid.addEventListener("loadeddata", showVideo, { once: true });
@@ -199,7 +199,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         // بطاقة شفافة - backdrop blur بدل اللون الصلب
         this.add.rectangle(formCx, cy, cardW + 6, cardH + 6, 0x3b82f6, 0.08).setDepth(1);
-        const card = this.add.rectangle(formCx, cy, cardW, cardH, 0x060810, 0.35).setDepth(2);
+        const card = this.add.rectangle(formCx, cy, cardW, cardH, 0x060810, 0.82).setDepth(2);
         card.setStrokeStyle(1, this.C.cardBorder);
 
         // شريط لوني أعلى البطاقة
@@ -395,7 +395,7 @@ export default class LobbyScene extends Phaser.Scene {
         const cardT  = headerH; // أعلى البطاقة
 
         // بطاقة شفافة مع HTML blur overlay
-        const card = this.add.rectangle(cardCX, cardCY, cardW, cardH, 0x060810, 0.35).setDepth(1);
+        const card = this.add.rectangle(cardCX, cardCY, cardW, cardH, 0x060810, 0.82).setDepth(1);
         card.setStrokeStyle(1, this.C.cardBorder);
 
         // شريط لوني أعلى
@@ -485,7 +485,8 @@ export default class LobbyScene extends Phaser.Scene {
         roles.forEach((role, i) => {
             const bx = sx + i * (btnW + gap);
             const isActive = role.key === this.selectedType;
-            const c = this.add.container(bx, cy).setDepth(3).setAlpha(0.85);
+            const c = this.add.container(bx, cy).setDepth(3);
+
             const bg = this.add.rectangle(0, 0, btnW, btnH,
                 isActive ? 0x0d1f3c : this.C.card);
             bg.setStrokeStyle(isActive ? 2 : 1,
@@ -710,7 +711,7 @@ export default class LobbyScene extends Phaser.Scene {
         }
         socketService.reset();
         socketService.socket.emit("set_username", username);
-        socketService.socket.emit("set_avatar", "🙋‍♂️");
+        socketService.socket.emit("set_avatar", "😎");
         socketService.socket.emit("set_color", "#1e293b");
 
         if (this.selectedType === "admin") {
