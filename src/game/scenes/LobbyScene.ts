@@ -485,8 +485,7 @@ export default class LobbyScene extends Phaser.Scene {
         roles.forEach((role, i) => {
             const bx = sx + i * (btnW + gap);
             const isActive = role.key === this.selectedType;
-            const c = this.add.container(bx, cy).setDepth(3);
-
+            const c = this.add.container(bx, cy).setDepth(3).setAlpha(0.85);
             const bg = this.add.rectangle(0, 0, btnW, btnH,
                 isActive ? 0x0d1f3c : this.C.card);
             bg.setStrokeStyle(isActive ? 2 : 1,
@@ -711,7 +710,7 @@ export default class LobbyScene extends Phaser.Scene {
         }
         socketService.reset();
         socketService.socket.emit("set_username", username);
-        socketService.socket.emit("set_avatar", "😎");
+        socketService.socket.emit("set_avatar", "🙋‍♂️");
         socketService.socket.emit("set_color", "#1e293b");
 
         if (this.selectedType === "admin") {
