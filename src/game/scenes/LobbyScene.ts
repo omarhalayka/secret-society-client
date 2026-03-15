@@ -790,6 +790,27 @@ export default class LobbyScene extends Phaser.Scene {
             if (data.role === "ADMIN")          { userType = "ADMIN";     socketService.isAdmin = true; }
             else if (data.role === "SPECTATOR") { userType = "SPECTATOR"; }
             this.cleanupAllLobbyHTML();
+
+            // ─── امسح الفيديو وأرجع كل شي لحالته قبل الانتقال ───
+            document.getElementById("lobby-bg-video")?.remove();
+            document.body.style.background = "";
+            document.body.style.margin     = "";
+            const gameDiv = document.getElementById("game");
+            if (gameDiv) {
+                gameDiv.style.background = "";
+                gameDiv.style.position   = "";
+                gameDiv.style.top = ""; gameDiv.style.left = "";
+                gameDiv.style.width = ""; gameDiv.style.height = "";
+            }
+            const canvas = document.querySelector("canvas");
+            if (canvas) {
+                const el = canvas as HTMLElement;
+                el.style.background = "";
+                el.style.position   = "";
+                el.style.top = ""; el.style.left = "";
+                el.style.zIndex = "";
+            }
+
             this.cameras.main.fadeOut(400, 6, 8, 16);
             this.time.delayedCall(400, () => {
                 this.scene.start("GameScene", { role: data.role, roomId: data.roomId, userType });
