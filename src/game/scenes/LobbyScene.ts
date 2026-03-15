@@ -65,34 +65,6 @@ export default class LobbyScene extends Phaser.Scene {
         // fade in الصورة
         this.tweens.add({ targets: img, alpha: 1, duration: 900, delay: 200 });
 
-        // ─── نحضّر الفيديو مسبقاً (preload بس، بدون play) ───
-        document.getElementById("lobby-bg-video")?.remove();
-        const isDesktop = window.innerWidth >= 700;
-        const vid = document.createElement("video");
-        vid.id      = "lobby-bg-video";
-        vid.src     = isDesktop ? "/bg-desktop.mp4" : "/bg.mp4";
-        vid.loop    = true;
-        vid.muted   = true;
-        vid.preload = "auto";
-        vid.autoplay = false; // ما نشغّله هون
-        (vid as any).playsInline = true;
-        vid.setAttribute("muted", "");
-        vid.setAttribute("playsinline", "");
-        Object.assign(vid.style, {
-            position: "fixed", top: "0", left: "0",
-            width: "100%", height: "100%",
-            objectFit: "cover", zIndex: "1",
-            opacity: "0", transition: "opacity 1.5s ease",
-            pointerEvents: "none",
-        });
-        const showVideo = () => { vid.style.opacity = "0.55"; };
-        vid.addEventListener("canplay",    showVideo, { once: true });
-        vid.addEventListener("playing",    showVideo, { once: true });
-        vid.addEventListener("loadeddata", showVideo, { once: true });
-        document.body.insertBefore(vid, document.body.firstChild);
-        // load بس، بدون play
-        vid.load();
-
         // ─── زر HTML عشان النص العربي يطلع صح (RTL) ───
         const btn = document.createElement("button");
         btn.id = "splash-btn";
@@ -118,24 +90,16 @@ export default class LobbyScene extends Phaser.Scene {
             transition:  "opacity 0.6s ease, transform 0.15s ease, background 0.2s ease",
             boxShadow:   "0 4px 20px rgba(59,130,246,0.4)",
         });
-        btn.addEventListener("mouseover", () => {
-            btn.style.background = "#60a5fa";
-        });
-        btn.addEventListener("mouseout", () => {
-            btn.style.background = "#3b82f6";
-        });
-        btn.addEventListener("mousedown", () => {
-            btn.style.transform = "translateX(-50%) scale(0.96)";
-        });
+        btn.addEventListener("mouseover", () => { btn.style.background = "#60a5fa"; });
+        btn.addEventListener("mouseout",  () => { btn.style.background = "#3b82f6"; });
+        btn.addEventListener("mousedown", () => { btn.style.transform = "translateX(-50%) scale(0.96)"; });
         document.body.appendChild(btn);
 
         // أنشئ زر الـ mute فوراً (مستقل عن الموسيقى)
         audioManager.createMuteButton();
 
         // fade in الزر بعد الصورة
-        this.time.delayedCall(900, () => {
-            btn.style.opacity = "1";
-        });
+        this.time.delayedCall(900, () => { btn.style.opacity = "1"; });
 
         let entered = false;
         const enterLobby = () => {
@@ -143,9 +107,32 @@ export default class LobbyScene extends Phaser.Scene {
             entered = true;
             audioManager.play();
 
-            // ─── شغّل الفيديو فوراً ضمن user gesture — قبل أي delay ───
-            const vid = document.getElementById("lobby-bg-video") as HTMLVideoElement | null;
-            if (vid) vid.play().catch(() => {});
+            // ─── أنشئ الفيديو وشغّله مباشرة ضمن user gesture ───
+            document.getElementById("lobby-bg-video")?.remove();
+            const isDesktop = window.innerWidth >= 700;
+            const vid = document.createElement("video");
+            vid.id      = "lobby-bg-video";
+            vid.src     = isDesktop ? "/bg-desktop.mp4" : "/bg.mp4";
+            vid.loop    = true;
+            vid.muted   = true;
+            vid.preload = "auto";
+            (vid as any).playsInline = true;
+            vid.setAttribute("muted", "");
+            vid.setAttribute("playsinline", "");
+            Object.assign(vid.style, {
+                position: "fixed", top: "0", left: "0",
+                width: "100%", height: "100%",
+                objectFit: "cover", zIndex: "1",
+                opacity: "0", transition: "opacity 1.5s ease",
+                pointerEvents: "none",
+            });
+            const showVideo = () => { vid.style.opacity = "0.55"; };
+            vid.addEventListener("canplay",    showVideo, { once: true });
+            vid.addEventListener("playing",    showVideo, { once: true });
+            vid.addEventListener("loadeddata", showVideo, { once: true });
+            document.body.insertBefore(vid, document.body.firstChild);
+            // شغّل مباشرة — هنا ضمن user gesture chain بنجح على كل المتصفحات
+            vid.play().catch(() => {});
 
             btn.style.opacity = "0";
             this.tweens.add({ targets: [bg, img], alpha: 0, duration: 450 });
@@ -163,7 +150,6 @@ export default class LobbyScene extends Phaser.Scene {
             document.removeEventListener("touchstart",  onFirstClick);
             enterLobby();
         };
-        // نضيفهم بعد ثانية عشان ما يتشتغلوا بدون قصد
         this.time.delayedCall(1000, () => {
             document.addEventListener("pointerdown", onFirstClick, { once: true });
             document.addEventListener("touchstart",  onFirstClick, { once: true, passive: true });
