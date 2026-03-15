@@ -921,12 +921,11 @@ export default class LobbyScene extends Phaser.Scene {
             "lobby-hero-title",
             "lobby-mobile-title",
             "lobby-card-tag",
-            "lobby-bg-video",
             "lobby-card-overlay",
             "global-mute-btn",
         ];
         ids.forEach(id => document.getElementById(id)?.remove());
-        // ملاحظة: global-audio-ctrl لا يُمسح - يضل ظاهر بكل الشاشات
+        // ملاحظة: lobby-bg-video و global-audio-ctrl لا يُمسحان - يضلان ظاهرين
     }
 
     shutdown() {
