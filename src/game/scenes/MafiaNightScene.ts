@@ -353,8 +353,31 @@ export default class MafiaNightScene extends Phaser.Scene {
             });
         });
         socketService.socket.on("player_killed", (data: any) => {
-            if (data.id === this.killedPlayerId) this.showToast(`${data.username} has been eliminated`, "danger");
+            const msg = `${data.username} was killed in the night`;
+            this.showToast(msg, "danger");
+            this.addNightEventToMobilePanel(msg, "#f87171");
         });
+    }
+
+    // ─── helper: نضيف الـ event للموبايل panel لو موجود ───
+    private addNightEventToMobilePanel(msg: string, color: string) {
+        const panel = document.getElementById("tab-panel-events");
+        if (!panel) return;
+        const now  = new Date();
+        const time = `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`;
+        const card = document.createElement("div");
+        card.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid #ef444444;border-left:3px solid ${color};animation:eventSlideIn 0.3s ease-out`;
+        card.innerHTML = `
+            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">🔪</div>
+            <div style="flex:1">
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                    <span style="font-size:9px;font-weight:bold;letter-spacing:2px;color:${color};font-family:'Courier New',monospace">ELIMINATED</span>
+                    <span style="font-size:9px;color:#374151;font-family:'Courier New',monospace">${time}</span>
+                </div>
+                <div style="font-size:13px;color:#e2e8f0;font-family:'Courier New',monospace">${msg}</div>
+            </div>`;
+        panel.appendChild(card);
+        panel.scrollTop = panel.scrollHeight;
     }
 
     shutdown() {
