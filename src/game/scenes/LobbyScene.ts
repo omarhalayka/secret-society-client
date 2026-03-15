@@ -126,7 +126,7 @@ export default class LobbyScene extends Phaser.Scene {
                 opacity: "0", transition: "opacity 1.5s ease",
                 pointerEvents: "none",
             });
-            const showVideo = () => { vid.style.opacity = "0.55"; };
+            const showVideo = () => { vid.style.opacity = "0.8"; };
             vid.addEventListener("canplay",    showVideo, { once: true });
             vid.addEventListener("playing",    showVideo, { once: true });
             vid.addEventListener("loadeddata", showVideo, { once: true });
