@@ -486,25 +486,38 @@ export default class LobbyScene extends Phaser.Scene {
         roles.forEach((role, i) => {
             const bx = sx + i * (btnW + gap);
             const isActive = role.key === this.selectedType;
+            const isPlayerLocked = role.key === "player" && !this.sessionPasswordReady;
+
             const c = this.add.container(bx, cy).setDepth(3);
+            if (isPlayerLocked) c.setAlpha(0.4); // مظهر مقفل
 
             const bg = this.add.rectangle(0, 0, btnW, btnH,
                 isActive ? 0x0d1f3c : this.C.card);
             bg.setStrokeStyle(isActive ? 2 : 1,
                 isActive ? role.colHex : this.C.cardBorder);
 
-            const iconTxt = this.add.text(0, -12, role.icon, { fontSize: "20px" }).setOrigin(0.5);
+            // أيقونة — PLAYER المقفل يشوف 🔒
+            const displayIcon = isPlayerLocked ? "🔒" : role.icon;
+            const iconTxt = this.add.text(0, -12, displayIcon, { fontSize: "20px" }).setOrigin(0.5);
             const lbl     = this.add.text(0, 14, role.label, {
                 fontSize: "9px", color: isActive ? role.hex : "#4a5568",
                 fontFamily: "'Courier New', monospace", letterSpacing: 1, fontStyle: "bold"
             }).setOrigin(0.5);
 
             c.add([bg, iconTxt, lbl]);
-            c.setInteractive(
-                new Phaser.Geom.Rectangle(-btnW/2, -btnH/2, btnW, btnH),
-                Phaser.Geom.Rectangle.Contains
-            );
+
+            // PLAYER المقفل: مش interactive
+            if (!isPlayerLocked) {
+                c.setInteractive(
+                    new Phaser.Geom.Rectangle(-btnW/2, -btnH/2, btnW, btnH),
+                    Phaser.Geom.Rectangle.Contains
+                );
+            }
+
             c.setData("roleKey", role.key);
+            c.setData("bg", bg);
+            c.setData("lbl", lbl);
+            c.setData("icon", iconTxt);
             this.roleButtons[role.key] = c;
 
             c.on("pointerover", () => {
@@ -527,19 +540,11 @@ export default class LobbyScene extends Phaser.Scene {
                     return;
                 }
                 if (role.key === "player") {
-                    // فعّل الزر أولاً بصرياً
-                    this.activateRole("player", roles);
-                    this.tweens.add({ targets: c, scaleX: 0.93, scaleY: 0.93, duration: 70, yoyo: true });
-                    // لو ما في كلمة سر من الأدمن — رسالة انتظار
-                    if (!this.sessionPasswordReady) {
-                        this.showToast("⏳ انتظر الأدمن يحط كلمة السر أولاً", "info");
-                        return;
-                    }
                     // في كلمة سر — اطلب منه يحطها
                     this.time.delayedCall(150, () => this.showPlayerPasswordPrompt((password) => {
-                        // نحفظ كلمة السر عشان نستخدمها عند JOIN
                         (this as any)._pendingPlayerPassword = password;
-                        this.showToast("✓ Password accepted — press JOIN", "success");
+                        this.activateRole("player", roles);
+                        this.showToast("✓ كلمة السر صح — اضغط JOIN", "success");
                     }));
                     return;
                 }
@@ -547,6 +552,25 @@ export default class LobbyScene extends Phaser.Scene {
                 this.tweens.add({ targets: c, scaleX: 0.93, scaleY: 0.93, duration: 70, yoyo: true });
             });
         });
+    }
+
+    // ─── تفعيل زر PLAYER لما الأدمن يحط كلمة السر ───
+    private unlockPlayerButton() {
+        const c = this.roleButtons["player"];
+        if (!c) return;
+        c.setAlpha(1);
+        const iconTxt = c.getData("icon") as Phaser.GameObjects.Text;
+        if (iconTxt) iconTxt.setText("⚔");
+        c.setInteractive(
+            new Phaser.Geom.Rectangle(
+                -(this.scale.width * 0.3) / 2,
+                -32,
+                this.scale.width * 0.3,
+                64
+            ),
+            Phaser.Geom.Rectangle.Contains
+        );
+        this.showToast("🔓 اللعبة فتحت — اختر PLAYER", "success");
     }
 
     private activateRole(key: string, roles: Array<{key:string; colHex:number; hex:string}>) {
@@ -913,7 +937,7 @@ export default class LobbyScene extends Phaser.Scene {
         } else {
             // ─── اللاعب — يستخدم كلمة السر المحفوظة من الـ popup ───
             const password = (this as any)._pendingPlayerPassword || "";
-            if (this.sessionPasswordReady && !password) {
+            if (!password) {
                 this.showToast("اختر PLAYER وحط كلمة السر أولاً", "error");
                 return;
             }
@@ -955,6 +979,9 @@ export default class LobbyScene extends Phaser.Scene {
 
         socketService.socket.on("session_password_ready", (data: any) => {
             this.sessionPasswordReady = !!data.ready;
+            if (data.ready) {
+                this.unlockPlayerButton();
+            }
         });
 
         socketService.socket.on("queue_update", (data: any) => {
