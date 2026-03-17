@@ -9,7 +9,8 @@ const ADMIN_PASSWORD = "123123321123";
 export default class LobbyScene extends Phaser.Scene {
 
     private usernameInput!: HTMLInputElement;
-    private selectedType: string = "player";
+    private selectedType: string = "spectator";
+    private sessionPasswordReady: boolean = false; // هل الأدمن حط كلمة سر؟
     private queueStatusText!: Phaser.GameObjects.Text;
     private playerCountInterval?: number;
     private joinButton!: Phaser.GameObjects.Container;
@@ -525,6 +526,23 @@ export default class LobbyScene extends Phaser.Scene {
                     this.showAdminPasswordPopup();
                     return;
                 }
+                if (role.key === "player") {
+                    // فعّل الزر أولاً بصرياً
+                    this.activateRole("player", roles);
+                    this.tweens.add({ targets: c, scaleX: 0.93, scaleY: 0.93, duration: 70, yoyo: true });
+                    // لو ما في كلمة سر من الأدمن — رسالة انتظار
+                    if (!this.sessionPasswordReady) {
+                        this.showToast("⏳ انتظر الأدمن يحط كلمة السر أولاً", "info");
+                        return;
+                    }
+                    // في كلمة سر — اطلب منه يحطها
+                    this.time.delayedCall(150, () => this.showPlayerPasswordPrompt((password) => {
+                        // نحفظ كلمة السر عشان نستخدمها عند JOIN
+                        (this as any)._pendingPlayerPassword = password;
+                        this.showToast("✓ Password accepted — press JOIN", "success");
+                    }));
+                    return;
+                }
                 this.activateRole(role.key, roles);
                 this.tweens.add({ targets: c, scaleX: 0.93, scaleY: 0.93, duration: 70, yoyo: true });
             });
@@ -893,13 +911,15 @@ export default class LobbyScene extends Phaser.Scene {
             this.joinBtnLabel.setText("SEARCHING...");
             this.showToast("Looking for active game...", "info");
         } else {
-            // ─── اللاعب يحط كلمة المرور إن وجدت ───
-            this.showPlayerPasswordPrompt((password) => {
-                socketService.socket.emit("join_queue", { type: "player", password: password });
-                this.joinBtnLabel.setText("JOINING...");
-                this.showToast("Joining queue...", "success");
-            });
-            return; // نرجع عشان ما نكمل تحت قبل ما يحط كلمة المرور
+            // ─── اللاعب — يستخدم كلمة السر المحفوظة من الـ popup ───
+            const password = (this as any)._pendingPlayerPassword || "";
+            if (this.sessionPasswordReady && !password) {
+                this.showToast("اختر PLAYER وحط كلمة السر أولاً", "error");
+                return;
+            }
+            socketService.socket.emit("join_queue", { type: "player", password });
+            this.joinBtnLabel.setText("JOINING...");
+            this.showToast("Joining queue...", "success");
         }
 
         this.joinButton.setAlpha(0.6);
@@ -924,7 +944,17 @@ export default class LobbyScene extends Phaser.Scene {
             .forEach(ev => socketService.socket.off(ev));
 
         socketService.socket.on("session_password_set", (data: any) => {
-            if (data.password) this.showToast(`✓ Password set: ${data.password}`, "success");
+            if (data.password) {
+                this.sessionPasswordReady = true;
+                this.showToast(`✓ Password set: ${data.password}`, "success");
+            } else {
+                this.sessionPasswordReady = false;
+                this.showToast("No password — open session", "info");
+            }
+        });
+
+        socketService.socket.on("session_password_ready", (data: any) => {
+            this.sessionPasswordReady = !!data.ready;
         });
 
         socketService.socket.on("queue_update", (data: any) => {
@@ -1168,7 +1198,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.particles.forEach(p => p.gfx.destroy());
         this.particles = [];
-        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined"]
+        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined","session_password_set","session_password_ready"]
             .forEach(ev => socketService.socket.off(ev));
     }
 }
