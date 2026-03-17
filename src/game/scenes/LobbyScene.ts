@@ -847,11 +847,11 @@ export default class LobbyScene extends Phaser.Scene {
             <div style="font-size:30px;text-align:center;margin-bottom:10px">🎮</div>
             <div style="color:#22c55e;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold">SESSION PASSWORD</div>
             <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">Enter the password provided by the admin</div>
-            <input id="player-pass-input" type="text" placeholder="Session password..." style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
+            <input id="player-pass-input" type="password" placeholder="Session password..." style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
             <div id="player-pass-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
             <div style="display:flex;gap:8px">
                 <button id="player-pass-cancel" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">CANCEL</button>
-                <button id="player-pass-confirm" style="flex:1;padding:10px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">JOIN</button>
+                <button id="player-pass-confirm" style="flex:1;padding:10px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">CONFIRM</button>
             </div>
         `;
 
@@ -867,38 +867,51 @@ export default class LobbyScene extends Phaser.Scene {
 
         const confirm = () => {
             const val = input.value.trim();
-            if (!val) { errEl.textContent = "Please enter the session password"; return; }
-            overlay.remove();
-            onConfirm(val);
-            // نفعّل الـ join button وnضبط حالته
-            this.joinButton.setAlpha(0.6);
-            this.joinButton.disableInteractive();
-            this.time.delayedCall(2500, () => {
-                if (this.joinButton?.active) {
-                    this.joinButton.setAlpha(1);
-                    this.joinBtnLabel.setText("JOIN  QUEUE");
-                    this.joinButton.setInteractive(
-                        new Phaser.Geom.Rectangle(-172, -24, 344, 48),
-                        Phaser.Geom.Rectangle.Contains
-                    );
-                }
-            });
+            if (!val) { errEl.textContent = "الرجاء إدخال كلمة السر"; return; }
+
+            // ─── نبعث للسيرفر يتحقق ───
+            confirmBtn.style.opacity = "0.5";
+            confirmBtn.style.pointerEvents = "none";
+            errEl.textContent = "";
+
+            socketService.socket.emit("verify_session_password", { password: val });
+
+            // نستنى رد السيرفر
+            const onOk = () => {
+                socketService.socket.off("password_verify_ok",   onOk);
+                socketService.socket.off("password_verify_fail", onFail);
+                overlay.remove();
+                onConfirm(val);
+            };
+            const onFail = () => {
+                socketService.socket.off("password_verify_ok",   onOk);
+                socketService.socket.off("password_verify_fail", onFail);
+                // رجّع الزر وأظهر الخطأ
+                confirmBtn.style.opacity = "1";
+                confirmBtn.style.pointerEvents = "auto";
+                errEl.textContent = "❌ كلمة السر غلط";
+                input.value = "";
+                input.style.borderColor = "#ef4444";
+                input.style.boxShadow   = "0 0 0 3px rgba(239,68,68,0.1)";
+                input.focus();
+                // shake
+                let n = 0;
+                const iv = setInterval(() => {
+                    box.style.marginLeft = n % 2 === 0 ? "7px" : "-7px";
+                    n++;
+                    if (n >= 6) { clearInterval(iv); box.style.marginLeft = "0"; }
+                }, 55);
+            };
+
+            socketService.socket.once("password_verify_ok",   onOk);
+            socketService.socket.once("password_verify_fail", onFail);
         };
 
         confirmBtn.addEventListener("click", confirm);
-        cancelBtn.addEventListener("click",  () => {
-            overlay.remove();
-            // نرجع الزر لحالته
-            this.joinButton.setAlpha(1);
-            this.joinBtnLabel.setText("JOIN  QUEUE");
-            this.joinButton.setInteractive(
-                new Phaser.Geom.Rectangle(-172, -24, 344, 48),
-                Phaser.Geom.Rectangle.Contains
-            );
-        });
+        cancelBtn.addEventListener("click",  () => overlay.remove());
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") confirm();
-            if (e.key === "Escape") cancelBtn.click();
+            if (e.key === "Escape") overlay.remove();
         });
         input.addEventListener("focus", () => {
             input.style.borderColor = "#22c55e";
