@@ -944,6 +944,17 @@ export default class LobbyScene extends Phaser.Scene {
                     Phaser.Geom.Rectangle.Contains
                 );
             }
+            // لو كانت المشكلة كلمة سر غلط — نرجع الـ popup
+            if (data.message && data.message.includes("كلمة السر")) {
+                this.time.delayedCall(300, () => {
+                    this.showPlayerPasswordPrompt((password) => {
+                        socketService.socket.emit("join_queue", { type: "player", password });
+                        this.joinBtnLabel?.setText("JOINING...");
+                        this.joinButton.setAlpha(0.6);
+                        this.joinButton.disableInteractive();
+                    });
+                });
+            }
         });
 
         socketService.socket.on("admin_joined", () => this.showToast("Admin panel ready \u2713", "success"));
