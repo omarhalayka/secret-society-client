@@ -997,6 +997,36 @@ export default class LobbyScene extends Phaser.Scene {
             }
         });
 
+        socketService.socket.on("session_reset", (data: any) => {
+            // اللاعب اتطرد من الـ queue بسبب تغيير كلمة السر
+            (this as any)._pendingPlayerPassword = null;
+            this.selectedType = "spectator";
+            // نرجع زر PLAYER للمقفل
+            const playerBtn = this.roleButtons["player"];
+            if (playerBtn) {
+                playerBtn.setAlpha(0.4);
+                playerBtn.disableInteractive();
+                const icon = playerBtn.getData("icon") as Phaser.GameObjects.Text;
+                if (icon) icon.setText("🔒");
+            }
+            // نرجع زر spectator محدد
+            const roles = [
+                { key: "player",    colHex: 0x22c55e, hex: "#22c55e" },
+                { key: "spectator", colHex: 0x8b5cf6, hex: "#8b5cf6" },
+                { key: "admin",     colHex: 0xf59e0b, hex: "#f59e0b" },
+            ];
+            this.activateRole("spectator", roles);
+            if (this.joinButton?.active) {
+                this.joinBtnLabel?.setText("JOIN  QUEUE");
+                this.joinButton.setAlpha(1);
+                this.joinButton.setInteractive(
+                    new Phaser.Geom.Rectangle(-172, -24, 344, 48),
+                    Phaser.Geom.Rectangle.Contains
+                );
+            }
+            this.showToast(data.message || "تم تغيير كلمة السر — أدخل الكلمة الجديدة", "error");
+        });
+
         socketService.socket.on("queue_update", (data: any) => {
             if (!this.queueStatusText?.active) return;
             const size  = data.queueSize || 0;
@@ -1238,7 +1268,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.particles.forEach(p => p.gfx.destroy());
         this.particles = [];
-        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined","session_password_set","session_password_ready"]
+        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined","session_password_set","session_password_ready","session_reset"]
             .forEach(ev => socketService.socket.off(ev));
     }
 }
