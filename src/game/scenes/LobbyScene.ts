@@ -637,6 +637,8 @@ export default class LobbyScene extends Phaser.Scene {
                 overlay.remove();
                 this.activateRole("admin", roles);
                 this.showToast("Admin access granted \u2713", "success");
+                // ─── بعد دخول الأدمن، نطلب منه يحط كلمة مرور الجلسة ───
+                this.time.delayedCall(400, () => this.showSessionPasswordPopup());
             } else {
                 errEl.textContent = "Incorrect password";
                 passInput.value = "";
@@ -675,6 +677,84 @@ export default class LobbyScene extends Phaser.Scene {
     }
 
     // ══════════════════════════════════════════════════════
+    //  SESSION PASSWORD POPUP (للأدمن — يحط كلمة مرور الجلسة)
+    // ══════════════════════════════════════════════════════
+    private showSessionPasswordPopup() {
+        document.getElementById("session-pass-overlay")?.remove();
+
+        const overlay = document.createElement("div");
+        overlay.id = "session-pass-overlay";
+        Object.assign(overlay.style, {
+            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
+            zIndex: "9990", backgroundColor: "rgba(0,0,0,0.78)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "'Courier New', monospace",
+        });
+
+        const box = document.createElement("div");
+        Object.assign(box.style, {
+            backgroundColor: "#0d1117", border: "1px solid #3b82f6",
+            borderRadius: "10px", padding: "28px 26px 22px",
+            width: "310px", boxShadow: "0 0 50px rgba(59,130,246,0.12)",
+        });
+
+        box.innerHTML = `
+            <div style="font-size:30px;text-align:center;margin-bottom:10px">🔑</div>
+            <div style="color:#3b82f6;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold">SESSION PASSWORD</div>
+            <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">Set a password for players to join this session</div>
+            <input id="session-pass-input" type="text" placeholder="e.g. mafia2024" style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
+            <div style="color:#64748b;font-size:9px;text-align:center;margin-bottom:14px;letter-spacing:1px">Share this password with players only</div>
+            <div id="session-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
+            <div style="display:flex;gap:8px">
+                <button id="session-skip-btn" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">NO PASSWORD</button>
+                <button id="session-set-btn" style="flex:1;padding:10px;border:none;border-radius:6px;background:#3b82f6;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">SET PASSWORD</button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        const input  = box.querySelector<HTMLInputElement>("#session-pass-input")!;
+        const errEl  = box.querySelector<HTMLElement>("#session-err")!;
+        const setBtn = box.querySelector<HTMLButtonElement>("#session-set-btn")!;
+        const skipBtn= box.querySelector<HTMLButtonElement>("#session-skip-btn")!;
+
+        setTimeout(() => input.focus(), 60);
+
+        const applyPassword = (password: string | null) => {
+            socketService.socket.emit("set_session_password", { password: password || "" });
+            overlay.remove();
+            if (password) {
+                this.showToast(`Session password: ${password}`, "success");
+            } else {
+                this.showToast("No password — open session", "info");
+            }
+        };
+
+        setBtn.addEventListener("click", () => {
+            const val = input.value.trim();
+            if (!val) { errEl.textContent = "Please enter a password"; return; }
+            applyPassword(val);
+        });
+
+        skipBtn.addEventListener("click", () => applyPassword(null));
+
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") setBtn.click();
+            if (e.key === "Escape") applyPassword(null);
+        });
+
+        input.addEventListener("focus", () => {
+            input.style.borderColor = "#3b82f6";
+            input.style.boxShadow = "0 0 0 3px rgba(59,130,246,0.1)";
+        });
+        input.addEventListener("blur", () => {
+            input.style.borderColor = "#21262d";
+            input.style.boxShadow = "none";
+        });
+    }
+
+    // ══════════════════════════════════════════════════════
     //  JOIN BUTTON
     // ══════════════════════════════════════════════════════
     private createJoinButton(cx: number, cy: number, width: number) {
@@ -697,6 +777,95 @@ export default class LobbyScene extends Phaser.Scene {
         });
         this.joinButton   = c;
         this.joinBtnLabel = lbl;
+    }
+
+    // ══════════════════════════════════════════════════════
+    //  PLAYER PASSWORD PROMPT
+    // ══════════════════════════════════════════════════════
+    private showPlayerPasswordPrompt(onConfirm: (password: string) => void) {
+        document.getElementById("player-pass-overlay")?.remove();
+
+        const overlay = document.createElement("div");
+        overlay.id = "player-pass-overlay";
+        Object.assign(overlay.style, {
+            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
+            zIndex: "9990", backgroundColor: "rgba(0,0,0,0.78)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "'Courier New', monospace",
+        });
+
+        const box = document.createElement("div");
+        Object.assign(box.style, {
+            backgroundColor: "#0d1117", border: "1px solid #22c55e",
+            borderRadius: "10px", padding: "28px 26px 22px",
+            width: "300px", boxShadow: "0 0 50px rgba(34,197,94,0.1)",
+        });
+
+        box.innerHTML = `
+            <div style="font-size:30px;text-align:center;margin-bottom:10px">🎮</div>
+            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold">SESSION PASSWORD</div>
+            <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">Enter the password provided by the admin</div>
+            <input id="player-pass-input" type="text" placeholder="Session password..." style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
+            <div id="player-pass-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
+            <div style="display:flex;gap:8px">
+                <button id="player-pass-cancel" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">CANCEL</button>
+                <button id="player-pass-confirm" style="flex:1;padding:10px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">JOIN</button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        const input     = box.querySelector<HTMLInputElement>("#player-pass-input")!;
+        const errEl     = box.querySelector<HTMLElement>("#player-pass-err")!;
+        const confirmBtn= box.querySelector<HTMLButtonElement>("#player-pass-confirm")!;
+        const cancelBtn = box.querySelector<HTMLButtonElement>("#player-pass-cancel")!;
+
+        setTimeout(() => input.focus(), 60);
+
+        const confirm = () => {
+            const val = input.value.trim();
+            if (!val) { errEl.textContent = "Please enter the session password"; return; }
+            overlay.remove();
+            onConfirm(val);
+            // نفعّل الـ join button وnضبط حالته
+            this.joinButton.setAlpha(0.6);
+            this.joinButton.disableInteractive();
+            this.time.delayedCall(2500, () => {
+                if (this.joinButton?.active) {
+                    this.joinButton.setAlpha(1);
+                    this.joinBtnLabel.setText("JOIN  QUEUE");
+                    this.joinButton.setInteractive(
+                        new Phaser.Geom.Rectangle(-172, -24, 344, 48),
+                        Phaser.Geom.Rectangle.Contains
+                    );
+                }
+            });
+        };
+
+        confirmBtn.addEventListener("click", confirm);
+        cancelBtn.addEventListener("click",  () => {
+            overlay.remove();
+            // نرجع الزر لحالته
+            this.joinButton.setAlpha(1);
+            this.joinBtnLabel.setText("JOIN  QUEUE");
+            this.joinButton.setInteractive(
+                new Phaser.Geom.Rectangle(-172, -24, 344, 48),
+                Phaser.Geom.Rectangle.Contains
+            );
+        });
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") confirm();
+            if (e.key === "Escape") cancelBtn.click();
+        });
+        input.addEventListener("focus", () => {
+            input.style.borderColor = "#22c55e";
+            input.style.boxShadow = "0 0 0 3px rgba(34,197,94,0.1)";
+        });
+        input.addEventListener("blur", () => {
+            input.style.borderColor = "#21262d";
+            input.style.boxShadow = "none";
+        });
     }
 
     // ══════════════════════════════════════════════════════
@@ -724,9 +893,13 @@ export default class LobbyScene extends Phaser.Scene {
             this.joinBtnLabel.setText("SEARCHING...");
             this.showToast("Looking for active game...", "info");
         } else {
-            socketService.socket.emit("join_queue", { type: "player" });
-            this.joinBtnLabel.setText("JOINING...");
-            this.showToast("Joining queue...", "success");
+            // ─── اللاعب يحط كلمة المرور إن وجدت ───
+            this.showPlayerPasswordPrompt((password) => {
+                socketService.socket.emit("join_queue", { type: "player", password: password });
+                this.joinBtnLabel.setText("JOINING...");
+                this.showToast("Joining queue...", "success");
+            });
+            return; // نرجع عشان ما نكمل تحت قبل ما يحط كلمة المرور
         }
 
         this.joinButton.setAlpha(0.6);
@@ -747,8 +920,12 @@ export default class LobbyScene extends Phaser.Scene {
     //  SOCKET EVENTS
     // ══════════════════════════════════════════════════════
     private setupSocketEvents() {
-        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined"]
+        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined","session_password_set"]
             .forEach(ev => socketService.socket.off(ev));
+
+        socketService.socket.on("session_password_set", (data: any) => {
+            if (data.password) this.showToast(`✓ Password set: ${data.password}`, "success");
+        });
 
         socketService.socket.on("queue_update", (data: any) => {
             if (!this.queueStatusText?.active) return;
