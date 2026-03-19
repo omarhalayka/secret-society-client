@@ -1032,6 +1032,16 @@ export default class LobbyScene extends Phaser.Scene {
             this.showToast(data.message || "تم تغيير كلمة السر — أدخل الكلمة الجديدة", "error");
         });
 
+        // ─── Server Reset — رجّع للـ lobby وامسح كل شي ───
+        socketService.socket.on("server_reset", () => {
+            socketService.reset();
+            (this as any)._pendingPlayerPassword = null;
+            this.showToast("🔄 Server reset by admin", "info");
+            this.time.delayedCall(800, () => {
+                this.scene.restart();
+            });
+        });
+
         socketService.socket.on("queue_update", (data: any) => {
             if (!this.queueStatusText?.active) return;
             const size  = data.queueSize || 0;
@@ -1273,7 +1283,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.particles.forEach(p => p.gfx.destroy());
         this.particles = [];
-        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined","session_password_set","session_password_ready","session_reset"]
+        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined","session_password_set","session_password_ready","session_reset","server_reset"]
             .forEach(ev => socketService.socket.off(ev));
     }
 }
