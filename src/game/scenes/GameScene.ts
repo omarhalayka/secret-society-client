@@ -1915,6 +1915,7 @@ export default class GameScene extends Phaser.Scene {
             .adr-btn-vote{color:#fbbf24;border-color:#f59e0b}.adr-btn-stopvote{color:#94a3b8;border-color:#4b5563}
             .adr-btn-danger{color:#f87171;border-color:#ef4444;grid-column:1/-1}
             .adr-btn-restart{color:#60a5fa;border-color:#3b82f6;grid-column:1/-1}
+            .adr-btn-reset{color:#f43f5e;border-color:#e11d48;grid-column:1/-1;margin-top:6px}
             .nr-grid{display:grid;grid-template-columns:auto 1fr;gap:0;background:#0a0e14;border:1px solid #1e2d45;border-radius:6px;overflow:hidden}
             .nr-cell{padding:12px 16px;font-size:12px;border-bottom:1px solid rgba(30,45,69,0.4)}
             .nr-cell:nth-last-child(-n+2){border-bottom:none}
@@ -1938,6 +1939,7 @@ export default class GameScene extends Phaser.Scene {
                 <button class="adr-btn adr-btn-stopvote" data-event="admin_end_voting">⏹ END VOTING</button>
                 <button class="adr-btn adr-btn-danger"   data-event="admin_end_game">⚡ FORCE END</button>
                 <button class="adr-btn adr-btn-restart"  data-event="restart_game">🔄 RESTART</button>
+                <button class="adr-btn adr-btn-reset"    id="adr-reset-server-btn">🗑 RESET SERVER</button>
             </div>
         </div>
         <div class="adr-section" id="adr-status-section" style="display:none">
@@ -1971,6 +1973,13 @@ export default class GameScene extends Phaser.Scene {
             socketService.socket.emit("admin_reveal_night_results", story);
             (drawer.querySelector("#adr-night-section") as HTMLElement).style.display = "none";
             (drawer.querySelector("#adr-story-section") as HTMLElement).style.display = "none";
+        });
+        // ─── زر RESET SERVER ───
+        drawer.querySelector("#adr-reset-server-btn")?.addEventListener("click", () => {
+            if (confirm("⚠️ هذا سيطرد كل اللاعبين ويمسح الجلسة كاملة. متأكد؟")) {
+                socketService.socket.emit("admin_reset_server");
+                this.closeAdminDrawer();
+            }
         });
         this.outsideClickHandler = (e: MouseEvent) => {
             if (!this.adminDrawerOpen) return;
@@ -2216,6 +2225,16 @@ export default class GameScene extends Phaser.Scene {
             else if (data.role === "SPECTATOR") newUserType = "SPECTATOR";
             this.scene.start("GameScene", { role: data.role, roomId: data.roomId, userType: newUserType });
         });
+
+        // ─── Server Reset — كل الكل يرجع للـ lobby ───
+        socketService.socket.on("server_reset", () => {
+            socketService.reset();
+            this.cleanupAllHTML();
+            this.cameras.main.fadeOut(400, 6, 8, 16);
+            this.time.delayedCall(400, () => {
+                this.scene.start("LobbyScene");
+            });
+        });
     }
 
     // ══════════════════════════════════════
@@ -2244,7 +2263,7 @@ export default class GameScene extends Phaser.Scene {
             "room_state", "phase_changed", "game_over", "game_started",
             "vote_update", "player_killed", "receive_message",
             "detective_result", "voting_result", "voting_started",
-            "night_review", "night_story", "back_to_lobby", "night_action_status"
+            "night_review", "night_story", "back_to_lobby", "night_action_status", "server_reset"
         ];
         evts.forEach(e => socketService.socket.off(e));
         this.tweens.killAll();
