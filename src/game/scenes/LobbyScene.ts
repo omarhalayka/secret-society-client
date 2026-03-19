@@ -110,10 +110,9 @@ export default class LobbyScene extends Phaser.Scene {
 
             // ─── أنشئ الفيديو وشغّله مباشرة ضمن user gesture ───
             document.getElementById("lobby-bg-video")?.remove();
-            const isDesktop = window.innerWidth >= 700;
             const vid = document.createElement("video");
             vid.id      = "lobby-bg-video";
-            vid.src     = isDesktop ? "/bg-desktop.mp4" : "/bg.mp4";
+            vid.src     = "/bg-desktop.mp4"; // نفس الفيديو للكل عشان يشتغل على الأندرويد
             vid.loop    = true;
             vid.muted   = true;
             vid.preload = "auto";
