@@ -41,6 +41,12 @@ export default class LobbyScene extends Phaser.Scene {
     //  CREATE
     // ══════════════════════════════════════════════════════
     create() {
+        // ─── استقبل حالة كلمة السر فوراً عند الاتصال ───
+        socketService.socket.off("session_password_ready");
+        socketService.socket.on("session_password_ready", (data: any) => {
+            this.sessionPasswordReady = !!data.ready;
+            if (data.ready) this.unlockPlayerButton();
+        });
         this.showSplashScreen();
     }
 
