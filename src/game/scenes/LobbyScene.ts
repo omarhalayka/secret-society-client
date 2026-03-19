@@ -597,6 +597,51 @@ export default class LobbyScene extends Phaser.Scene {
     }
 
     // ══════════════════════════════════════════════════════
+    //  ADMIN RESET BUTTON (يطلع في الـ lobby بعد دخول الأدمن)
+    // ══════════════════════════════════════════════════════
+    private showAdminResetButton() {
+        document.getElementById("admin-reset-btn")?.remove();
+
+        const btn = document.createElement("button");
+        btn.id = "admin-reset-btn";
+        btn.textContent = "🗑 RESET SERVER";
+        Object.assign(btn.style, {
+            position:     "fixed",
+            bottom:       "18px",
+            right:        "18px",
+            zIndex:       "9999",
+            padding:      "10px 18px",
+            fontSize:     "11px",
+            fontFamily:   "'Courier New', monospace",
+            fontWeight:   "bold",
+            letterSpacing: "2px",
+            color:        "#f43f5e",
+            backgroundColor: "rgba(13,17,23,0.92)",
+            border:       "1px solid #f43f5e",
+            borderRadius: "8px",
+            cursor:       "pointer",
+            backdropFilter: "blur(8px)",
+            transition:   "background 0.15s",
+        });
+
+        btn.addEventListener("mouseover", () => {
+            btn.style.backgroundColor = "rgba(244,63,94,0.15)";
+        });
+        btn.addEventListener("mouseout", () => {
+            btn.style.backgroundColor = "rgba(13,17,23,0.92)";
+        });
+
+        btn.addEventListener("click", () => {
+            if (confirm("⚠️ هذا سيطرد كل اللاعبين ويمسح الجلسة كاملة. متأكد؟")) {
+                socketService.socket.emit("admin_reset_server");
+                btn.remove();
+            }
+        });
+
+        document.body.appendChild(btn);
+    }
+
+    // ══════════════════════════════════════════════════════
     //  ADMIN PASSWORD POPUP
     // ══════════════════════════════════════════════════════
     private showAdminPasswordPopup() {
@@ -684,6 +729,8 @@ export default class LobbyScene extends Phaser.Scene {
                 overlay.remove();
                 this.activateRole("admin", roles);
                 this.showToast("Admin access granted \u2713", "success");
+                // ─── أظهر زر RESET SERVER في الـ lobby ───
+                this.showAdminResetButton();
                 // ─── بعد دخول الأدمن، نطلب منه يحط كلمة مرور الجلسة ───
                 this.time.delayedCall(400, () => this.showSessionPasswordPopup());
             } else {
@@ -1247,6 +1294,7 @@ export default class LobbyScene extends Phaser.Scene {
             "lobby-card-tag",
             "lobby-card-overlay",
             "global-mute-btn",
+            "admin-reset-btn",
         ];
         ids.forEach(id => document.getElementById(id)?.remove());
         // ملاحظة: lobby-bg-video و global-audio-ctrl لا يُمسحان - يضلان ظاهرين
