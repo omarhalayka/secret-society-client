@@ -2000,16 +2000,51 @@ export default class GameScene extends Phaser.Scene {
             position: "fixed", bottom: "0", left: "0", right: "0",
             zIndex: "200", backgroundColor: "#080c12",
             borderTop: "1px solid rgba(245,158,11,0.3)",
-            padding: "8px", display: "flex", flexWrap: "wrap", gap: "6px",
+            fontFamily: "'Courier New', monospace",
+        });
+
+        // ─── Night Actions Status (مخفي بالبداية، يظهر بالليل) ───
+        const nightStatus = document.createElement("div");
+        nightStatus.id = "mobile-night-status";
+        Object.assign(nightStatus.style, {
+            display: "none",
+            padding: "8px 12px",
+            borderBottom: "1px solid rgba(245,158,11,0.15)",
+            backgroundColor: "rgba(0,0,0,0.4)",
+            gap: "0",
+        });
+        nightStatus.innerHTML = `
+            <div style="font-size:8px;color:#f59e0b;letter-spacing:2px;margin-bottom:6px">🌙 NIGHT ACTIONS</div>
+            <div id="mns-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+                <div class="mns-cell" id="mns-mafia"  style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:5px;padding:6px 8px;text-align:center">
+                    <div style="font-size:9px;color:#64748b;margin-bottom:2px">🔪 MAFIA</div>
+                    <div id="mns-mafia-val" style="font-size:10px;color:#374151">⏳</div>
+                </div>
+                <div class="mns-cell" id="mns-doctor" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:5px;padding:6px 8px;text-align:center">
+                    <div style="font-size:9px;color:#64748b;margin-bottom:2px">✚ DOCTOR</div>
+                    <div id="mns-doctor-val" style="font-size:10px;color:#374151">⏳</div>
+                </div>
+                <div class="mns-cell" id="mns-detective" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:5px;padding:6px 8px;text-align:center">
+                    <div style="font-size:9px;color:#64748b;margin-bottom:2px">🔍 DET.</div>
+                    <div id="mns-detective-val" style="font-size:10px;color:#374151">⏳</div>
+                </div>
+            </div>
+        `;
+        adminBar.appendChild(nightStatus);
+
+        // ─── أزرار التحكم ───
+        const btnRow = document.createElement("div");
+        Object.assign(btnRow.style, {
+            display: "flex", flexWrap: "wrap", gap: "6px", padding: "8px",
         });
 
         const adminBtns = [
-            { label: "🌙 NIGHT",   event: "admin_start_night" },
-            { label: "☀ DAY",     event: "admin_end_night"   },
-            { label: "🗳 VOTE",   event: "admin_start_voting"},
-            { label: "⏹ STOP",   event: "admin_end_voting"  },
-            { label: "⚡ END",    event: "admin_end_game"    },
-            { label: "🔄 RESTART",event: "restart_game"      },
+            { label: "🌙 NIGHT",    event: "admin_start_night"  },
+            { label: "☀ END NIGHT", event: "admin_end_night"    },
+            { label: "🗳 VOTE",     event: "admin_start_voting" },
+            { label: "⏹ STOP",     event: "admin_end_voting"   },
+            { label: "⚡ END",      event: "admin_end_game"     },
+            { label: "🔄 RESTART",  event: "restart_game"       },
         ];
 
         adminBtns.forEach(b => {
@@ -2023,9 +2058,10 @@ export default class GameScene extends Phaser.Scene {
                 cursor: "pointer", flex: "1",
             });
             btn.addEventListener("click", () => socketService.socket.emit(b.event));
-            adminBar.appendChild(btn);
+            btnRow.appendChild(btn);
         });
 
+        adminBar.appendChild(btnRow);
         document.body.appendChild(adminBar);
     }
 
@@ -2051,24 +2087,40 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private updateNightActionStatus(status: any) {
-        if (!this.adminDrawer) return;
-        const statusEl = this.adminDrawer.querySelector<HTMLElement>("#adr-night-status");
-        if (!statusEl) return;
-
         const render = (done: boolean, username: string | null) =>
             done
                 ? `<span style="color:#4ade80">✓ ${username}</span>`
-                : `<span style="color:#374151">⏳ Waiting...</span>`;
+                : `<span style="color:#374151">⏳</span>`;
 
-        statusEl.innerHTML = `
-            <div class="ns-row"><span class="ns-label">🔪 Mafia</span>${render(status.mafia.done, status.mafia.username)}</div>
-            <div class="ns-row"><span class="ns-label">✚ Doctor</span>${render(status.doctor.done, status.doctor.username)}</div>
-            <div class="ns-row"><span class="ns-label">🔍 Detective</span>${render(status.detective.done, status.detective.username)}</div>
-        `;
+        // ─── ديسكتوب: admin drawer ───
+        if (this.adminDrawer) {
+            const statusEl = this.adminDrawer.querySelector<HTMLElement>("#adr-night-status");
+            if (statusEl) {
+                statusEl.innerHTML = `
+                    <div class="ns-row"><span class="ns-label">🔪 Mafia</span>${render(status.mafia.done, status.mafia.username)}</div>
+                    <div class="ns-row"><span class="ns-label">✚ Doctor</span>${render(status.doctor.done, status.doctor.username)}</div>
+                    <div class="ns-row"><span class="ns-label">🔍 Detective</span>${render(status.detective.done, status.detective.username)}</div>
+                `;
+                const section = this.adminDrawer.querySelector<HTMLElement>("#adr-status-section");
+                if (section) section.style.display = "block";
+            }
+        }
 
-        // نظهر الـ section تلقائياً لو كان مخفي
-        const section = this.adminDrawer.querySelector<HTMLElement>("#adr-status-section");
-        if (section) section.style.display = "block";
+        // ─── موبايل: mobile-night-status ───
+        const mobileStatus = document.getElementById("mobile-night-status");
+        if (mobileStatus) {
+            mobileStatus.style.display = "block";
+            const mRender = (done: boolean, username: string | null) =>
+                done ? `<span style="color:#4ade80;font-size:11px">✓</span>` : `<span style="color:#374151;font-size:11px">⏳</span>`;
+
+            const mafiaVal     = document.getElementById("mns-mafia-val");
+            const doctorVal    = document.getElementById("mns-doctor-val");
+            const detectiveVal = document.getElementById("mns-detective-val");
+
+            if (mafiaVal)     mafiaVal.innerHTML     = mRender(status.mafia.done,     status.mafia.username);
+            if (doctorVal)    doctorVal.innerHTML     = mRender(status.doctor.done,    status.doctor.username);
+            if (detectiveVal) detectiveVal.innerHTML  = mRender(status.detective.done, status.detective.username);
+        }
     }
 
     private showNightReviewInDrawer(data: any) {
@@ -2141,17 +2193,35 @@ export default class GameScene extends Phaser.Scene {
                 }
             }
             // reset حالة الـ night actions للأدمن عند بداية الليل
-            if (data.phase === "NIGHT" && this.isAdmin && this.adminDrawer) {
-                const statusEl = this.adminDrawer.querySelector<HTMLElement>("#adr-night-status");
-                if (statusEl) {
-                    statusEl.innerHTML = `
-                        <div class="ns-row"><span class="ns-label">🔪 Mafia</span><span style="color:#374151">⏳ Waiting...</span></div>
-                        <div class="ns-row"><span class="ns-label">✚ Doctor</span><span style="color:#374151">⏳ Waiting...</span></div>
-                        <div class="ns-row"><span class="ns-label">🔍 Detective</span><span style="color:#374151">⏳ Waiting...</span></div>
-                    `;
+            if (data.phase === "NIGHT" && this.isAdmin) {
+                // ديسكتوب
+                if (this.adminDrawer) {
+                    const statusEl = this.adminDrawer.querySelector<HTMLElement>("#adr-night-status");
+                    if (statusEl) {
+                        statusEl.innerHTML = `
+                            <div class="ns-row"><span class="ns-label">🔪 Mafia</span><span style="color:#374151">⏳ Waiting...</span></div>
+                            <div class="ns-row"><span class="ns-label">✚ Doctor</span><span style="color:#374151">⏳ Waiting...</span></div>
+                            <div class="ns-row"><span class="ns-label">🔍 Detective</span><span style="color:#374151">⏳ Waiting...</span></div>
+                        `;
+                    }
+                    const section = this.adminDrawer.querySelector<HTMLElement>("#adr-status-section");
+                    if (section) section.style.display = "block";
                 }
-                const section = this.adminDrawer.querySelector<HTMLElement>("#adr-status-section");
-                if (section) section.style.display = "block";
+                // موبايل
+                const mobileStatus = document.getElementById("mobile-night-status");
+                if (mobileStatus) {
+                    mobileStatus.style.display = "block";
+                    const ids = ["mns-mafia-val", "mns-doctor-val", "mns-detective-val"];
+                    ids.forEach(id => {
+                        const el = document.getElementById(id);
+                        if (el) el.innerHTML = `<span style="color:#374151;font-size:11px">⏳</span>`;
+                    });
+                }
+            }
+            // إخفاء mobile night status لما ما نكون في NIGHT
+            if (data.phase !== "NIGHT" && data.phase !== "NIGHT_REVIEW") {
+                const mobileStatus = document.getElementById("mobile-night-status");
+                if (mobileStatus) mobileStatus.style.display = "none";
             }
             if (data.phase !== "NIGHT") this.isNightSceneActive = false;
             this.showPhaseTransition(data.phase);

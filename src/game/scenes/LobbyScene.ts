@@ -10,7 +10,9 @@ export default class LobbyScene extends Phaser.Scene {
 
     private usernameInput!: HTMLInputElement;
     private selectedType: string = "spectator";
-    private sessionPasswordReady: boolean = false; // هل الأدمن حط كلمة سر؟
+    private sessionPasswordReady: boolean = false;
+    private roleBtnW: number = 0; // عرض زر الـ role — للاستخدام في unlockPlayerButton
+    private roleBtnH: number = 64;
     private queueStatusText!: Phaser.GameObjects.Text;
     private playerCountInterval?: number;
     private joinButton!: Phaser.GameObjects.Container;
@@ -41,12 +43,70 @@ export default class LobbyScene extends Phaser.Scene {
     //  CREATE
     // ══════════════════════════════════════════════════════
     create() {
-        // ─── استقبل حالة كلمة السر فوراً عند الاتصال ───
+        // ─── سجّل كل session listeners مرة واحدة فقط هنا ───
         socketService.socket.off("session_password_ready");
+        socketService.socket.off("session_password_set");
+        socketService.socket.off("session_reset");
+        socketService.socket.off("server_reset");
+
         socketService.socket.on("session_password_ready", (data: any) => {
             this.sessionPasswordReady = !!data.ready;
             if (data.ready) this.unlockPlayerButton();
         });
+
+        socketService.socket.on("session_password_set", (data: any) => {
+            if (data.password) {
+                this.sessionPasswordReady = true;
+                this.showToast(`✓ Password set: ${data.password}`, "success");
+            } else {
+                this.sessionPasswordReady = false;
+                this.showToast("No password — open session", "info");
+            }
+        });
+
+        socketService.socket.on("session_reset", (data: any) => {
+            (this as any)._pendingPlayerPassword = null;
+            this.selectedType = "spectator";
+            const playerBtn = this.roleButtons["player"];
+            if (playerBtn) {
+                playerBtn.setAlpha(0.4);
+                playerBtn.disableInteractive();
+                const icon = playerBtn.getData("icon") as Phaser.GameObjects.Text;
+                if (icon) icon.setText("🔒");
+            }
+            const roles = [
+                { key: "player",    colHex: 0x22c55e, hex: "#22c55e" },
+                { key: "spectator", colHex: 0x8b5cf6, hex: "#8b5cf6" },
+                { key: "admin",     colHex: 0xf59e0b, hex: "#f59e0b" },
+            ];
+            this.activateRole("spectator", roles);
+            if (this.joinButton?.active) {
+                this.joinBtnLabel?.setText("JOIN  QUEUE");
+                this.joinButton.setAlpha(1);
+                this.joinButton.setInteractive(
+                    new Phaser.Geom.Rectangle(-172, -24, 344, 48),
+                    Phaser.Geom.Rectangle.Contains
+                );
+            }
+            this.showToast(data.message || "تم تغيير كلمة السر — أدخل الكلمة الجديدة", "error");
+        });
+
+        socketService.socket.on("server_reset", () => {
+            socketService.reset();
+            (this as any)._pendingPlayerPassword = null;
+            this.showToast("🔄 Server reset by admin", "info");
+            this.time.delayedCall(800, () => { this.scene.restart(); });
+        });
+
+        socketService.socket.on("player_count_updated", (data: any) => {
+            (this as any)._requiredPlayers = data.required || 6;
+            // نحدّث عرض الـ queue لو موجود
+            if (this.queueStatusText?.active) {
+                const size = 0;
+                this.queueStatusText.setText(`●  ${size} / ${data.required} in queue`).setColor("#3b4a5c");
+            }
+        });
+
         this.showSplashScreen();
     }
 
@@ -487,6 +547,9 @@ export default class LobbyScene extends Phaser.Scene {
         const btnW = (totalW - gap * 2) / 3;
         const btnH = 64;
         const sx   = cx - totalW / 2 + btnW / 2;
+        // نحفظ العرض عشان نستخدمه في unlockPlayerButton
+        this.roleBtnW = btnW;
+        this.roleBtnH = btnH;
 
         roles.forEach((role, i) => {
             const bx = sx + i * (btnW + gap);
@@ -568,10 +631,10 @@ export default class LobbyScene extends Phaser.Scene {
         if (iconTxt) iconTxt.setText("⚔");
         c.setInteractive(
             new Phaser.Geom.Rectangle(
-                -(this.scale.width * 0.3) / 2,
-                -32,
-                this.scale.width * 0.3,
-                64
+                -this.roleBtnW / 2,
+                -this.roleBtnH / 2,
+                this.roleBtnW,
+                this.roleBtnH
             ),
             Phaser.Geom.Rectangle.Contains
         );
@@ -794,14 +857,24 @@ export default class LobbyScene extends Phaser.Scene {
 
         box.innerHTML = `
             <div style="font-size:30px;text-align:center;margin-bottom:10px">🔑</div>
-            <div style="color:#3b82f6;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold">SESSION PASSWORD</div>
-            <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">Set a password for players to join this session</div>
-            <input id="session-pass-input" type="text" placeholder="e.g. mafia2024" style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
-            <div style="color:#64748b;font-size:9px;text-align:center;margin-bottom:14px;letter-spacing:1px">Share this password with players only</div>
+            <div style="color:#3b82f6;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold">SESSION SETTINGS</div>
+            <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">Set password & player count for this session</div>
+
+            <div style="color:#64748b;font-size:9px;letter-spacing:2px;margin-bottom:6px">PASSWORD</div>
+            <input id="session-pass-input" type="text" placeholder="e.g. mafia2024" style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:14px"/>
+
+            <div style="color:#64748b;font-size:9px;letter-spacing:2px;margin-bottom:8px">NUMBER OF PLAYERS</div>
+            <div id="count-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+                ${[4,5,6,7,8,9,10].map(n => `
+                    <button data-count="${n}" style="flex:1;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid ${n===6?"#3b82f6":"rgba(255,255,255,0.08)"};background:${n===6?"#3b82f6":"transparent"};color:${n===6?"#fff":"#8b949e"};font-size:12px;font-family:'Courier New',monospace;cursor:pointer">${n}</button>
+                `).join("")}
+            </div>
+            <div id="count-desc" style="color:#3b82f6;font-size:9px;text-align:center;margin-bottom:12px;letter-spacing:1px">6 players — 1 Mafia, 1 Doctor, 1 Detective, 3 Citizens</div>
+
             <div id="session-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
             <div style="display:flex;gap:8px">
                 <button id="session-skip-btn" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">NO PASSWORD</button>
-                <button id="session-set-btn" style="flex:1;padding:10px;border:none;border-radius:6px;background:#3b82f6;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">SET PASSWORD</button>
+                <button id="session-set-btn" style="flex:1;padding:10px;border:none;border-radius:6px;background:#3b82f6;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">CONFIRM</button>
             </div>
         `;
 
@@ -815,13 +888,40 @@ export default class LobbyScene extends Phaser.Scene {
 
         setTimeout(() => input.focus(), 60);
 
+        // ─── منطق أزرار العدد ───
+        let selectedCount = 6;
+        const roleDesc: Record<number, string> = {
+            4:  "4 players — 1 Mafia, 1 Doctor, 2 Citizens",
+            5:  "5 players — 1 Mafia, 1 Doctor, 1 Detective, 2 Citizens",
+            6:  "6 players — 1 Mafia, 1 Doctor, 1 Detective, 3 Citizens",
+            7:  "7 players — 2 Mafia, 1 Doctor, 1 Detective, 3 Citizens",
+            8:  "8 players — 2 Mafia, 1 Doctor, 1 Detective, 4 Citizens",
+            9:  "9 players — 2 Mafia, 1 Doctor, 1 Detective, 5 Citizens",
+            10: "10 players — 3 Mafia, 1 Doctor, 1 Detective, 5 Citizens",
+        };
+        const descEl = box.querySelector<HTMLElement>("#count-desc")!;
+        const countBtns = box.querySelectorAll<HTMLButtonElement>("#count-btns button");
+        countBtns.forEach(btn => {
+            btn.addEventListener("click", () => {
+                selectedCount = parseInt(btn.dataset.count!);
+                countBtns.forEach(b => {
+                    b.style.background   = b === btn ? "#3b82f6" : "transparent";
+                    b.style.color        = b === btn ? "#fff"    : "#8b949e";
+                    b.style.borderColor  = b === btn ? "#3b82f6" : "rgba(255,255,255,0.08)";
+                });
+                descEl.textContent = roleDesc[selectedCount] || "";
+            });
+        });
+
         const applyPassword = (password: string | null) => {
             socketService.socket.emit("set_session_password", { password: password || "" });
+            socketService.socket.emit("set_player_count", { count: selectedCount });
             overlay.remove();
+            const countMsg = `${selectedCount} players`;
             if (password) {
-                this.showToast(`Session password: ${password}`, "success");
+                this.showToast(`✓ Password: ${password} | ${countMsg}`, "success");
             } else {
-                this.showToast("No password — open session", "info");
+                this.showToast(`✓ No password | ${countMsg}`, "info");
             }
         };
 
@@ -1029,71 +1129,15 @@ export default class LobbyScene extends Phaser.Scene {
     //  SOCKET EVENTS
     // ══════════════════════════════════════════════════════
     private setupSocketEvents() {
-        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined","session_password_set"]
+        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined"]
             .forEach(ev => socketService.socket.off(ev));
-
-        socketService.socket.on("session_password_set", (data: any) => {
-            if (data.password) {
-                this.sessionPasswordReady = true;
-                this.showToast(`✓ Password set: ${data.password}`, "success");
-            } else {
-                this.sessionPasswordReady = false;
-                this.showToast("No password — open session", "info");
-            }
-        });
-
-        socketService.socket.on("session_password_ready", (data: any) => {
-            this.sessionPasswordReady = !!data.ready;
-            if (data.ready) {
-                this.unlockPlayerButton();
-            }
-        });
-
-        socketService.socket.on("session_reset", (data: any) => {
-            // اللاعب اتطرد من الـ queue بسبب تغيير كلمة السر
-            (this as any)._pendingPlayerPassword = null;
-            this.selectedType = "spectator";
-            // نرجع زر PLAYER للمقفل
-            const playerBtn = this.roleButtons["player"];
-            if (playerBtn) {
-                playerBtn.setAlpha(0.4);
-                playerBtn.disableInteractive();
-                const icon = playerBtn.getData("icon") as Phaser.GameObjects.Text;
-                if (icon) icon.setText("🔒");
-            }
-            // نرجع زر spectator محدد
-            const roles = [
-                { key: "player",    colHex: 0x22c55e, hex: "#22c55e" },
-                { key: "spectator", colHex: 0x8b5cf6, hex: "#8b5cf6" },
-                { key: "admin",     colHex: 0xf59e0b, hex: "#f59e0b" },
-            ];
-            this.activateRole("spectator", roles);
-            if (this.joinButton?.active) {
-                this.joinBtnLabel?.setText("JOIN  QUEUE");
-                this.joinButton.setAlpha(1);
-                this.joinButton.setInteractive(
-                    new Phaser.Geom.Rectangle(-172, -24, 344, 48),
-                    Phaser.Geom.Rectangle.Contains
-                );
-            }
-            this.showToast(data.message || "تم تغيير كلمة السر — أدخل الكلمة الجديدة", "error");
-        });
-
-        // ─── Server Reset — رجّع للـ lobby وامسح كل شي ───
-        socketService.socket.on("server_reset", () => {
-            socketService.reset();
-            (this as any)._pendingPlayerPassword = null;
-            this.showToast("🔄 Server reset by admin", "info");
-            this.time.delayedCall(800, () => {
-                this.scene.restart();
-            });
-        });
 
         socketService.socket.on("queue_update", (data: any) => {
             if (!this.queueStatusText?.active) return;
-            const size  = data.queueSize || 0;
-            const color = size >= 5 ? "#22c55e" : size >= 3 ? "#f59e0b" : "#3b4a5c";
-            this.queueStatusText.setText(`●  ${size} / 6 in queue`).setColor(color);
+            const size     = data.queueSize || 0;
+            const required = data.required  || (this as any)._requiredPlayers || 6;
+            const color    = size >= required - 1 ? "#22c55e" : size >= Math.floor(required / 2) ? "#f59e0b" : "#3b4a5c";
+            this.queueStatusText.setText(`●  ${size} / ${required} in queue`).setColor(color);
         });
 
         socketService.socket.on("error", (data: any) => {
@@ -1331,7 +1375,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.particles.forEach(p => p.gfx.destroy());
         this.particles = [];
-        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined","session_password_set","session_password_ready","session_reset","server_reset"]
+        ["game_started","queue_update","error","connect","connect_error","waiting_for_players","admin_joined","session_password_set","session_password_ready","session_reset","server_reset","player_count_updated"]
             .forEach(ev => socketService.socket.off(ev));
     }
 }
