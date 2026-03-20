@@ -199,10 +199,10 @@ export default class DetectiveNightScene extends Phaser.Scene {
         }
 
         const roleConfig: Record<string, { color: string; border: number; bg: number; icon: string; label: string }> = {
-            MAFIA:     { color: "#ff4444", border: 0xcc2222, bg: 0x1a0505, icon: "⚠", label: "⚠  MAFIA CONFIRMED"  },
-            DOCTOR:    { color: "#44ff88", border: 0x22cc55, bg: 0x051a05, icon: "✚", label: "✚  DOCTOR IDENTIFIED" },
-            DETECTIVE: { color: "#60a5fa", border: 0x2255cc, bg: 0x05051a, icon: "🔍", label: "🔍  DETECTIVE FOUND"  },
-            CITIZEN:   { color: "#94a3b8", border: 0x334155, bg: 0x0a0d13, icon: "✓", label: "✓  INNOCENT CITIZEN"  },
+            MAFIA:     { color: "#ff4444", border: 0xcc2222, bg: 0x1a0505, icon: "⚠",  label: "⚠  مافيا"    },
+            DOCTOR:    { color: "#4ade80", border: 0x22cc55, bg: 0x051a05, icon: "✚",  label: "✚  طبيب"     },
+            DETECTIVE: { color: "#60a5fa", border: 0x2255cc, bg: 0x05051a, icon: "🔍", label: "🔍  محقق"    },
+            CITIZEN:   { color: "#94a3b8", border: 0x334155, bg: 0x0a0d13, icon: "✓",  label: "✓  مواطن"   },
         };
         const cfg = roleConfig[role] ?? roleConfig["CITIZEN"];
 
@@ -238,10 +238,10 @@ export default class DetectiveNightScene extends Phaser.Scene {
     private showMobileResult(username: string, role: string) {
         document.getElementById("mobile-detective-result")?.remove();
         const roleConfig: Record<string, { color: string; icon: string; label: string }> = {
-            MAFIA:     { color: "#ef4444", icon: "⚠", label: "MAFIA CONFIRMED"  },
-            DOCTOR:    { color: "#22c55e", icon: "✚", label: "DOCTOR IDENTIFIED" },
-            DETECTIVE: { color: "#60a5fa", icon: "🔍", label: "DETECTIVE FOUND"  },
-            CITIZEN:   { color: "#94a3b8", icon: "✓", label: "INNOCENT CITIZEN"  },
+            MAFIA:     { color: "#ef4444", icon: "⚠",  label: "مافيا"  },
+            DOCTOR:    { color: "#4ade80", icon: "✚",  label: "طبيب"   },
+            DETECTIVE: { color: "#60a5fa", icon: "🔍", label: "محقق"   },
+            CITIZEN:   { color: "#94a3b8", icon: "✓",  label: "مواطن" },
         };
         const cfg = roleConfig[role] ?? roleConfig["CITIZEN"];
 
@@ -258,7 +258,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
 
         banner.innerHTML = `
             <div style="font-size:36px;margin-bottom:12px">${cfg.icon}</div>
-            <div style="color:${cfg.color};font-size:16px;font-weight:bold;letter-spacing:3px;margin-bottom:8px">${cfg.label}</div>
+            <div style="color:${cfg.color};font-size:22px;font-weight:bold;letter-spacing:2px;margin-bottom:8px;direction:rtl">${cfg.label}</div>
             <div style="color:#94a3b8;font-size:14px;margin-bottom:12px">${username}</div>
             <div style="color:#1e3a5f;font-size:10px;letter-spacing:2px">TAP TO DISMISS</div>
         `;
