@@ -402,6 +402,12 @@ export default class DetectiveNightScene extends Phaser.Scene {
             this.cameras.main.fadeOut(300, 8, 8, 15);
             this.time.delayedCall(300, () => this.scene.start("GameScene", { role: "DETECTIVE", roomId: this.roomId, userType: "PLAYER" }));
         });
+        socketService.socket.on("server_reset", () => {
+            socketService.reset();
+            document.getElementById("mobile-night-ui")?.remove();
+            this.cameras.main.fadeOut(400, 6, 8, 16);
+            this.time.delayedCall(400, () => { this.scene.start("LobbyScene"); });
+        });
         socketService.socket.on("detective_result", (data: any) => {
             this.showResult(data);
         });
@@ -443,5 +449,6 @@ export default class DetectiveNightScene extends Phaser.Scene {
         socketService.socket.off("player_killed");
         socketService.socket.off("detective_result");
         socketService.socket.off("back_to_lobby");
+        socketService.socket.off("server_reset");
     }
 }

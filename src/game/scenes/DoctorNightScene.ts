@@ -316,6 +316,12 @@ export default class DoctorNightScene extends Phaser.Scene {
             this.cameras.main.fadeOut(300, 8, 16, 10);
             this.time.delayedCall(300, () => this.scene.start("GameScene", { role: "DOCTOR", roomId: this.roomId, userType: "PLAYER" }));
         });
+        socketService.socket.on("server_reset", () => {
+            socketService.reset();
+            document.getElementById("mobile-night-ui")?.remove();
+            this.cameras.main.fadeOut(400, 6, 8, 16);
+            this.time.delayedCall(400, () => { this.scene.start("LobbyScene"); });
+        });
         socketService.socket.on("player_killed", (data: any) => {
             const msg = `${data.username} was killed in the night`;
             if (data.id === this.savedPlayerId) this.showToast(`Failed to save ${data.username}`, "danger");
@@ -353,5 +359,6 @@ export default class DoctorNightScene extends Phaser.Scene {
         socketService.socket.off("phase_changed");
         socketService.socket.off("player_killed");
         socketService.socket.off("back_to_lobby");
+        socketService.socket.off("server_reset");
     }
 }
