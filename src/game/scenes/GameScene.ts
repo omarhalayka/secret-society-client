@@ -425,10 +425,15 @@ export default class GameScene extends Phaser.Scene {
             const panel = document.getElementById(`tab-panel-${t}`) as HTMLDivElement;
             if (!btn || !panel) return;
             const active = t === tabId;
-            btn.style.color       = active ? "#f1f5f9" : "#64748b";
+            btn.style.color             = active ? "#f1f5f9" : "#64748b";
             btn.style.borderBottomColor = active ? "#3b82f6" : "transparent";
-            panel.style.display   = active ? "flex" : "none";
+            panel.style.display         = active ? "flex" : "none";
         });
+        // لما يفتح CHAT — scroll للأسفل
+        if (tabId === "chat") {
+            const msgs = document.getElementById("mobile-chat-messages");
+            if (msgs) this.time.delayedCall(50, () => { msgs.scrollTop = msgs.scrollHeight; });
+        }
         // reset badge
         const btn = document.getElementById(`tab-btn-${tabId}`);
         if (btn) {
