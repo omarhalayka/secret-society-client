@@ -123,7 +123,6 @@ export default class LobbyScene extends Phaser.Scene {
     //  REJOIN — محاولة الرجوع لجلسة محفوظة
     // ══════════════════════════════════════════════════════
     private tryRejoin(saved: { roomId: string; username: string; role: string }) {
-        // نظهر شاشة انتظار بسيطة
         const W = this.scale.width;
         const H = this.scale.height;
         this.cameras.main.setBackgroundColor("#060810");
@@ -138,8 +137,23 @@ export default class LobbyScene extends Phaser.Scene {
             fontFamily: "'Courier New', monospace",
         }).setOrigin(0.5);
 
-        // نبعث rejoin للسيرفر
         socketService.saveUsername(saved.username);
+
+        // ─── cleanup أي listeners قديمة ───
+        socketService.socket.off("rejoin_failed");
+        socketService.socket.off("game_started");
+
+        const goToLobby = () => {
+            socketService.clearSession();
+            msg.setColor("#ef4444");
+            sub.setText("Starting new session...");
+            this.time.delayedCall(1200, () => {
+                if (msg.active) msg.destroy();
+                if (sub.active) sub.destroy();
+                this.setupSessionListeners();
+                this.showSplashScreen();
+            });
+        };
 
         const attemptRejoin = () => {
             socketService.socket.emit("rejoin_game", {
@@ -147,40 +161,46 @@ export default class LobbyScene extends Phaser.Scene {
                 username: saved.username,
                 role:     saved.role,
             });
+
+            // timeout — لو ما رد السيرفر خلال 5 ثواني
+            const timeout = this.time.delayedCall(5000, () => {
+                socketService.socket.off("rejoin_failed");
+                socketService.socket.off("game_started");
+                msg.setText("Connection timeout");
+                goToLobby();
+            });
+
+            socketService.socket.once("rejoin_failed", () => {
+                timeout.remove();
+                msg.setText("Session expired");
+                goToLobby();
+            });
+
+            socketService.socket.once("game_started", (data: any) => {
+                timeout.remove();
+                socketService.isAdmin = data.role === "ADMIN";
+                socketService.role    = data.role;
+                socketService.roomId  = data.roomId;
+                this.scene.start("GameScene", {
+                    role:     data.role,
+                    roomId:   data.roomId,
+                    userType: data.role === "ADMIN" ? "ADMIN" : "PLAYER",
+                });
+            });
         };
 
-        // لو متصل ابعث مباشرة، لو لا انتظر
         if (socketService.socket.connected) {
             attemptRejoin();
         } else {
             socketService.socket.once("connect", attemptRejoin);
+            // لو ما اتصل خلال 6 ثواني
+            this.time.delayedCall(6000, () => {
+                if (!socketService.socket.connected) {
+                    msg.setText("Cannot connect to server");
+                    goToLobby();
+                }
+            });
         }
-
-        // استقبل النتيجة
-        socketService.socket.once("rejoin_failed", (data: any) => {
-            socketService.clearSession();
-            msg.setText(data.message || "Session expired");
-            msg.setColor("#ef4444");
-            sub.setText("Starting new session...");
-            this.time.delayedCall(1500, () => {
-                msg.destroy(); sub.destroy();
-                this.setupSessionListeners();
-                this.showSplashScreen();
-            });
-        });
-
-        socketService.socket.once("game_started", (data: any) => {
-            if (data.role === "ADMIN") {
-                socketService.isAdmin = true;
-            }
-            socketService.role   = data.role;
-            socketService.roomId = data.roomId;
-            this.scene.start("GameScene", {
-                role:     data.role,
-                roomId:   data.roomId,
-                userType: data.role === "ADMIN" ? "ADMIN" : "PLAYER",
-            });
-        });
     }
 
     private showSplashScreen() {
