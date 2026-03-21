@@ -247,7 +247,7 @@ export default class MafiaNightScene extends Phaser.Scene {
     //  Desktop: بطاقات
     // ══════════════════════════════
     private drawPlayerCards(W: number, H: number) {
-        const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id);
+        const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id && p.role !== "MAFIA");
         if (!targets.length) return;
 
         let cardW = 140, cardH = 180, gap = 24;
@@ -532,6 +532,8 @@ export default class MafiaNightScene extends Phaser.Scene {
     private setupSocketListeners() {
         socketService.socket.on("phase_changed", (data: any) => {
             if (data.phase === "NIGHT" || data.phase === "NIGHT_REVIEW") return;
+            // امسح الـ desktop chat لما ينتهي الليل
+            document.getElementById("mafia-desktop-chat")?.remove();
             this.cameras.main.fadeOut(500, 8, 8, 16);
             this.time.delayedCall(500, () => {
                 this.scene.start("GameScene", { role: "MAFIA", roomId: this.roomId, userType: "PLAYER" });

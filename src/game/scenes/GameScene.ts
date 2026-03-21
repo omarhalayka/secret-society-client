@@ -912,14 +912,24 @@ export default class GameScene extends Phaser.Scene {
     private updateChatUI(phase: string) {
         if (!this.isMobile && this.chatStatusText?.active) {
             const map: Record<string, [string, string]> = {
-                NIGHT: ["● NIGHT", "#6366f1"],
-                VOTING: ["● VOTING", "#f59e0b"],
+                NIGHT:        ["● NIGHT",   "#6366f1"],
+                NIGHT_REVIEW: ["● NIGHT",   "#6366f1"],
+                VOTING:       ["● VOTING",  "#f59e0b"],
             };
             const [txt, clr] = map[phase] || ["● LIVE", "#22c55e"];
             this.chatStatusText.setText(txt).setColor(clr);
         }
-        if (this.chatInput) { this.chatInput.disabled = false; this.chatInput.style.opacity = "1"; }
-        if (this.sendBtn)   { this.sendBtn.disabled = false;   this.sendBtn.style.opacity = "1"; }
+
+        const isNight = phase === "NIGHT" || phase === "NIGHT_REVIEW";
+        if (this.chatInput) {
+            this.chatInput.disabled      = isNight;
+            this.chatInput.style.opacity = isNight ? "0.3" : "1";
+            this.chatInput.placeholder   = isNight ? "Chat locked during night..." : "Type a message...";
+        }
+        if (this.sendBtn) {
+            this.sendBtn.disabled      = isNight;
+            this.sendBtn.style.opacity = isNight ? "0.3" : "1";
+        }
     }
 
     // ══════════════════════════════════════
@@ -1032,6 +1042,56 @@ export default class GameScene extends Phaser.Scene {
             card.voteLabel.setText(`${count} vote${count !== 1 ? "s" : ""}`).setColor(count > 0 ? "#fbbf24" : "#64748b");
             if (count > 0 && count === maxV && this.myVote !== id) { card.bg.setStrokeStyle(1, 0xf59e0b, 0.55); card.topBar.setFillStyle(0xf59e0b); card.topBar.setAlpha(0.45); }
         });
+    }
+
+    private showVotingChat() {
+        document.getElementById("voting-chat-panel")?.remove();
+
+        const panel = document.createElement("div");
+        panel.id = "voting-chat-panel";
+        Object.assign(panel.style, {
+            position:  "fixed",
+            bottom:    this.isMobile ? "0" : "16px",
+            left:      this.isMobile ? "0" : "16px",
+            right:     this.isMobile ? "0" : "auto",
+            width:     this.isMobile ? "auto" : "300px",
+            height:    this.isMobile ? "220px" : "320px",
+            zIndex:    "300",
+            backgroundColor: "rgba(8,12,6,0.95)",
+            border:    "1px solid rgba(251,191,36,0.3)",
+            borderRadius: this.isMobile ? "12px 12px 0 0" : "10px",
+            display:   "flex", flexDirection: "column",
+            fontFamily: "'Courier New', monospace",
+            boxShadow: "0 0 30px rgba(251,191,36,0.1)",
+        });
+
+        panel.innerHTML = `
+            <div style="padding:8px 14px;border-bottom:1px solid rgba(251,191,36,0.15);background:rgba(0,0,0,0.3);border-radius:inherit;border-bottom-left-radius:0;border-bottom-right-radius:0;display:flex;align-items:center;gap:8px">
+                <span style="color:#fbbf24;font-size:10px;letter-spacing:3px;font-weight:bold">⚖ VOTING DISCUSSION</span>
+            </div>
+            <div id="voting-chat-messages" style="flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:4px">
+                <div style="color:#374151;font-size:9px;text-align:center;letter-spacing:1px">── discuss before voting ──</div>
+            </div>
+            <div style="display:flex;gap:6px;padding:8px;border-top:1px solid rgba(251,191,36,0.1)">
+                <input id="voting-chat-input" type="text" placeholder="Your opinion..."
+                    style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(251,191,36,0.2);border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
+                <button id="voting-chat-send" style="padding:7px 12px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer;font-family:'Courier New',monospace">▶</button>
+            </div>
+        `;
+
+        document.body.appendChild(panel);
+
+        const input   = panel.querySelector<HTMLInputElement>("#voting-chat-input")!;
+        const sendBtn = panel.querySelector<HTMLButtonElement>("#voting-chat-send")!;
+
+        const sendMsg = () => {
+            const msg = input.value.trim();
+            if (!msg) return;
+            socketService.socket.emit("send_message", msg);
+            input.value = "";
+        };
+        sendBtn.addEventListener("click", sendMsg);
+        input.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
     }
 
     private closeVotingOverlay(showResult: boolean, result?: { eliminated?: string; tie?: boolean }) {
@@ -2241,6 +2301,8 @@ export default class GameScene extends Phaser.Scene {
                     else this.showVotingOverlay();
                 });
             }
+            // شات التصويت للكل
+            this.time.delayedCall(400, () => this.showVotingChat());
         });
 
         socketService.socket.on("vote_update", (v: any) => {
@@ -2252,6 +2314,8 @@ export default class GameScene extends Phaser.Scene {
             this.addEventLog(msg, data.tie ? "#fbbf24" : "#f87171");
             this.cameras.main.shake(data.tie ? 150 : 350, 0.006);
             this.closeVotingOverlay(true, { eliminated: data.eliminated, tie: data.tie });
+            // امسح شات التصويت
+            document.getElementById("voting-chat-panel")?.remove();
         });
 
         socketService.socket.on("player_killed", (data: any) => {
@@ -2263,6 +2327,23 @@ export default class GameScene extends Phaser.Scene {
 
         socketService.socket.on("receive_message", (data: any) => {
             this.addChatMessage(data.username, data.message, data.alive);
+            // لو في voting chat مفتوح — نضيف الرسالة فيه أيضاً
+            const votingMessages = document.getElementById("voting-chat-messages");
+            if (votingMessages) {
+                const isMe = data.username === this.currentPlayers.find(p => p.id === socketService.socket.id)?.username
+                          || (this.isAdmin && data.username === "ADMIN 👑");
+                const msg = document.createElement("div");
+                Object.assign(msg.style, {
+                    padding: "4px 8px", borderRadius: "5px", maxWidth: "90%",
+                    alignSelf: isMe ? "flex-end" : "flex-start",
+                    backgroundColor: isMe ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)",
+                    border: isMe ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.06)",
+                    fontSize: "12px",
+                });
+                msg.innerHTML = `<span style="color:#6b7280;font-size:9px">${data.username}: </span><span style="color:#f1f5f9">${data.message}</span>`;
+                votingMessages.appendChild(msg);
+                votingMessages.scrollTop = votingMessages.scrollHeight;
+            }
         });
 
         socketService.socket.on("night_review", (data: any) => {
@@ -2322,6 +2403,7 @@ export default class GameScene extends Phaser.Scene {
         document.getElementById("desktop-chat-input")?.remove();
         document.getElementById("desktop-send-btn")?.remove();
         document.getElementById("win-bg-video")?.remove();
+        document.getElementById("voting-chat-panel")?.remove();
         if (this.outsideClickHandler) document.removeEventListener("click", this.outsideClickHandler);
     }
 
