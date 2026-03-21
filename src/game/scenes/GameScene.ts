@@ -1176,107 +1176,127 @@ export default class GameScene extends Phaser.Scene {
     // ══════════════════════════════════════
     private showMobileVoting() {
         document.getElementById("mobile-voting-overlay")?.remove();
+        document.getElementById("voting-chat-panel")?.remove();
+        document.getElementById("voting-chat-toggle")?.remove();
         this.myVote = null;
+
         const alivePlayers = this.currentPlayers.filter(p => p.alive);
         if (!alivePlayers.length) return;
+        const myPlayer = alivePlayers.find(p => p.id === socketService.socket.id);
 
         const overlay = document.createElement("div");
         overlay.id = "mobile-voting-overlay";
         Object.assign(overlay.style, {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
-            zIndex: "9999", backgroundColor: "rgba(0,0,0,0.65)",
-            display: "flex", flexDirection: "column", alignItems: "center",
-            overflowY: "auto", padding: "20px 12px 20px",
+            zIndex: "200", backgroundColor: "rgba(6,10,18,0.98)",
+            display: "flex", flexDirection: "column",
             fontFamily: "'Courier New', monospace",
         });
 
-        const title = document.createElement("div");
-        title.textContent = "VOTE TO ELIMINATE";
-        Object.assign(title.style, {
-            color: "#f1f5f9", fontSize: "20px", fontFamily: "'Georgia', serif",
-            fontWeight: "bold", letterSpacing: "4px", marginBottom: "6px",
+        // ─── Header ───
+        const header = document.createElement("div");
+        Object.assign(header.style, {
+            padding: "12px 16px", borderBottom: "1px solid rgba(245,158,11,0.2)",
+            backgroundColor: "rgba(0,0,0,0.4)", flexShrink: "0",
         });
-        const sub = document.createElement("div");
-        sub.textContent = "Choose who threatens the community";
-        Object.assign(sub.style, { color: "#64748b", fontSize: "11px", letterSpacing: "2px", marginBottom: "20px" });
-        overlay.appendChild(title);
-        overlay.appendChild(sub);
+        header.innerHTML = `
+            <div style="color:#f59e0b;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:4px">⚖ VOTING</div>
+            <div style="color:#f1f5f9;font-size:16px;font-weight:bold">Vote to Eliminate</div>
+            <div style="color:#4b5563;font-size:11px;margin-top:3px">Choose who threatens the community</div>
+        `;
+        overlay.appendChild(header);
 
-        const grid = document.createElement("div");
-        Object.assign(grid.style, {
-            display: "grid", gridTemplateColumns: "repeat(2, 1fr)",
-            gap: "10px", width: "100%", maxWidth: "420px",
+        // ─── Chat Box ───
+        const chatBox = document.createElement("div");
+        chatBox.id = "voting-chat-messages";
+        Object.assign(chatBox.style, {
+            height: "130px", overflowY: "auto", padding: "8px 14px",
+            display: "flex", flexDirection: "column", gap: "4px",
+            borderBottom: "1px solid rgba(245,158,11,0.1)", flexShrink: "0",
+            backgroundColor: "rgba(0,0,0,0.2)",
+        });
+        const welcomeMsg = document.createElement("div");
+        welcomeMsg.style.cssText = "color:#374151;font-size:9px;text-align:center;letter-spacing:1px;padding:4px";
+        welcomeMsg.textContent = "── discuss before voting ──";
+        chatBox.appendChild(welcomeMsg);
+        overlay.appendChild(chatBox);
+
+        // ─── Chat Input ───
+        const chatInput = document.createElement("div");
+        Object.assign(chatInput.style, {
+            display: "flex", gap: "6px", padding: "6px 10px",
+            borderBottom: "1px solid rgba(245,158,11,0.1)",
+            backgroundColor: "rgba(0,0,0,0.3)", flexShrink: "0",
+        });
+        chatInput.innerHTML = `
+            <input id="mvoting-chat-input" type="text" placeholder="Your opinion..."
+                style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(245,158,11,0.2);border-radius:5px;font-size:13px;font-family:'Courier New',monospace;outline:none"/>
+            <button id="mvoting-chat-send" style="padding:7px 12px;border:1px solid rgba(245,158,11,0.4);border-radius:5px;background:transparent;color:#f59e0b;font-size:13px;cursor:pointer;touch-action:manipulation">▶</button>
+        `;
+        overlay.appendChild(chatInput);
+
+        const chatInputEl = chatInput.querySelector<HTMLInputElement>("#mvoting-chat-input")!;
+        const chatSendBtn = chatInput.querySelector<HTMLButtonElement>("#mvoting-chat-send")!;
+        const sendChatMsg = () => {
+            const msg = chatInputEl.value.trim();
+            if (!msg) return;
+            socketService.socket.emit("send_message", msg);
+            chatInputEl.value = "";
+        };
+        chatSendBtn.addEventListener("click", sendChatMsg);
+        chatInputEl.addEventListener("keydown", e => { if (e.key === "Enter") sendChatMsg(); });
+
+        // ─── قائمة اللاعبين ───
+        const playerList = document.createElement("div");
+        Object.assign(playerList.style, {
+            flex: "1", overflowY: "auto", padding: "8px 12px",
+            display: "flex", flexDirection: "column", gap: "8px",
         });
 
         alivePlayers.forEach(p => {
             const isMe = p.id === socketService.socket.id;
-            const card = document.createElement("div");
-            Object.assign(card.style, {
-                backgroundColor: "#111827", border: "1px solid #1e2d45",
-                borderRadius: "8px", padding: "14px 10px",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: "8px",
-                opacity: isMe ? "0.5" : "1",
+            const row = document.createElement("div");
+            Object.assign(row.style, {
+                display: "flex", alignItems: "center", gap: "12px",
+                padding: "10px 14px", borderRadius: "8px",
+                backgroundColor: "rgba(17,24,39,0.9)",
+                border: `1px solid ${isMe ? "rgba(245,158,11,0.3)" : "#1e2d45"}`,
+                opacity: isMe ? "0.6" : "1",
             });
 
-            const avatar = document.createElement("div");
-            avatar.textContent = isMe ? "🧑" : "👤";
-            avatar.style.fontSize = "28px";
-
-            const name = document.createElement("div");
-            name.textContent = p.username + (isMe ? " (YOU)" : "");
-            Object.assign(name.style, {
-                color: "#f1f5f9", fontSize: "12px", fontWeight: "bold",
-                textAlign: "center", letterSpacing: "1px",
-            });
-
-            const barBg = document.createElement("div");
-            Object.assign(barBg.style, { width: "100%", height: "4px", backgroundColor: "#1e2d45", borderRadius: "2px", overflow: "hidden" });
-            const barFill = document.createElement("div");
-            barFill.id = `mvote-bar-${p.id}`;
-            Object.assign(barFill.style, { height: "100%", width: "0%", backgroundColor: "#f59e0b", transition: "width 0.3s" });
-            barBg.appendChild(barFill);
-
-            const votesLabel = document.createElement("div");
-            votesLabel.id = `mvote-label-${p.id}`;
-            votesLabel.textContent = "0 votes";
-            Object.assign(votesLabel.style, { color: "#64748b", fontSize: "10px" });
-
-            const voteBtn = document.createElement("button");
-            voteBtn.textContent = isMe ? "—" : "VOTE";
-            Object.assign(voteBtn.style, {
-                padding: "6px 16px", fontSize: "11px", fontWeight: "bold",
-                letterSpacing: "2px", border: "1px solid #f59e0b",
-                borderRadius: "4px", backgroundColor: "transparent",
-                color: "#f59e0b", cursor: isMe ? "default" : "pointer",
-                pointerEvents: isMe ? "none" : "auto",
-                fontFamily: "'Courier New', monospace",
-            });
+            row.innerHTML = `
+                <span style="font-size:22px">${isMe ? "🧑" : "👤"}</span>
+                <div style="flex:1">
+                    <div style="color:#f1f5f9;font-size:14px;font-weight:bold;letter-spacing:1px">${p.username}${isMe ? " (YOU)" : ""}</div>
+                    <div style="height:3px;background:#1e2d45;border-radius:2px;margin-top:5px;overflow:hidden">
+                        <div id="mvote-bar-${p.id}" style="height:100%;width:0%;background:#f59e0b;transition:width 0.3s"></div>
+                    </div>
+                    <div id="mvote-label-${p.id}" style="color:#4b5563;font-size:10px;margin-top:3px">0 votes</div>
+                </div>
+                <button id="mvote-btn-${p.id}" style="padding:8px 16px;font-size:11px;font-weight:bold;letter-spacing:2px;border:1px solid #f59e0b;border-radius:5px;background:transparent;color:#f59e0b;cursor:${isMe ? "default" : "pointer"};font-family:'Courier New',monospace;touch-action:manipulation;pointer-events:${isMe ? "none" : "auto"}">${isMe ? "—" : "VOTE"}</button>
+            `;
 
             if (!isMe) {
-                voteBtn.addEventListener("click", () => {
+                const btn = row.querySelector<HTMLButtonElement>(`#mvote-btn-${p.id}`)!;
+                btn.addEventListener("click", () => {
                     if (this.myVote) return;
                     this.myVote = p.id;
                     socketService.socket.emit("vote", p.id);
-                    voteBtn.textContent = "✓ VOTED";
-                    voteBtn.style.backgroundColor = "#f59e0b";
-                    voteBtn.style.color = "#000";
-                    card.style.borderColor = "#f59e0b";
+                    btn.textContent = "✓ VOTED";
+                    btn.style.backgroundColor = "#f59e0b";
+                    btn.style.color = "#000";
+                    row.style.borderColor = "#f59e0b";
                     // disable others
-                    overlay.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
-                        if (b !== voteBtn) { b.style.opacity = "0.3"; b.style.pointerEvents = "none"; }
+                    playerList.querySelectorAll<HTMLButtonElement>("button[id^='mvote-btn-']").forEach(b => {
+                        if (b !== btn) { b.style.opacity = "0.3"; b.style.pointerEvents = "none"; }
                     });
                 });
             }
 
-            card.appendChild(avatar);
-            card.appendChild(name);
-            card.appendChild(barBg);
-            card.appendChild(votesLabel);
-            card.appendChild(voteBtn);
-            grid.appendChild(card);
+            playerList.appendChild(row);
         });
 
-        overlay.appendChild(grid);
+        overlay.appendChild(playerList);
         document.body.appendChild(overlay);
     }
 
@@ -2359,8 +2379,10 @@ export default class GameScene extends Phaser.Scene {
                     else this.showVotingOverlay();
                 });
             }
-            // شات التصويت للكل
-            this.time.delayedCall(400, () => this.showVotingChat());
+            // شات التصويت — ديسكتوب فقط، الموبايل chat مدمج في الـ overlay
+            if (!this.isMobile) {
+                this.time.delayedCall(400, () => this.showVotingChat());
+            }
         });
 
         socketService.socket.on("vote_update", (v: any) => {
