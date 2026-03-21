@@ -136,13 +136,16 @@ export default class MafiaNightScene extends Phaser.Scene {
     //  Desktop: عنوان
     // ══════════════════════════════
     private drawTitle(W: number) {
+        const isDead = this.myPlayer && !this.myPlayer.alive;
         const titleY = 110;
-        const title = this.add.text(W / 2, titleY, "CHOOSE YOUR TARGET", {
-            fontSize: "32px", color: "#f1e8e8",
+        const titleText = isDead ? "YOU ARE ELIMINATED" : "CHOOSE YOUR TARGET";
+        const subText   = isDead ? "Watch the mafia coordinate..." : "Chat with your team then suggest a target";
+        const title = this.add.text(W / 2, titleY, titleText, {
+            fontSize: "32px", color: isDead ? "#664444" : "#f1e8e8",
             fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 6,
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: title, alpha: 1, y: titleY - 5, duration: 700, ease: "Cubic.easeOut", delay: 300 });
-        const sub = this.add.text(W / 2, titleY + 38, "Select one player to eliminate tonight", {
+        const sub = this.add.text(W / 2, titleY + 38, subText, {
             fontSize: "13px", color: "#664444",
             fontFamily: "'Courier New', monospace", letterSpacing: 2
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
@@ -151,6 +154,93 @@ export default class MafiaNightScene extends Phaser.Scene {
         divider.lineStyle(1, this.C.accent, 0.4);
         divider.moveTo(W / 2 - 120, titleY + 58); divider.lineTo(W / 2 + 120, titleY + 58); divider.strokePath();
         this.tweens.add({ targets: divider, alpha: 1, duration: 500, delay: 600 });
+
+        // ─── Desktop Chat Panel (HTML overlay فوق Phaser) ───
+        this.createDesktopChatPanel();
+    }
+
+    private createDesktopChatPanel() {
+        document.getElementById("mafia-desktop-chat")?.remove();
+        const isDead = this.myPlayer && !this.myPlayer.alive;
+
+        const panel = document.createElement("div");
+        panel.id = "mafia-desktop-chat";
+        Object.assign(panel.style, {
+            position: "fixed", top: "70px", right: "16px",
+            width: "280px", bottom: isDead ? "16px" : "70px",
+            zIndex: "50", backgroundColor: "rgba(8,4,4,0.92)",
+            border: "1px solid #2a1515", borderRadius: "10px",
+            display: "flex", flexDirection: "column",
+            fontFamily: "'Courier New', monospace",
+            boxShadow: "0 0 30px rgba(204,34,34,0.15)",
+        });
+
+        // Header
+        panel.innerHTML = `
+            <div style="padding:10px 14px;border-bottom:1px solid #2a1515;background:rgba(0,0,0,0.3);border-radius:10px 10px 0 0">
+                <div style="color:#cc2222;font-size:10px;letter-spacing:3px;font-weight:bold">🔪 MAFIA CHANNEL</div>
+            </div>
+            <div id="mafia-suggestion-bar-d" style="display:none;padding:6px 12px;background:rgba(204,34,34,0.08);border-bottom:1px solid #2a1515;direction:rtl">
+                <span style="color:#664444;font-size:9px">الاقتراح: </span>
+                <span id="suggestion-name-d" style="color:#ff4444;font-size:11px;font-weight:bold"></span>
+                <span id="suggestion-by-d" style="color:#664444;font-size:9px"></span>
+            </div>
+            <div id="mafia-chat-box-d" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:5px">
+                <div style="color:#3a1515;font-size:9px;text-align:center;letter-spacing:1px">── mafia channel ──</div>
+            </div>
+        `;
+
+        // Input
+        if (!isDead) {
+            const inputDiv = document.createElement("div");
+            inputDiv.style.cssText = "display:flex;gap:6px;padding:8px;border-top:1px solid #2a1515";
+            inputDiv.innerHTML = `
+                <input id="mafia-chat-input-d" type="text" placeholder="Message..."
+                    style="flex:1;padding:6px 10px;background:#0a0505;color:#f1e8e8;border:1px solid #2a1515;border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
+                <button id="mafia-chat-send-d" style="padding:6px 10px;border:1px solid #cc2222;border-radius:5px;background:transparent;color:#cc2222;font-size:11px;cursor:pointer;font-family:'Courier New',monospace">▶</button>
+            `;
+            panel.appendChild(inputDiv);
+
+            const input   = inputDiv.querySelector<HTMLInputElement>("#mafia-chat-input-d")!;
+            const sendBtn = inputDiv.querySelector<HTMLButtonElement>("#mafia-chat-send-d")!;
+            const sendMsg = () => {
+                const msg = input.value.trim();
+                if (!msg) return;
+                socketService.socket.emit("mafia_chat", msg);
+                input.value = "";
+            };
+            sendBtn.addEventListener("click", sendMsg);
+            input.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
+        }
+
+        document.body.appendChild(panel);
+    }
+
+    // ─── إضافة رسالة للـ chat (desktop + mobile) ───
+    private addDesktopChatMessage(from: string, message: string) {
+        const chatBox = document.getElementById("mafia-chat-box-d");
+        if (!chatBox) return;
+        const isMine = from === (this.myPlayer?.username);
+        const msg = document.createElement("div");
+        Object.assign(msg.style, {
+            padding: "5px 8px", borderRadius: "6px", maxWidth: "90%",
+            alignSelf: isMine ? "flex-end" : "flex-start",
+            backgroundColor: isMine ? "rgba(204,34,34,0.2)" : "rgba(255,255,255,0.04)",
+            border: isMine ? "1px solid #cc2222" : "1px solid #2a1515",
+            fontSize: "12px",
+        });
+        msg.innerHTML = `<span style="color:#664444;font-size:9px">${isMine ? "أنت" : from}: </span><span style="color:#f1e8e8">${message}</span>`;
+        chatBox.appendChild(msg);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    private updateDesktopSuggestion(suggestedBy: string, targetUsername: string) {
+        const bar  = document.getElementById("mafia-suggestion-bar-d");
+        const name = document.getElementById("suggestion-name-d");
+        const by   = document.getElementById("suggestion-by-d");
+        if (bar)  bar.style.display = "block";
+        if (name) name.textContent  = targetUsername;
+        if (by)   by.textContent    = ` (${suggestedBy})`;
     }
 
     // ══════════════════════════════
@@ -199,19 +289,29 @@ export default class MafiaNightScene extends Phaser.Scene {
     }
 
     private handleTarget(player: any, selected: Phaser.GameObjects.Container, bg: Phaser.GameObjects.Rectangle) {
-        this.actionUsed = true;
         this.killedPlayerId = player.id;
-        this.cameras.main.flash(400, 120, 0, 0);
-        this.cameras.main.shake(300, 0.008);
+        this.cameras.main.flash(300, 120, 0, 0);
+
+        // reset كل الكروت
         this.playerCards.forEach(card => {
-            if (card !== selected) { card.disableInteractive(); this.tweens.add({ targets: card, alpha: 0.2, scaleX: 0.92, scaleY: 0.92, duration: 300 }); }
+            const cardBg = card.list[1] as Phaser.GameObjects.Rectangle;
+            cardBg?.setFillStyle(this.C.card);
+            cardBg?.setStrokeStyle(1, this.C.borderDim);
+            const cardBtn = card.list[7] as Phaser.GameObjects.Rectangle;
+            cardBtn?.setFillStyle(this.C.accent, 0);
+            const cardLabel = card.list[8] as Phaser.GameObjects.Text;
+            if (cardLabel) { cardLabel.setText("SUGGEST"); cardLabel.setColor("#cc2222"); }
+            card.setInteractive(new Phaser.Geom.Rectangle(-100, -90, 200, 180), Phaser.Geom.Rectangle.Contains);
+            this.tweens.add({ targets: card, scaleX: 1, scaleY: 1, alpha: 1, duration: 200 });
         });
-        this.tweens.add({ targets: selected, scaleX: 1.1, scaleY: 1.1, duration: 250, ease: "Back.easeOut" });
+
+        // highlight المختار
         bg.setFillStyle(0x2a0a0a); bg.setStrokeStyle(2, this.C.accentGlow);
-        const mark = this.add.text(selected.x, selected.y - 20, "✕", { fontSize: "52px", color: "#ff2222", fontStyle: "bold", fontFamily: "'Georgia', serif" }).setOrigin(0.5).setAlpha(0).setDepth(10);
-        this.tweens.add({ targets: mark, alpha: 1, scaleX: 1.2, scaleY: 1.2, duration: 200, yoyo: true, repeat: 1, onComplete: () => this.tweens.add({ targets: mark, alpha: 0, duration: 400, onComplete: () => mark.destroy() }) });
+        this.tweens.add({ targets: selected, scaleX: 1.08, scaleY: 1.08, duration: 200, ease: "Back.easeOut" });
+        const btnLabel = selected.list[8] as Phaser.GameObjects.Text;
+        if (btnLabel) { btnLabel.setText("✓ SUGGESTED"); btnLabel.setColor("#ff4444"); }
+
         socketService.socket.emit("mafia_kill", player.id);
-        this.showToast(`Target locked: ${player.username}`, "danger");
     }
 
     // ══════════════════════════════
@@ -451,11 +551,15 @@ export default class MafiaNightScene extends Phaser.Scene {
         });
         socketService.socket.on("mafia_chat_message", (data: any) => {
             this.addMafiaChatMessage(data.from, data.message);
+            if (!this.isMobile) this.addDesktopChatMessage(data.from, data.message);
         });
         socketService.socket.on("mafia_suggestion", (data: any) => {
             this.updateSuggestion(data.suggestedBy, data.targetUsername);
-            // إضافة رسالة في الـ chat
             this.addMafiaChatMessage("🎯 SYSTEM", `${data.suggestedBy} اقترح قتل ${data.targetUsername}`);
+            if (!this.isMobile) {
+                this.updateDesktopSuggestion(data.suggestedBy, data.targetUsername);
+                this.addDesktopChatMessage("🎯", `${data.suggestedBy} اقترح → ${data.targetUsername}`);
+            }
         });
         socketService.socket.on("player_killed", (data: any) => {
             const msg = `${data.username} was killed in the night`;
@@ -491,6 +595,7 @@ export default class MafiaNightScene extends Phaser.Scene {
 
     shutdown() {
         document.getElementById("mobile-night-ui")?.remove();
+        document.getElementById("mafia-desktop-chat")?.remove();
         this.embers.forEach(e => e.gfx.destroy());
         this.embers = [];
         socketService.socket.off("phase_changed");
