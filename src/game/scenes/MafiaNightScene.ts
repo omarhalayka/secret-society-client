@@ -12,7 +12,8 @@ export default class MafiaNightScene extends Phaser.Scene {
     private playerCards: Phaser.GameObjects.Container[] = [];
     private killedPlayerId: string | null = null;
     private isMobile: boolean = false;
-    private myPlayer: any = null; // بيانات اللاعب الحالي
+    private isSoloMafia: boolean = false;
+    private myPlayer: any = null;
 
     // جسيمات الجمر
     private embers: Array<{
@@ -45,7 +46,6 @@ export default class MafiaNightScene extends Phaser.Scene {
     }
 
     create() {
-        // نشيل أي HTML من GameScene
         document.getElementById("mobile-game-ui")?.remove();
         document.getElementById("mobile-voting-overlay")?.remove();
         document.getElementById("mobile-admin-bar")?.remove();
@@ -53,6 +53,10 @@ export default class MafiaNightScene extends Phaser.Scene {
         const W = this.scale.width;
         const H = this.scale.height;
         this.isMobile = W < 700;
+
+        // ─── هل المافيا لحاله؟ ───
+        const aliveMafia = this.players.filter(p => p.role === "MAFIA" && p.alive);
+        this.isSoloMafia = aliveMafia.length <= 1;
 
         this.cameras.main.setBackgroundColor("#080810");
         this.cameras.main.fadeIn(700, 8, 8, 16);
@@ -65,6 +69,10 @@ export default class MafiaNightScene extends Phaser.Scene {
         } else {
             this.drawTitle(W);
             this.drawPlayerCards(W, H);
+            // chat بس لو في أكثر من مافيا
+            if (!this.isSoloMafia && !(this.myPlayer && !this.myPlayer.alive)) {
+                this.createDesktopChatPanel();
+            }
         }
 
         this.setupSocketListeners();
@@ -154,9 +162,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         divider.lineStyle(1, this.C.accent, 0.4);
         divider.moveTo(W / 2 - 120, titleY + 58); divider.lineTo(W / 2 + 120, titleY + 58); divider.strokePath();
         this.tweens.add({ targets: divider, alpha: 1, duration: 500, delay: 600 });
-
-        // ─── Desktop Chat Panel (HTML overlay فوق Phaser) ───
-        this.createDesktopChatPanel();
+        // ملاحظة: createDesktopChatPanel تنادى من create() مباشرة
     }
 
     private createDesktopChatPanel() {
@@ -339,6 +345,10 @@ export default class MafiaNightScene extends Phaser.Scene {
             ? `<div style="color:#664444;font-size:11px;letter-spacing:3px;margin-bottom:4px">☠ ELIMINATED</div>
                <div style="color:#f1e8e8;font-size:15px;font-weight:bold">You have been eliminated</div>
                <div style="color:#664444;font-size:11px;margin-top:3px">Watch the mafia plan...</div>`
+            : this.isSoloMafia
+            ? `<div style="color:#cc2222;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:4px">🔪 MAFIA NIGHT</div>
+               <div style="color:#f1e8e8;font-size:16px;font-weight:bold">Choose Your Target</div>
+               <div style="color:#664444;font-size:11px;margin-top:3px">You are the last mafia — choose wisely</div>`
             : `<div style="color:#cc2222;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:4px">🔪 MAFIA NIGHT</div>
                <div style="color:#f1e8e8;font-size:16px;font-weight:bold">Coordinate & Eliminate</div>
                <div style="color:#664444;font-size:11px;margin-top:3px">Chat with your team then lock a target</div>`;
@@ -365,12 +375,17 @@ export default class MafiaNightScene extends Phaser.Scene {
             flex: "1", display: "flex", flexDirection: "column", overflow: "hidden",
         });
 
-        // Chat messages
+        // Chat messages — مخفي لو مافيا لحاله
         const chatBox = document.createElement("div");
         chatBox.id = "mafia-chat-box";
         Object.assign(chatBox.style, {
-            flex: "1", overflowY: "auto", padding: "10px 14px",
-            display: "flex", flexDirection: "column", gap: "6px",
+            flex:           this.isSoloMafia || isDead ? "0" : "1",
+            display:        this.isSoloMafia && !isDead ? "none" : "flex",
+            overflowY:      "auto",
+            padding:        "10px 14px",
+            flexDirection:  "column",
+            gap:            "6px",
+            maxHeight:      isDead ? "100%" : "140px",
         });
 
         const welcomeMsg = document.createElement("div");

@@ -1046,52 +1046,104 @@ export default class GameScene extends Phaser.Scene {
 
     private showVotingChat() {
         document.getElementById("voting-chat-panel")?.remove();
+        document.getElementById("voting-chat-toggle")?.remove();
 
-        const panel = document.createElement("div");
-        panel.id = "voting-chat-panel";
-        Object.assign(panel.style, {
-            position:  "fixed",
-            bottom:    this.isMobile ? "0" : "16px",
-            left:      this.isMobile ? "0" : "16px",
-            right:     this.isMobile ? "0" : "auto",
-            width:     this.isMobile ? "auto" : "300px",
-            height:    this.isMobile ? "220px" : "320px",
-            zIndex:    "300",
-            backgroundColor: "rgba(8,12,6,0.95)",
-            border:    "1px solid rgba(251,191,36,0.3)",
-            borderRadius: this.isMobile ? "12px 12px 0 0" : "10px",
-            display:   "flex", flexDirection: "column",
-            fontFamily: "'Courier New', monospace",
-            boxShadow: "0 0 30px rgba(251,191,36,0.1)",
-        });
+        if (this.isMobile) {
+            // ─── موبايل: زر toggle صغير فوق يمين ───
+            const toggle = document.createElement("button");
+            toggle.id = "voting-chat-toggle";
+            Object.assign(toggle.style, {
+                position: "fixed", top: "60px", right: "10px",
+                zIndex: "500", padding: "8px 12px",
+                backgroundColor: "rgba(8,12,6,0.95)",
+                border: "1px solid rgba(251,191,36,0.5)",
+                borderRadius: "8px", color: "#fbbf24",
+                fontSize: "11px", fontFamily: "'Courier New', monospace",
+                fontWeight: "bold", cursor: "pointer",
+                boxShadow: "0 0 15px rgba(251,191,36,0.2)",
+            });
+            toggle.textContent = "⚖ CHAT";
+            let chatOpen = false;
 
-        panel.innerHTML = `
-            <div style="padding:8px 14px;border-bottom:1px solid rgba(251,191,36,0.15);background:rgba(0,0,0,0.3);border-radius:inherit;border-bottom-left-radius:0;border-bottom-right-radius:0;display:flex;align-items:center;gap:8px">
-                <span style="color:#fbbf24;font-size:10px;letter-spacing:3px;font-weight:bold">⚖ VOTING DISCUSSION</span>
-            </div>
-            <div id="voting-chat-messages" style="flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:4px">
-                <div style="color:#374151;font-size:9px;text-align:center;letter-spacing:1px">── discuss before voting ──</div>
-            </div>
-            <div style="display:flex;gap:6px;padding:8px;border-top:1px solid rgba(251,191,36,0.1)">
-                <input id="voting-chat-input" type="text" placeholder="Your opinion..."
-                    style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(251,191,36,0.2);border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
-                <button id="voting-chat-send" style="padding:7px 12px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer;font-family:'Courier New',monospace">▶</button>
-            </div>
-        `;
+            const panel = document.createElement("div");
+            panel.id = "voting-chat-panel";
+            Object.assign(panel.style, {
+                position: "fixed", top: "100px", right: "10px",
+                width: "260px", height: "300px", zIndex: "499",
+                backgroundColor: "rgba(8,12,6,0.97)",
+                border: "1px solid rgba(251,191,36,0.3)",
+                borderRadius: "10px", display: "none",
+                flexDirection: "column", fontFamily: "'Courier New', monospace",
+                boxShadow: "0 0 20px rgba(251,191,36,0.1)",
+            });
+            panel.innerHTML = `
+                <div style="padding:8px 12px;border-bottom:1px solid rgba(251,191,36,0.15);color:#fbbf24;font-size:9px;letter-spacing:2px">⚖ VOTING DISCUSSION</div>
+                <div id="voting-chat-messages" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px">
+                    <div style="color:#374151;font-size:9px;text-align:center">── discuss ──</div>
+                </div>
+                <div style="display:flex;gap:5px;padding:6px;border-top:1px solid rgba(251,191,36,0.1)">
+                    <input id="voting-chat-input" type="text" placeholder="Opinion..."
+                        style="flex:1;padding:6px 8px;background:#060a04;color:#f1f5f9;border:1px solid rgba(251,191,36,0.2);border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
+                    <button id="voting-chat-send" style="padding:6px 10px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer">▶</button>
+                </div>
+            `;
+            document.body.appendChild(toggle);
+            document.body.appendChild(panel);
 
-        document.body.appendChild(panel);
+            toggle.addEventListener("click", () => {
+                chatOpen = !chatOpen;
+                panel.style.display = chatOpen ? "flex" : "none";
+                toggle.textContent  = chatOpen ? "✕ CLOSE" : "⚖ CHAT";
+            });
 
-        const input   = panel.querySelector<HTMLInputElement>("#voting-chat-input")!;
-        const sendBtn = panel.querySelector<HTMLButtonElement>("#voting-chat-send")!;
+            const input   = panel.querySelector<HTMLInputElement>("#voting-chat-input")!;
+            const sendBtn = panel.querySelector<HTMLButtonElement>("#voting-chat-send")!;
+            const sendMsg = () => {
+                const msg = input.value.trim();
+                if (!msg) return;
+                socketService.socket.emit("send_message", msg);
+                input.value = "";
+            };
+            sendBtn.addEventListener("click", sendMsg);
+            input.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
 
-        const sendMsg = () => {
-            const msg = input.value.trim();
-            if (!msg) return;
-            socketService.socket.emit("send_message", msg);
-            input.value = "";
-        };
-        sendBtn.addEventListener("click", sendMsg);
-        input.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
+        } else {
+            // ─── ديسكتوب: panel ثابت ───
+            const panel = document.createElement("div");
+            panel.id = "voting-chat-panel";
+            Object.assign(panel.style, {
+                position: "fixed", bottom: "16px", left: "16px",
+                width: "300px", height: "320px", zIndex: "300",
+                backgroundColor: "rgba(8,12,6,0.95)",
+                border: "1px solid rgba(251,191,36,0.3)",
+                borderRadius: "10px", display: "flex", flexDirection: "column",
+                fontFamily: "'Courier New', monospace",
+                boxShadow: "0 0 30px rgba(251,191,36,0.1)",
+            });
+            panel.innerHTML = `
+                <div style="padding:8px 14px;border-bottom:1px solid rgba(251,191,36,0.15);background:rgba(0,0,0,0.3);border-radius:10px 10px 0 0;color:#fbbf24;font-size:10px;letter-spacing:3px;font-weight:bold">⚖ VOTING DISCUSSION</div>
+                <div id="voting-chat-messages" style="flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:4px">
+                    <div style="color:#374151;font-size:9px;text-align:center;letter-spacing:1px">── discuss before voting ──</div>
+                </div>
+                <div style="display:flex;gap:6px;padding:8px;border-top:1px solid rgba(251,191,36,0.1)">
+                    <input id="voting-chat-input" type="text" placeholder="Your opinion..."
+                        style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(251,191,36,0.2);border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
+                    <button id="voting-chat-send" style="padding:7px 12px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer;font-family:'Courier New',monospace">▶</button>
+                </div>
+            `;
+            document.body.appendChild(panel);
+
+            const input   = panel.querySelector<HTMLInputElement>("#voting-chat-input")!;
+            const sendBtn = panel.querySelector<HTMLButtonElement>("#voting-chat-send")!;
+            const sendMsg = () => {
+                const msg = input.value.trim();
+                if (!msg) return;
+                socketService.socket.emit("send_message", msg);
+                input.value = "";
+            };
+            sendBtn.addEventListener("click", sendMsg);
+            input.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
+        }
     }
 
     private closeVotingOverlay(showResult: boolean, result?: { eliminated?: string; tie?: boolean }) {
@@ -2245,6 +2297,12 @@ export default class GameScene extends Phaser.Scene {
             if (data.phase === "NIGHT" && !this.isAdmin) {
                 const targetScene = nightSceneMap[this.role];
                 if (targetScene) {
+                    // لو اللاعب ميت — ما يروح لـ NightScene، يضل مشاهد
+                    const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
+                    if (!myPlayer?.alive) {
+                        // يضل في GameScene بس الشات مسكر
+                        return;
+                    }
                     if (this.isNightSceneActive) return;
                     this.isNightSceneActive = true;
                     this.cameras.main.fadeOut(500, 10, 13, 19);
@@ -2316,6 +2374,7 @@ export default class GameScene extends Phaser.Scene {
             this.closeVotingOverlay(true, { eliminated: data.eliminated, tie: data.tie });
             // امسح شات التصويت
             document.getElementById("voting-chat-panel")?.remove();
+            document.getElementById("voting-chat-toggle")?.remove();
         });
 
         socketService.socket.on("player_killed", (data: any) => {
@@ -2404,6 +2463,7 @@ export default class GameScene extends Phaser.Scene {
         document.getElementById("desktop-send-btn")?.remove();
         document.getElementById("win-bg-video")?.remove();
         document.getElementById("voting-chat-panel")?.remove();
+        document.getElementById("voting-chat-toggle")?.remove();
         if (this.outsideClickHandler) document.removeEventListener("click", this.outsideClickHandler);
     }
 
