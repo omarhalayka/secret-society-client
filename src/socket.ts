@@ -1,10 +1,13 @@
 import { io, Socket } from "socket.io-client";
 
+const SESSION_KEY = "ss_session";
+
 class SocketService {
     public socket: Socket;
     public role: string | null = null;
     public roomId: string | null = null;
     public isAdmin: boolean = false;
+    public username: string | null = null;
 
     // أحداث معلقة تُعرض لما GameScene تفتح
     public pendingEvents: Array<{ msg: string; color: string }> = [];
@@ -14,12 +17,21 @@ class SocketService {
 
         this.socket.on("game_started", (data: any) => {
             console.log("Game started:", data);
-            this.role = data.role;
+            this.role   = data.role;
             this.roomId = data.roomId;
 
             if (data.role === "ADMIN") {
                 this.isAdmin = true;
-                console.log("✅ Admin detected from role");
+            }
+
+            // ─── احفظ الجلسة في localStorage ───
+            if (this.roomId && this.username) {
+                localStorage.setItem(SESSION_KEY, JSON.stringify({
+                    roomId:   this.roomId,
+                    username: this.username,
+                    role:     this.role,
+                    ts:       Date.now(),
+                }));
             }
         });
 
@@ -36,11 +48,38 @@ class SocketService {
         });
     }
 
+    // ─── احفظ اسم المستخدم ───
+    public saveUsername(name: string) {
+        this.username = name;
+    }
+
+    // ─── احضر بيانات الجلسة المحفوظة ───
+    public getSavedSession(): { roomId: string; username: string; role: string; ts: number } | null {
+        try {
+            const raw = localStorage.getItem(SESSION_KEY);
+            if (!raw) return null;
+            const data = JSON.parse(raw);
+            // الجلسة صالحة بس لو أقل من 4 ساعات
+            if (Date.now() - data.ts > 4 * 60 * 60 * 1000) {
+                localStorage.removeItem(SESSION_KEY);
+                return null;
+            }
+            return data;
+        } catch { return null; }
+    }
+
+    // ─── امسح الجلسة المحفوظة ───
+    public clearSession() {
+        localStorage.removeItem(SESSION_KEY);
+    }
+
     public reset() {
-        this.role = null;
-        this.roomId = null;
-        this.isAdmin = false;
+        this.role     = null;
+        this.roomId   = null;
+        this.isAdmin  = false;
+        this.username = null;
         this.pendingEvents = [];
+        this.clearSession();
     }
 }
 

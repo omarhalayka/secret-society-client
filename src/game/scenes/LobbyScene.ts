@@ -43,11 +43,24 @@ export default class LobbyScene extends Phaser.Scene {
     //  CREATE
     // ══════════════════════════════════════════════════════
     create() {
-        // ─── سجّل كل session listeners مرة واحدة فقط هنا ───
+        // ─── تحقق من جلسة محفوظة أولاً ───
+        const saved = socketService.getSavedSession();
+        if (saved) {
+            this.tryRejoin(saved);
+            return;
+        }
+
+        this.setupSessionListeners();
+        this.showSplashScreen();
+    }
+
+    private setupSessionListeners() {
+        // ─── سجّل كل session listeners مرة واحدة فقط ───
         socketService.socket.off("session_password_ready");
         socketService.socket.off("session_password_set");
         socketService.socket.off("session_reset");
         socketService.socket.off("server_reset");
+        socketService.socket.off("player_count_updated");
 
         socketService.socket.on("session_password_ready", (data: any) => {
             this.sessionPasswordReady = !!data.ready;
@@ -100,14 +113,74 @@ export default class LobbyScene extends Phaser.Scene {
 
         socketService.socket.on("player_count_updated", (data: any) => {
             (this as any)._requiredPlayers = data.required || 6;
-            // نحدّث عرض الـ queue لو موجود
             if (this.queueStatusText?.active) {
-                const size = 0;
-                this.queueStatusText.setText(`●  ${size} / ${data.required} in queue`).setColor("#3b4a5c");
+                this.queueStatusText.setText(`●  0 / ${data.required} in queue`).setColor("#3b4a5c");
             }
         });
+    }
 
-        this.showSplashScreen();
+    // ══════════════════════════════════════════════════════
+    //  REJOIN — محاولة الرجوع لجلسة محفوظة
+    // ══════════════════════════════════════════════════════
+    private tryRejoin(saved: { roomId: string; username: string; role: string }) {
+        // نظهر شاشة انتظار بسيطة
+        const W = this.scale.width;
+        const H = this.scale.height;
+        this.cameras.main.setBackgroundColor("#060810");
+        this.add.rectangle(0, 0, W, H, 0x060810).setOrigin(0);
+
+        const msg = this.add.text(W / 2, H / 2 - 20, "Reconnecting...", {
+            fontSize: "18px", color: "#3b82f6",
+            fontFamily: "'Courier New', monospace", letterSpacing: 3,
+        }).setOrigin(0.5);
+        const sub = this.add.text(W / 2, H / 2 + 20, `Welcome back, ${saved.username}`, {
+            fontSize: "12px", color: "#4a5568",
+            fontFamily: "'Courier New', monospace",
+        }).setOrigin(0.5);
+
+        // نبعث rejoin للسيرفر
+        socketService.saveUsername(saved.username);
+
+        const attemptRejoin = () => {
+            socketService.socket.emit("rejoin_game", {
+                roomId:   saved.roomId,
+                username: saved.username,
+                role:     saved.role,
+            });
+        };
+
+        // لو متصل ابعث مباشرة، لو لا انتظر
+        if (socketService.socket.connected) {
+            attemptRejoin();
+        } else {
+            socketService.socket.once("connect", attemptRejoin);
+        }
+
+        // استقبل النتيجة
+        socketService.socket.once("rejoin_failed", (data: any) => {
+            socketService.clearSession();
+            msg.setText(data.message || "Session expired");
+            msg.setColor("#ef4444");
+            sub.setText("Starting new session...");
+            this.time.delayedCall(1500, () => {
+                msg.destroy(); sub.destroy();
+                this.setupSessionListeners();
+                this.showSplashScreen();
+            });
+        });
+
+        socketService.socket.once("game_started", (data: any) => {
+            if (data.role === "ADMIN") {
+                socketService.isAdmin = true;
+            }
+            socketService.role   = data.role;
+            socketService.roomId = data.roomId;
+            this.scene.start("GameScene", {
+                role:     data.role,
+                roomId:   data.roomId,
+                userType: data.role === "ADMIN" ? "ADMIN" : "PLAYER",
+            });
+        });
     }
 
     private showSplashScreen() {
@@ -1086,6 +1159,7 @@ export default class LobbyScene extends Phaser.Scene {
             return;
         }
         socketService.reset();
+        socketService.saveUsername(username); // ─── نحفظ الاسم ───
         socketService.socket.emit("set_username", username);
         socketService.socket.emit("set_avatar", "😎");
         socketService.socket.emit("set_color", "#1e293b");
