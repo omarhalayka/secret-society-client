@@ -336,22 +336,26 @@ export default class GameScene extends Phaser.Scene {
         chatPanel.id = "tab-panel-chat";
         Object.assign(chatPanel.style, {
             flex: "1", display: "none", flexDirection: "column",
+            position: "relative", overflow: "hidden",
         });
 
         const chatMessages = document.createElement("div");
         chatMessages.id = "mobile-chat-messages";
         Object.assign(chatMessages.style, {
-            flex: "1", overflowY: "auto", padding: "10px",
+            position: "absolute", top: "0", left: "0", right: "0", bottom: "64px",
+            overflowY: "auto", padding: "10px",
             display: "flex", flexDirection: "column", gap: "6px",
         });
         chatPanel.appendChild(chatMessages);
 
-        // Chat Input Row
+        // Chat Input Row — ثابت في الأسفل
         const chatInputRow = document.createElement("div");
         Object.assign(chatInputRow.style, {
+            position: "absolute", bottom: "0", left: "0", right: "0",
             display: "flex", gap: "8px", padding: "8px 10px",
             borderTop: "1px solid #1e2d45",
             backgroundColor: "#0f1520",
+            height: "56px", boxSizing: "border-box",
         });
 
         const mobileInput = document.createElement("input");
