@@ -701,12 +701,7 @@ export default class LobbyScene extends Phaser.Scene {
                     return;
                 }
                 if (role.key === "player") {
-                    // في كلمة سر — اطلب منه يحطها
-                    this.time.delayedCall(150, () => this.showPlayerPasswordPrompt((password) => {
-                        (this as any)._pendingPlayerPassword = password;
-                        this.activateRole("player", roles);
-                        this.showToast("✓ كلمة السر صح — اضغط JOIN", "success");
-                    }));
+                    this.time.delayedCall(150, () => this.showPlayerJoinPopup(roles));
                     return;
                 }
                 this.activateRole(role.key, roles);
@@ -1069,6 +1064,138 @@ export default class LobbyScene extends Phaser.Scene {
     // ══════════════════════════════════════════════════════
     //  PLAYER PASSWORD PROMPT
     // ══════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════
+    //  PLAYER JOIN POPUP — كلمة سر أو كود رجوع
+    // ══════════════════════════════════════════════════════
+    private showPlayerJoinPopup(roles: Array<{key:string; colHex:number; hex:string}>) {
+        document.getElementById("player-join-overlay")?.remove();
+
+        const overlay = document.createElement("div");
+        overlay.id = "player-join-overlay";
+        Object.assign(overlay.style, {
+            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
+            zIndex: "9990", backgroundColor: "rgba(0,0,0,0.8)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "'Courier New', monospace",
+        });
+
+        const box = document.createElement("div");
+        Object.assign(box.style, {
+            backgroundColor: "#0d1117", border: "1px solid #22c55e",
+            borderRadius: "10px", padding: "24px 22px",
+            width: "300px", boxShadow: "0 0 50px rgba(34,197,94,0.1)",
+        });
+
+        box.innerHTML = `
+            <div style="font-size:28px;text-align:center;margin-bottom:10px">⚔</div>
+            <div style="color:#22c55e;font-size:11px;letter-spacing:3px;text-align:center;margin-bottom:16px;font-weight:bold">JOIN AS PLAYER</div>
+
+            <div id="pjp-tabs" style="display:flex;gap:6px;margin-bottom:16px">
+                <button id="pjp-tab-password" style="flex:1;padding:8px;border-radius:5px;border:1px solid #22c55e;background:#22c55e;color:#000;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">كلمة السر</button>
+                <button id="pjp-tab-code" style="flex:1;padding:8px;border-radius:5px;border:1px solid #21262d;background:none;color:#4a5568;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:'Courier New',monospace">كود الرجوع</button>
+            </div>
+
+            <div id="pjp-panel-password">
+                <input id="pjp-password-input" type="password" placeholder="Session password..."
+                    style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
+            </div>
+
+            <div id="pjp-panel-code" style="display:none">
+                <div style="color:#4a5568;font-size:9px;letter-spacing:1px;margin-bottom:8px;direction:rtl;text-align:right">أدخل الكود الذي أعطاك إياه الأدمن</div>
+                <input id="pjp-code-input" type="text" placeholder="123456"
+                    style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#22c55e;border:1px solid #21262d;border-radius:6px;font-size:22px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px;letter-spacing:8px;text-align:center"/>
+            </div>
+
+            <div id="pjp-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
+            <div style="display:flex;gap:8px">
+                <button id="pjp-cancel" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">CANCEL</button>
+                <button id="pjp-confirm" style="flex:1;padding:10px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">CONFIRM</button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        const passwordPanel = box.querySelector<HTMLElement>("#pjp-panel-password")!;
+        const codePanel     = box.querySelector<HTMLElement>("#pjp-panel-code")!;
+        const tabPassword   = box.querySelector<HTMLButtonElement>("#pjp-tab-password")!;
+        const tabCode       = box.querySelector<HTMLButtonElement>("#pjp-tab-code")!;
+        const passwordInput = box.querySelector<HTMLInputElement>("#pjp-password-input")!;
+        const codeInput     = box.querySelector<HTMLInputElement>("#pjp-code-input")!;
+        const errEl         = box.querySelector<HTMLElement>("#pjp-err")!;
+        const confirmBtn    = box.querySelector<HTMLButtonElement>("#pjp-confirm")!;
+        const cancelBtn     = box.querySelector<HTMLButtonElement>("#pjp-cancel")!;
+
+        let activeTab = "password";
+
+        const switchTab = (tab: string) => {
+            activeTab = tab;
+            if (tab === "password") {
+                passwordPanel.style.display = "block";
+                codePanel.style.display     = "none";
+                tabPassword.style.background    = "#22c55e";
+                tabPassword.style.color         = "#000";
+                tabPassword.style.borderColor   = "#22c55e";
+                tabCode.style.background        = "none";
+                tabCode.style.color             = "#4a5568";
+                tabCode.style.borderColor       = "#21262d";
+                setTimeout(() => passwordInput.focus(), 50);
+            } else {
+                passwordPanel.style.display = "none";
+                codePanel.style.display     = "block";
+                tabCode.style.background    = "#22c55e";
+                tabCode.style.color         = "#000";
+                tabCode.style.borderColor   = "#22c55e";
+                tabPassword.style.background    = "none";
+                tabPassword.style.color         = "#4a5568";
+                tabPassword.style.borderColor   = "#21262d";
+                setTimeout(() => codeInput.focus(), 50);
+            }
+            errEl.textContent = "";
+        };
+
+        tabPassword.addEventListener("click", () => switchTab("password"));
+        tabCode.addEventListener("click",     () => switchTab("code"));
+        setTimeout(() => passwordInput.focus(), 60);
+
+        const confirm = () => {
+            errEl.textContent = "";
+            confirmBtn.style.opacity = "0.5";
+            confirmBtn.style.pointerEvents = "none";
+
+            if (activeTab === "password") {
+                // ─── كلمة السر العادية ───
+                const val = passwordInput.value.trim();
+                if (!val) { errEl.textContent = "الرجاء إدخال كلمة السر"; confirmBtn.style.opacity="1"; confirmBtn.style.pointerEvents="auto"; return; }
+                socketService.socket.emit("verify_session_password", { password: val });
+
+                const onOk   = () => { socketService.socket.off("password_verify_fail", onFail); overlay.remove(); (this as any)._pendingPlayerPassword = val; this.activateRole("player", roles); this.showToast("✓ كلمة السر صح — اضغط JOIN", "success"); };
+                const onFail = () => { socketService.socket.off("password_verify_ok", onOk); confirmBtn.style.opacity="1"; confirmBtn.style.pointerEvents="auto"; errEl.textContent="❌ كلمة السر غلط"; passwordInput.value=""; passwordInput.style.borderColor="#ef4444"; setTimeout(() => { let n=0; const iv=setInterval(() => { box.style.marginLeft=n%2===0?"7px":"-7px"; n++; if(n>=6){clearInterval(iv);box.style.marginLeft="0";} },55); }, 0); };
+                socketService.socket.once("password_verify_ok",   onOk);
+                socketService.socket.once("password_verify_fail", onFail);
+
+            } else {
+                // ─── كود الرجوع ───
+                const code     = codeInput.value.trim();
+                const username = this.usernameInput?.value.trim();
+                if (!code)     { errEl.textContent = "أدخل الكود"; confirmBtn.style.opacity="1"; confirmBtn.style.pointerEvents="auto"; return; }
+                if (!username) { errEl.textContent = "أدخل اسمك أولاً"; confirmBtn.style.opacity="1"; confirmBtn.style.pointerEvents="auto"; return; }
+
+                socketService.socket.emit("rejoin_with_code", { code, username });
+
+                const onOk   = (data: any) => { socketService.socket.off("rejoin_code_error", onErr); overlay.remove(); socketService.isAdmin = false; socketService.role = data.role; socketService.roomId = data.roomId; socketService.saveUsername(username); this.scene.start("GameScene", { role: data.role, roomId: data.roomId, userType: "PLAYER" }); };
+                const onErr  = (data: any) => { socketService.socket.off("game_started", onOk); confirmBtn.style.opacity="1"; confirmBtn.style.pointerEvents="auto"; errEl.textContent = data.message || "كود غلط ❌"; codeInput.value=""; codeInput.style.borderColor="#ef4444"; };
+                socketService.socket.once("game_started",      onOk);
+                socketService.socket.once("rejoin_code_error", onErr);
+            }
+        };
+
+        confirmBtn.addEventListener("click", confirm);
+        cancelBtn.addEventListener("click",  () => overlay.remove());
+        passwordInput.addEventListener("keydown", e => { if (e.key === "Enter") confirm(); if (e.key === "Escape") overlay.remove(); });
+        codeInput.addEventListener("keydown",     e => { if (e.key === "Enter") confirm(); if (e.key === "Escape") overlay.remove(); });
+    }
+
     private showPlayerPasswordPrompt(onConfirm: (password: string) => void) {
         document.getElementById("player-pass-overlay")?.remove();
 
