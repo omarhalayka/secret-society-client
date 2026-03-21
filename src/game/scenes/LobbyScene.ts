@@ -1101,13 +1101,11 @@ export default class LobbyScene extends Phaser.Scene {
             </div>
 
             <div id="pjp-panel-code" style="display:none">
-                <div style="color:#4a5568;font-size:9px;letter-spacing:1px;margin-bottom:8px;direction:rtl;text-align:right">أدخل الكود الذي أعطاك إياه الأدمن</div>
+                <div style="color:#4a5568;font-size:9px;letter-spacing:1px;margin-bottom:10px;direction:rtl;text-align:right;line-height:1.6">أدخل اسمك كما كان في اللعبة والكود الذي أعطاك إياه الأدمن</div>
+                <input id="pjp-rejoin-name" type="text" placeholder="Your username..."
+                    style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
                 <input id="pjp-code-input" type="text" placeholder="123456"
                     style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#22c55e;border:1px solid #21262d;border-radius:6px;font-size:22px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px;letter-spacing:8px;text-align:center"/>
-                <div id="pjp-player-select" style="display:none;margin-bottom:8px">
-                    <div style="color:#4a5568;font-size:9px;letter-spacing:1px;margin-bottom:6px;direction:rtl;text-align:right">اختر اسمك من القائمة:</div>
-                    <div id="pjp-player-list" style="display:flex;flex-direction:column;gap:5px;max-height:150px;overflow-y:auto"></div>
-                </div>
             </div>
 
             <div id="pjp-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
@@ -1179,62 +1177,33 @@ export default class LobbyScene extends Phaser.Scene {
                 socketService.socket.once("password_verify_fail", onFail);
 
             } else {
-                // ─── كود الرجوع ───
-                const code = codeInput.value.trim();
-                if (!code) { errEl.textContent = "أدخل الكود"; confirmBtn.style.opacity="1"; confirmBtn.style.pointerEvents="auto"; return; }
+                // ─── كود الرجوع — اسم + كود ───
+                const rejoinName = (box.querySelector<HTMLInputElement>("#pjp-rejoin-name")?.value || "").trim();
+                const code       = codeInput.value.trim();
 
-                const playerSelect = box.querySelector<HTMLElement>("#pjp-player-select")!;
-                const playerList   = box.querySelector<HTMLElement>("#pjp-player-list")!;
+                if (!rejoinName) { errEl.textContent = "أدخل اسمك"; confirmBtn.style.opacity="1"; confirmBtn.style.pointerEvents="auto"; return; }
+                if (!code)       { errEl.textContent = "أدخل الكود"; confirmBtn.style.opacity="1"; confirmBtn.style.pointerEvents="auto"; return; }
 
-                // لو في اسم محدد من القائمة — ابعث الـ rejoin
-                const selectedName = (box as any)._selectedPlayerName;
-                if (selectedName) {
-                    socketService.socket.emit("rejoin_with_code", { code, username: selectedName });
-                    const onOk  = (data: any) => { socketService.socket.off("rejoin_code_error", onErr); overlay.remove(); socketService.isAdmin = false; socketService.role = data.role; socketService.roomId = data.roomId; socketService.saveUsername(selectedName); this.scene.start("GameScene", { role: data.role, roomId: data.roomId, userType: "PLAYER" }); };
-                    const onErr = (data: any) => { socketService.socket.off("game_started", onOk); confirmBtn.style.opacity="1"; confirmBtn.style.pointerEvents="auto"; errEl.textContent = data.message || "خطأ ❌"; };
-                    socketService.socket.once("game_started",      onOk);
-                    socketService.socket.once("rejoin_code_error", onErr);
-                    return;
-                }
+                socketService.socket.emit("rejoin_with_code", { code, username: rejoinName });
 
-                // أول مرة — ابعث الكود مع اسم وهمي عشان السيرفر يرجع قائمة اللاعبين
-                socketService.socket.emit("rejoin_with_code", { code, username: "##CHECK_CODE##" });
-
-                const onErr = (data: any) => {
-                    socketService.socket.off("game_started", () => {});
-                    confirmBtn.style.opacity = "1"; confirmBtn.style.pointerEvents = "auto";
-                    if (data.players) {
-                        // السيرفر رجع قائمة اللاعبين — نعرضها
-                        errEl.textContent = "";
-                        codeInput.style.display = "none";
-                        playerSelect.style.display = "block";
-                        playerList.innerHTML = "";
-                        (data.players as any[]).forEach((p: any) => {
-                            const btn = document.createElement("button");
-                            btn.textContent = `${p.alive ? "🟢" : "💀"} ${p.username}`;
-                            Object.assign(btn.style, {
-                                padding: "8px 12px", border: "1px solid #21262d",
-                                borderRadius: "5px", background: "transparent",
-                                color: "#f1f5f9", cursor: "pointer", fontSize: "13px",
-                                fontFamily: "'Courier New', monospace", textAlign: "left",
-                                transition: "all 0.15s",
-                            });
-                            btn.addEventListener("click", () => {
-                                playerList.querySelectorAll("button").forEach(b => { b.style.background = "transparent"; b.style.borderColor = "#21262d"; b.style.color = "#f1f5f9"; });
-                                btn.style.background   = "rgba(34,197,94,0.15)";
-                                btn.style.borderColor  = "#22c55e";
-                                btn.style.color        = "#22c55e";
-                                (box as any)._selectedPlayerName = p.username;
-                            });
-                            playerList.appendChild(btn);
-                        });
-                        confirmBtn.textContent = "JOIN AS SELECTED";
-                    } else {
-                        errEl.textContent = data.message || "كود غلط ❌";
-                        codeInput.value = "";
-                        codeInput.style.borderColor = "#ef4444";
-                    }
+                const onOk  = (data: any) => {
+                    socketService.socket.off("rejoin_code_error", onErr);
+                    overlay.remove();
+                    socketService.isAdmin = false;
+                    socketService.role    = data.role;
+                    socketService.roomId  = data.roomId;
+                    socketService.saveUsername(rejoinName);
+                    this.scene.start("GameScene", { role: data.role, roomId: data.roomId, userType: "PLAYER" });
                 };
+                const onErr = (data: any) => {
+                    socketService.socket.off("game_started", onOk);
+                    confirmBtn.style.opacity = "1";
+                    confirmBtn.style.pointerEvents = "auto";
+                    errEl.textContent = data.message || "كود غلط ❌";
+                    codeInput.value = "";
+                    codeInput.style.borderColor = "#ef4444";
+                };
+                socketService.socket.once("game_started",      onOk);
                 socketService.socket.once("rejoin_code_error", onErr);
             }
         };

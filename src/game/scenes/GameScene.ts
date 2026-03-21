@@ -2159,22 +2159,6 @@ export default class GameScene extends Phaser.Scene {
                 <button class="adr-btn adr-btn-reset"    id="adr-reset-server-btn">🗑 RESET SERVER</button>
             </div>
         </div>
-        <div class="adr-section">
-            <div class="adr-section-title" style="color:#22c55e">➕ Add Player Back</div>
-            <div style="font-size:10px;color:#4a5568;margin-bottom:10px;letter-spacing:1px">Generate a rejoin code for a disconnected player</div>
-            <div style="display:flex;gap:6px;margin-bottom:8px">
-                <input id="adr-add-player-input" type="text" placeholder="Player username..."
-                    style="flex:1;padding:8px 10px;background:#0a0e14;color:#f1f5f9;border:1px solid #1e2d45;border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
-                <button id="adr-add-player-btn" style="padding:8px 14px;background:transparent;color:#22c55e;border:1px solid #22c55e;border-radius:5px;font-size:11px;font-family:'Courier New',monospace;font-weight:bold;cursor:pointer;letter-spacing:1px">GET CODE</button>
-            </div>
-            <div id="adr-rejoin-code-result" style="display:none;background:#0a1a0a;border:1px solid #22c55e;border-radius:6px;padding:12px;text-align:center">
-                <div style="color:#4a5568;font-size:9px;letter-spacing:2px;margin-bottom:6px">REJOIN CODE FOR</div>
-                <div id="adr-rejoin-player-name" style="color:#f1f5f9;font-size:13px;font-weight:bold;margin-bottom:8px"></div>
-                <div id="adr-rejoin-code" style="color:#22c55e;font-size:28px;font-weight:bold;letter-spacing:8px;font-family:'Courier New',monospace"></div>
-                <div style="color:#4a5568;font-size:9px;letter-spacing:1px;margin-top:6px">Valid for 10 minutes • one-time use</div>
-            </div>
-            <div id="adr-add-player-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:14px;margin-top:4px"></div>
-        </div>
         <div class="adr-section" id="adr-status-section" style="display:none">
             <div class="adr-section-title" style="color:#60a5fa">🌙 Night Actions</div>
             <div style="background:#0a0e14;border:1px solid #1e2d45;border-radius:6px;overflow:hidden" id="adr-night-status">
@@ -2213,36 +2197,6 @@ export default class GameScene extends Phaser.Scene {
                 socketService.socket.emit("admin_reset_server");
                 this.closeAdminDrawer();
             }
-        });
-
-        // ─── زر ADD PLAYER ───
-        drawer.querySelector("#adr-add-player-btn")?.addEventListener("click", () => {
-            const input  = drawer.querySelector<HTMLInputElement>("#adr-add-player-input")!;
-            const errEl  = drawer.querySelector<HTMLElement>("#adr-add-player-err")!;
-            const result = drawer.querySelector<HTMLElement>("#adr-rejoin-code-result")!;
-            const username = input.value.trim();
-            if (!username) { errEl.textContent = "Enter player username"; return; }
-            errEl.textContent = "";
-            result.style.display = "none";
-            socketService.socket.emit("admin_add_player", { username });
-        });
-
-        socketService.socket.on("rejoin_code_generated", (data: any) => {
-            const result   = this.adminDrawer?.querySelector<HTMLElement>("#adr-rejoin-code-result");
-            const nameEl   = this.adminDrawer?.querySelector<HTMLElement>("#adr-rejoin-player-name");
-            const codeEl   = this.adminDrawer?.querySelector<HTMLElement>("#adr-rejoin-code");
-            const errEl    = this.adminDrawer?.querySelector<HTMLElement>("#adr-add-player-err");
-            const input    = this.adminDrawer?.querySelector<HTMLInputElement>("#adr-add-player-input");
-            if (result) result.style.display = "block";
-            if (nameEl) nameEl.textContent   = data.username;
-            if (codeEl) codeEl.textContent   = data.code;
-            if (errEl)  errEl.textContent    = "";
-            if (input)  input.value          = "";
-        });
-
-        socketService.socket.on("admin_add_player_error", (data: any) => {
-            const errEl = this.adminDrawer?.querySelector<HTMLElement>("#adr-add-player-err");
-            if (errEl) errEl.textContent = data.message;
         });
         this.outsideClickHandler = (e: MouseEvent) => {
             if (!this.adminDrawerOpen) return;
