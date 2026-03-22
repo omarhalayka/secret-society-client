@@ -708,6 +708,11 @@ export default class LobbyScene extends Phaser.Scene {
                 this.tweens.add({ targets: c, scaleX: 0.93, scaleY: 0.93, duration: 70, yoyo: true });
             });
         });
+
+        // ─── لو كلمة السر جاهزة قبل ما تتنشأ الأزرار — نفتح PLAYER فوراً ───
+        if (this.sessionPasswordReady) {
+            this.time.delayedCall(50, () => this.unlockPlayerButton());
+        }
     }
 
     // ─── تفعيل زر PLAYER لما الأدمن يحط كلمة السر ───
@@ -726,7 +731,10 @@ export default class LobbyScene extends Phaser.Scene {
             ),
             Phaser.Geom.Rectangle.Contains
         );
-        this.showToast("🔓 اللعبة فتحت — اختر PLAYER", "success");
+        // ما نطلع toast لو الزر اتفتح تلقائياً عند الدخول
+        if (!this.roleButtons["player"]?.getData("autoUnlocked")) {
+            this.showToast("🔓 اللعبة فتحت — اختر PLAYER", "success");
+        }
     }
 
     private activateRole(key: string, roles: Array<{key:string; colHex:number; hex:string}>) {
