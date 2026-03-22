@@ -190,7 +190,7 @@ export default class GameScene extends Phaser.Scene {
         btn.textContent = icon;
         Object.assign(btn.style, {
             position:   "fixed",
-            bottom:     this.isMobile ? "80px" : "16px",
+            bottom:     this.isMobile ? "80px" : "70px",
             left:       "18px",
             zIndex:     "9999",
             width:      "44px",

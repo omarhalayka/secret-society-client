@@ -103,11 +103,11 @@ class VoiceManagerClass {
         this.connections.set(peerId, conn);
 
         call.on("stream", (remoteStream: MediaStream) => {
-            conn.stream = remoteStream;
-            conn.audio  = this.createAudio(remoteStream);
-            this.applyVolumeRules(peerId);
-            if (this.onPeerJoined) this.onPeerJoined(username);
-        });
+                conn.stream = remoteStream;
+                conn.audio  = this.createAudio(remoteStream, false); // remote = نسمعه
+                this.applyVolumeRules(peerId);
+                if (this.onPeerJoined) this.onPeerJoined(username);
+            });
 
         call.on("close", () => {
             this.removePeer(peerId);
@@ -127,7 +127,7 @@ class VoiceManagerClass {
 
         call.on("stream", (remoteStream: MediaStream) => {
             conn.stream = remoteStream;
-            conn.audio  = this.createAudio(remoteStream);
+            conn.audio  = this.createAudio(remoteStream, false); // remote = نسمعه
             this.applyVolumeRules(call.peer);
         });
 
@@ -136,10 +136,11 @@ class VoiceManagerClass {
     }
 
     // ─── إنشاء audio element ───
-    private createAudio(stream: MediaStream): HTMLAudioElement {
-        const audio    = document.createElement("audio");
-        audio.srcObject= stream;
-        audio.autoplay = true;
+    private createAudio(stream: MediaStream, isLocal = false): HTMLAudioElement {
+        const audio     = document.createElement("audio");
+        audio.srcObject = stream;
+        audio.autoplay  = true;
+        audio.muted     = isLocal; // ← منع سماع الصوت الخاص
         audio.style.display = "none";
         document.body.appendChild(audio);
         return audio;
@@ -202,8 +203,7 @@ class VoiceManagerClass {
         const conn = this.connections.get(peerId);
         if (!conn?.audio) return;
         const canHear    = this.canHear(conn.role || "CITIZEN");
-        conn.audio.volume= canHear ? 1 : 0;
-        conn.audio.muted = !canHear;
+        conn.audio.volume = canHear ? 1 : 0;
     }
 
     // ─── mute/unmute الميكروفون ───
