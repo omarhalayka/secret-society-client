@@ -53,7 +53,20 @@ class VoiceManagerClass {
                     iceServers: [
                         { urls: "stun:stun.l.google.com:19302" },
                         { urls: "stun:stun1.l.google.com:19302" },
-                    ]
+                        { urls: "stun:stun2.l.google.com:19302" },
+                        // TURN servers مجانية عشان يتجاوز الـ NAT على الموبايل
+                        {
+                            urls:       "turn:openrelay.metered.ca:80",
+                            username:   "openrelayproject",
+                            credential: "openrelayproject",
+                        },
+                        {
+                            urls:       "turn:openrelay.metered.ca:443",
+                            username:   "openrelayproject",
+                            credential: "openrelayproject",
+                        },
+                    ],
+                    iceTransportPolicy: "all",
                 }
             });
 
@@ -81,7 +94,19 @@ class VoiceManagerClass {
     // ─── طلب الميكروفون ───
     async requestMicrophone(): Promise<boolean> {
         try {
-            this.myStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+            this.myStream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    echoCancellation:   true,
+                    noiseSuppression:   true,
+                    autoGainControl:    true,
+                    sampleRate:         16000,
+                    channelCount:       1,
+                },
+                video: false
+            });
+            // ─── ابدأ بـ mute ───
+            this.myStream.getAudioTracks().forEach(t => { t.enabled = false; });
+            this.isMuted  = true;
             this.isEnabled = true;
             console.log("✅ Microphone ready");
             return true;
@@ -92,29 +117,43 @@ class VoiceManagerClass {
     }
 
     // ─── الاتصال بلاعب ───
-    callPeer(peerId: string, username: string, role: string) {
+    callPeer(peerId: string, username: string, role: string, retries = 3) {
         if (!this.peer || !this.myStream || !peerId || peerId === this.myPeerId) return;
         if (this.connections.has(peerId)) return;
 
         console.log(`📞 Calling ${username} (${peerId})`);
         const call = this.peer.call(peerId, this.myStream);
-
         const conn: PeerConnection = { peerId, call, username, role };
         this.connections.set(peerId, conn);
 
+        let gotStream = false;
+
         call.on("stream", (remoteStream: MediaStream) => {
-                conn.stream = remoteStream;
-                conn.audio  = this.createAudio(remoteStream, false); // remote = نسمعه
-                this.applyVolumeRules(peerId);
-                if (this.onPeerJoined) this.onPeerJoined(username);
-            });
+            gotStream   = true;
+            conn.stream = remoteStream;
+            conn.audio  = this.createAudio(remoteStream, false);
+            this.applyVolumeRules(peerId);
+            if (this.onPeerJoined) this.onPeerJoined(username);
+        });
 
         call.on("close", () => {
             this.removePeer(peerId);
             if (this.onPeerLeft) this.onPeerLeft(username);
         });
 
-        call.on("error", () => this.removePeer(peerId));
+        call.on("error", () => {
+            this.removePeer(peerId);
+            if (retries > 0) setTimeout(() => this.callPeer(peerId, username, role, retries - 1), 2000);
+        });
+
+        // لو ما جاء stream خلال 8 ثواني — retry
+        setTimeout(() => {
+            if (!gotStream && this.connections.has(peerId)) {
+                console.warn(`⚠ No stream from ${username}, retrying...`);
+                this.removePeer(peerId);
+                if (retries > 0) this.callPeer(peerId, username, role, retries - 1);
+            }
+        }, 8000);
     }
 
     // ─── الرد على اتصال ───
@@ -140,9 +179,13 @@ class VoiceManagerClass {
         const audio     = document.createElement("audio");
         audio.srcObject = stream;
         audio.autoplay  = true;
-        audio.muted     = isLocal; // ← منع سماع الصوت الخاص
+        audio.muted     = isLocal;
+        (audio as any).playsInline = true; // مهم على iOS
+        audio.setAttribute("playsinline", "");
         audio.style.display = "none";
         document.body.appendChild(audio);
+        // تشغيل يدوي عشان iOS يقبله
+        audio.play().catch(() => {});
         return audio;
     }
 

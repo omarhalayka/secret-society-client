@@ -168,8 +168,8 @@ export default class GameScene extends Phaser.Scene {
             console.log(`🎤 ${data.username} joined voice`);
         });
 
-        // أظهر زر الميكروفون
-        this.showVoiceBtn("🎤", "#22c55e", "Voice ON");
+        // أظهر زر الميكروفون — يبدأ muted
+        this.showVoiceBtn("🔇", "#ef4444", "Click to unmute");
 
         // callbacks
         voiceManager.onMuteChange = (muted) => {
