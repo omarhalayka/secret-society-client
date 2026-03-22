@@ -2058,50 +2058,84 @@ export default class GameScene extends Phaser.Scene {
             boxShadow: "0 0 30px rgba(34,197,94,0.15)",
         });
 
+        const roles = [
+            { key: "MAFIA",     label: "🔪 مافيا",   color: "#ef4444" },
+            { key: "DOCTOR",    label: "✚ طبيب",     color: "#4ade80" },
+            { key: "DETECTIVE", label: "🔍 محقق",    color: "#60a5fa" },
+            { key: "CITIZEN",   label: "◎ مواطن",   color: "#94a3b8" },
+        ];
+
         popup.innerHTML = `
             <div style="color:#22c55e;font-size:10px;letter-spacing:3px;font-weight:bold;margin-bottom:8px">➕ REJOIN CODE</div>
-            <div style="color:#4a5568;font-size:9px;margin-bottom:14px;direction:rtl;text-align:right;line-height:1.6">ولّد كود وأعطه لأي شخص يبدل اللاعب الذي خرج</div>
-            <button id="arj-gen-btn" style="width:100%;padding:12px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:12px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:12px">🔑 GENERATE CODE</button>
-            <div id="arj-result" style="display:none;background:#060e06;border:1px solid #22c55e;border-radius:8px;padding:16px;text-align:center;margin-bottom:10px">
-                <div style="color:#4a5568;font-size:9px;letter-spacing:2px;margin-bottom:8px">ROOM CODE</div>
-                <div id="arj-code" style="color:#22c55e;font-size:42px;font-weight:bold;letter-spacing:10px"></div>
-                <div style="color:#374151;font-size:9px;margin-top:8px">valid 15 min</div>
+            <div style="color:#4a5568;font-size:9px;margin-bottom:12px;direction:rtl;text-align:right;line-height:1.5">اختر دور اللاعب البديل ثم ولّد الكود</div>
+            <div id="arj-roles" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+                ${roles.map(r => `
+                    <button data-role="${r.key}" style="padding:10px 6px;border:1px solid #21262d;border-radius:6px;background:transparent;color:#4a5568;font-size:11px;cursor:pointer;font-family:'Courier New',monospace;direction:rtl">${r.label}</button>
+                `).join("")}
             </div>
-            <button id="arj-close" style="width:100%;padding:8px;background:none;border:1px solid #21262d;border-radius:5px;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">CLOSE</button>
+            <button id="arj-gen-btn" style="width:100%;padding:11px;border:1px solid #374151;border-radius:6px;background:transparent;color:#374151;font-size:11px;letter-spacing:2px;cursor:not-allowed;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:10px" disabled>🔑 GENERATE CODE</button>
+            <div id="arj-result" style="display:none;background:#060e06;border:1px solid #22c55e;border-radius:8px;padding:14px;text-align:center;margin-bottom:10px">
+                <div id="arj-role-label" style="color:#94a3b8;font-size:9px;letter-spacing:2px;margin-bottom:6px"></div>
+                <div id="arj-code" style="color:#22c55e;font-size:40px;font-weight:bold;letter-spacing:10px"></div>
+                <div style="color:#374151;font-size:9px;margin-top:6px">valid 15 min</div>
+            </div>
+            <button id="arj-close" style="width:100%;padding:7px;background:none;border:1px solid #21262d;border-radius:5px;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">CLOSE</button>
         `;
 
         document.body.appendChild(popup);
 
-        const genBtn  = popup.querySelector<HTMLButtonElement>("#arj-gen-btn")!;
-        const result  = popup.querySelector<HTMLElement>("#arj-result")!;
-        const codeEl  = popup.querySelector<HTMLElement>("#arj-code")!;
-        const closeBtn= popup.querySelector<HTMLButtonElement>("#arj-close")!;
+        const genBtn   = popup.querySelector<HTMLButtonElement>("#arj-gen-btn")!;
+        const result   = popup.querySelector<HTMLElement>("#arj-result")!;
+        const roleLabel= popup.querySelector<HTMLElement>("#arj-role-label")!;
+        const codeEl   = popup.querySelector<HTMLElement>("#arj-code")!;
+        const closeBtn = popup.querySelector<HTMLButtonElement>("#arj-close")!;
 
-        genBtn.addEventListener("click", () => {
-            socketService.socket.emit("admin_generate_room_code");
-            genBtn.textContent = "Generating...";
-            genBtn.style.opacity = "0.6";
-            genBtn.style.pointerEvents = "none";
-            socketService.socket.once("room_code_generated", (data: any) => {
-                result.style.display = "block";
-                codeEl.textContent   = data.code;
-                genBtn.textContent   = "🔄 NEW CODE";
-                genBtn.style.opacity = "1";
-                genBtn.style.pointerEvents = "auto";
-                genBtn.onclick = () => {
-                    socketService.socket.emit("admin_generate_room_code");
-                    genBtn.textContent = "Generating...";
-                    genBtn.style.opacity = "0.6";
-                    socketService.socket.once("room_code_generated", (d: any) => {
-                        codeEl.textContent   = d.code;
-                        genBtn.textContent   = "🔄 NEW CODE";
-                        genBtn.style.opacity = "1";
-                    });
-                };
+        let selectedRole = "";
+
+        // أزرار الأدوار
+        popup.querySelectorAll<HTMLButtonElement>("[data-role]").forEach(btn => {
+            const r = roles.find(x => x.key === btn.dataset.role)!;
+            btn.addEventListener("click", () => {
+                // reset كل الأزرار
+                popup.querySelectorAll<HTMLButtonElement>("[data-role]").forEach(b => {
+                    b.style.borderColor = "#21262d";
+                    b.style.color       = "#4a5568";
+                    b.style.background  = "transparent";
+                });
+                // highlight المختار
+                btn.style.borderColor = r.color;
+                btn.style.color       = r.color;
+                btn.style.background  = `${r.color}18`;
+                selectedRole = r.key;
+                // فعّل زر Generate
+                genBtn.disabled = false;
+                genBtn.style.borderColor = "#22c55e";
+                genBtn.style.color       = "#22c55e";
+                genBtn.style.cursor      = "pointer";
+                result.style.display = "none";
             });
         });
 
-        closeBtn.addEventListener("click", () => popup.remove());
+        genBtn.addEventListener("click", () => {
+            if (!selectedRole) return;
+            socketService.socket.emit("admin_generate_room_code", { role: selectedRole });
+            genBtn.textContent = "Generating...";
+            genBtn.style.opacity = "0.6";
+            socketService.socket.once("room_code_generated", (data: any) => {
+                const r = roles.find(x => x.key === data.role);
+                result.style.display  = "block";
+                roleLabel.textContent = r?.label || data.role;
+                roleLabel.style.color = r?.color || "#94a3b8";
+                codeEl.textContent    = data.code;
+                genBtn.textContent    = "🔄 NEW CODE";
+                genBtn.style.opacity  = "1";
+            });
+        });
+
+        closeBtn.addEventListener("click", () => {
+            socketService.socket.off("room_code_generated");
+            popup.remove();
+        });
     }
 
     private createAdminDrawer() {
@@ -2313,12 +2347,24 @@ export default class GameScene extends Phaser.Scene {
             boxShadow: "0 0 40px rgba(34,197,94,0.15)",
         });
 
+        const roles = [
+            { key: "MAFIA",     label: "🔪 مافيا",  color: "#ef4444" },
+            { key: "DOCTOR",    label: "✚ طبيب",    color: "#4ade80" },
+            { key: "DETECTIVE", label: "🔍 محقق",   color: "#60a5fa" },
+            { key: "CITIZEN",   label: "◎ مواطن",  color: "#94a3b8" },
+        ];
+
         box.innerHTML = `
             <div style="color:#22c55e;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:8px">➕ REJOIN CODE</div>
-            <div style="color:#4a5568;font-size:10px;margin-bottom:16px;direction:rtl;text-align:right;line-height:1.6">ولّد كود وأعطه لأي شخص يبدل اللاعب الذي خرج</div>
-            <button id="mrj-gen-btn" style="width:100%;padding:14px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:13px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:14px;touch-action:manipulation">🔑 GENERATE CODE</button>
+            <div style="color:#4a5568;font-size:10px;margin-bottom:14px;direction:rtl;text-align:right;line-height:1.5">اختر دور اللاعب البديل</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+                ${roles.map(r => `
+                    <button data-role="${r.key}" style="padding:12px 6px;border:1px solid #21262d;border-radius:6px;background:transparent;color:#4a5568;font-size:12px;cursor:pointer;font-family:'Courier New',monospace;direction:rtl;touch-action:manipulation">${r.label}</button>
+                `).join("")}
+            </div>
+            <button id="mrj-gen-btn" style="width:100%;padding:12px;border:1px solid #374151;border-radius:6px;background:transparent;color:#374151;font-size:12px;letter-spacing:2px;cursor:not-allowed;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:12px;touch-action:manipulation" disabled>🔑 GENERATE CODE</button>
             <div id="mrj-result" style="display:none;background:#060e06;border:1px solid #22c55e;border-radius:8px;padding:16px;text-align:center;margin-bottom:12px">
-                <div style="color:#4a5568;font-size:9px;letter-spacing:2px;margin-bottom:8px">ROOM CODE</div>
+                <div id="mrj-role-label" style="color:#94a3b8;font-size:9px;letter-spacing:2px;margin-bottom:8px"></div>
                 <div id="mrj-code" style="color:#22c55e;font-size:44px;font-weight:bold;letter-spacing:12px"></div>
                 <div style="color:#374151;font-size:9px;margin-top:8px">valid 15 min</div>
             </div>
@@ -2328,27 +2374,55 @@ export default class GameScene extends Phaser.Scene {
         popup.appendChild(box);
         document.body.appendChild(popup);
 
-        const genBtn  = box.querySelector<HTMLButtonElement>("#mrj-gen-btn")!;
-        const result  = box.querySelector<HTMLElement>("#mrj-result")!;
-        const codeEl  = box.querySelector<HTMLElement>("#mrj-code")!;
-        const closeBtn= box.querySelector<HTMLButtonElement>("#mrj-close")!;
+        const genBtn   = box.querySelector<HTMLButtonElement>("#mrj-gen-btn")!;
+        const result   = box.querySelector<HTMLElement>("#mrj-result")!;
+        const roleLabel= box.querySelector<HTMLElement>("#mrj-role-label")!;
+        const codeEl   = box.querySelector<HTMLElement>("#mrj-code")!;
+        const closeBtn = box.querySelector<HTMLButtonElement>("#mrj-close")!;
 
-        genBtn.addEventListener("click", () => {
-            socketService.socket.emit("admin_generate_room_code");
-            genBtn.textContent = "Generating...";
-            genBtn.style.opacity = "0.6";
-            genBtn.style.pointerEvents = "none";
-            socketService.socket.once("room_code_generated", (data: any) => {
-                result.style.display = "block";
-                codeEl.textContent   = data.code;
-                genBtn.textContent   = "🔄 NEW CODE";
-                genBtn.style.opacity = "1";
-                genBtn.style.pointerEvents = "auto";
+        let selectedRole = "";
+
+        box.querySelectorAll<HTMLButtonElement>("[data-role]").forEach(btn => {
+            const r = roles.find(x => x.key === btn.dataset.role)!;
+            btn.addEventListener("click", () => {
+                box.querySelectorAll<HTMLButtonElement>("[data-role]").forEach(b => {
+                    b.style.borderColor = "#21262d";
+                    b.style.color       = "#4a5568";
+                    b.style.background  = "transparent";
+                });
+                btn.style.borderColor = r.color;
+                btn.style.color       = r.color;
+                btn.style.background  = `${r.color}18`;
+                selectedRole = r.key;
+                genBtn.disabled = false;
+                genBtn.style.borderColor = "#22c55e";
+                genBtn.style.color       = "#22c55e";
+                genBtn.style.cursor      = "pointer";
+                result.style.display = "none";
             });
         });
 
-        closeBtn.addEventListener("click", () => popup.remove());
-        popup.addEventListener("click", e => { if (e.target === popup) popup.remove(); });
+        genBtn.addEventListener("click", () => {
+            if (!selectedRole) return;
+            socketService.socket.emit("admin_generate_room_code", { role: selectedRole });
+            genBtn.textContent = "Generating...";
+            genBtn.style.opacity = "0.6";
+            socketService.socket.once("room_code_generated", (data: any) => {
+                const r = roles.find(x => x.key === data.role);
+                result.style.display  = "block";
+                roleLabel.textContent = r?.label || data.role;
+                roleLabel.style.color = r?.color || "#94a3b8";
+                codeEl.textContent    = data.code;
+                genBtn.textContent    = "🔄 NEW CODE";
+                genBtn.style.opacity  = "1";
+            });
+        });
+
+        closeBtn.addEventListener("click", () => {
+            socketService.socket.off("room_code_generated");
+            popup.remove();
+        });
+        popup.addEventListener("click", e => { if (e.target === popup) closeBtn.click(); });
     }
 
     private toggleAdminDrawer() {
