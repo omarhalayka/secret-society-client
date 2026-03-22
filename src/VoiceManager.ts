@@ -53,20 +53,7 @@ class VoiceManagerClass {
                     iceServers: [
                         { urls: "stun:stun.l.google.com:19302" },
                         { urls: "stun:stun1.l.google.com:19302" },
-                        { urls: "stun:stun2.l.google.com:19302" },
-                        // TURN servers مجانية عشان يتجاوز الـ NAT على الموبايل
-                        {
-                            urls:       "turn:openrelay.metered.ca:80",
-                            username:   "openrelayproject",
-                            credential: "openrelayproject",
-                        },
-                        {
-                            urls:       "turn:openrelay.metered.ca:443",
-                            username:   "openrelayproject",
-                            credential: "openrelayproject",
-                        },
-                    ],
-                    iceTransportPolicy: "all",
+                    ]
                 }
             });
 
@@ -94,16 +81,7 @@ class VoiceManagerClass {
     // ─── طلب الميكروفون ───
     async requestMicrophone(): Promise<boolean> {
         try {
-            this.myStream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    echoCancellation:   true,
-                    noiseSuppression:   true,
-                    autoGainControl:    true,
-                    sampleRate:         16000,
-                    channelCount:       1,
-                },
-                video: false
-            });
+            this.myStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
             this.isEnabled = true;
             console.log("✅ Microphone ready");
             return true;
@@ -162,13 +140,9 @@ class VoiceManagerClass {
         const audio     = document.createElement("audio");
         audio.srcObject = stream;
         audio.autoplay  = true;
-        audio.muted     = isLocal;
-        (audio as any).playsInline = true; // مهم على iOS
-        audio.setAttribute("playsinline", "");
+        audio.muted     = isLocal; // ← منع سماع الصوت الخاص
         audio.style.display = "none";
         document.body.appendChild(audio);
-        // تشغيل يدوي عشان iOS يقبله
-        audio.play().catch(() => {});
         return audio;
     }
 
