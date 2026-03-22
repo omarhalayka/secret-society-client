@@ -2051,7 +2051,7 @@ export default class GameScene extends Phaser.Scene {
         popup.id = "admin-rejoin-popup";
         Object.assign(popup.style, {
             position: "fixed", top: "80px", right: "16px",
-            width: "260px", zIndex: "99999",
+            width: "270px", zIndex: "99999",
             backgroundColor: "#0d1117", border: "1px solid #22c55e",
             borderRadius: "10px", padding: "18px 16px",
             fontFamily: "'Courier New', monospace",
@@ -2060,49 +2060,76 @@ export default class GameScene extends Phaser.Scene {
 
         popup.innerHTML = `
             <div style="color:#22c55e;font-size:10px;letter-spacing:3px;font-weight:bold;margin-bottom:8px">➕ REJOIN CODE</div>
-            <div style="color:#4a5568;font-size:9px;margin-bottom:14px;direction:rtl;text-align:right;line-height:1.6">اضغط لتوليد كود — أعطه للاعب الذي خرج عشان يرجع للغرفة</div>
-            <button id="arj-gen-btn" style="width:100%;padding:12px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:12px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:12px">🔑 GENERATE CODE</button>
-            <div id="arj-result" style="display:none;background:#060e06;border:1px solid #22c55e;border-radius:8px;padding:16px;text-align:center;margin-bottom:10px">
-                <div style="color:#4a5568;font-size:9px;letter-spacing:2px;margin-bottom:8px">ROOM REJOIN CODE</div>
-                <div id="arj-code" style="color:#22c55e;font-size:42px;font-weight:bold;letter-spacing:10px"></div>
-                <div style="color:#374151;font-size:9px;margin-top:8px">valid 15 min • share with disconnected player</div>
+            <div style="color:#4a5568;font-size:9px;margin-bottom:12px;direction:rtl;text-align:right;line-height:1.6">اختر اللاعب الذي خرج لتولّد كود يأخذ دوره</div>
+            <div id="arj-player-list" style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px;max-height:200px;overflow-y:auto">
+                <div style="color:#374151;font-size:10px;text-align:center;padding:8px">Loading players...</div>
             </div>
-            <button id="arj-close" style="width:100%;padding:8px;background:none;border:1px solid #21262d;border-radius:5px;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">CLOSE</button>
+            <div id="arj-result" style="display:none;background:#060e06;border:1px solid #22c55e;border-radius:8px;padding:14px;text-align:center;margin-bottom:10px">
+                <div style="color:#4a5568;font-size:9px;letter-spacing:2px;margin-bottom:4px">REJOIN CODE</div>
+                <div id="arj-role" style="color:#94a3b8;font-size:10px;letter-spacing:1px;margin-bottom:6px"></div>
+                <div id="arj-code" style="color:#22c55e;font-size:40px;font-weight:bold;letter-spacing:10px"></div>
+                <div style="color:#374151;font-size:9px;margin-top:6px">valid 15 min</div>
+            </div>
+            <div id="arj-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:12px;margin-bottom:8px"></div>
+            <button id="arj-close" style="width:100%;padding:7px;background:none;border:1px solid #21262d;border-radius:5px;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">CLOSE</button>
         `;
 
         document.body.appendChild(popup);
 
-        const genBtn  = popup.querySelector<HTMLButtonElement>("#arj-gen-btn")!;
-        const result  = popup.querySelector<HTMLElement>("#arj-result")!;
-        const codeEl  = popup.querySelector<HTMLElement>("#arj-code")!;
-        const closeBtn= popup.querySelector<HTMLButtonElement>("#arj-close")!;
+        const playerList = popup.querySelector<HTMLElement>("#arj-player-list")!;
+        const result     = popup.querySelector<HTMLElement>("#arj-result")!;
+        const roleEl     = popup.querySelector<HTMLElement>("#arj-role")!;
+        const codeEl     = popup.querySelector<HTMLElement>("#arj-code")!;
+        const errEl      = popup.querySelector<HTMLElement>("#arj-err")!;
+        const closeBtn   = popup.querySelector<HTMLButtonElement>("#arj-close")!;
 
-        genBtn.addEventListener("click", () => {
-            socketService.socket.emit("admin_generate_room_code");
-            genBtn.textContent    = "Generating...";
-            genBtn.style.opacity  = "0.6";
-            genBtn.style.pointerEvents = "none";
-        });
+        // اطلب قائمة اللاعبين
+        socketService.socket.emit("admin_generate_room_code", {});
 
-        socketService.socket.once("room_code_generated", (data: any) => {
-            result.style.display  = "block";
-            codeEl.textContent    = data.code;
-            genBtn.textContent    = "🔄 NEW CODE";
-            genBtn.style.opacity  = "1";
-            genBtn.style.pointerEvents = "auto";
-            genBtn.onclick = () => {
-                socketService.socket.emit("admin_generate_room_code");
-                genBtn.textContent = "Generating...";
-                genBtn.style.opacity = "0.6";
-                socketService.socket.once("room_code_generated", (d: any) => {
-                    codeEl.textContent   = d.code;
-                    genBtn.textContent   = "🔄 NEW CODE";
-                    genBtn.style.opacity = "1";
+        socketService.socket.once("room_players_list", (data: any) => {
+            playerList.innerHTML = "";
+            if (!data.players?.length) {
+                playerList.innerHTML = `<div style="color:#374151;font-size:10px;text-align:center;padding:8px">No players</div>`;
+                return;
+            }
+            data.players.forEach((p: any) => {
+                const roleColors: Record<string,string> = { MAFIA: "#ef4444", DOCTOR: "#4ade80", DETECTIVE: "#60a5fa", CITIZEN: "#64748b" };
+                const btn = document.createElement("button");
+                btn.style.cssText = `display:flex;align-items:center;justify-content:space-between;width:100%;padding:8px 10px;border:1px solid #21262d;border-radius:5px;background:transparent;color:#f1f5f9;cursor:pointer;font-family:'Courier New',monospace;font-size:12px;transition:all 0.15s`;
+                btn.innerHTML = `<span>${p.alive ? "🟢" : "💀"} ${p.username}</span><span style="color:${roleColors[p.role]||"#64748b"};font-size:9px;letter-spacing:1px">${p.role}</span>`;
+                btn.addEventListener("click", () => {
+                    // ولّد الكود لهذا اللاعب
+                    socketService.socket.emit("admin_generate_room_code", { username: p.username });
+                    playerList.style.opacity = "0.4";
+                    playerList.style.pointerEvents = "none";
+
+                    socketService.socket.once("room_code_generated", (d: any) => {
+                        result.style.display = "block";
+                        roleEl.textContent   = `Role: ${d.role} (replacing ${d.replaces})`;
+                        codeEl.textContent   = d.code;
+                        playerList.style.opacity = "1";
+                        playerList.style.pointerEvents = "auto";
+                    });
+                    socketService.socket.once("room_code_error", (d: any) => {
+                        errEl.textContent = d.message;
+                        playerList.style.opacity = "1";
+                        playerList.style.pointerEvents = "auto";
+                    });
                 });
-            };
+                playerList.appendChild(btn);
+            });
         });
 
-        closeBtn.addEventListener("click", () => popup.remove());
+        socketService.socket.once("room_code_error", (d: any) => {
+            errEl.textContent = d.message;
+        });
+
+        closeBtn.addEventListener("click", () => {
+            socketService.socket.off("room_players_list");
+            socketService.socket.off("room_code_generated");
+            socketService.socket.off("room_code_error");
+            popup.remove();
+        });
     }
 
     private createAdminDrawer() {
@@ -2310,48 +2337,78 @@ export default class GameScene extends Phaser.Scene {
         const box = document.createElement("div");
         Object.assign(box.style, {
             backgroundColor: "#0d1117", border: "1px solid #22c55e",
-            borderRadius: "10px", padding: "24px 20px", width: "290px",
-            boxShadow: "0 0 40px rgba(34,197,94,0.15)",
+            borderRadius: "10px", padding: "22px 18px", width: "300px",
+            boxShadow: "0 0 40px rgba(34,197,94,0.15)", maxHeight: "90vh", overflowY: "auto",
         });
 
         box.innerHTML = `
             <div style="color:#22c55e;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:8px">➕ REJOIN CODE</div>
-            <div style="color:#4a5568;font-size:11px;margin-bottom:16px;direction:rtl;text-align:right;line-height:1.6">اضغط لتوليد كود — أعطه للاعب الذي خرج عشان يرجع للغرفة</div>
-            <button id="mrj-gen-btn" style="width:100%;padding:14px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:13px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:14px;touch-action:manipulation">🔑 GENERATE CODE</button>
-            <div id="mrj-result" style="display:none;background:#060e06;border:1px solid #22c55e;border-radius:8px;padding:18px;text-align:center;margin-bottom:14px">
-                <div style="color:#4a5568;font-size:9px;letter-spacing:2px;margin-bottom:10px">ROOM REJOIN CODE</div>
-                <div id="mrj-code" style="color:#22c55e;font-size:48px;font-weight:bold;letter-spacing:12px"></div>
-                <div style="color:#374151;font-size:9px;margin-top:10px">valid 15 min • share with disconnected player</div>
+            <div style="color:#4a5568;font-size:10px;margin-bottom:14px;direction:rtl;text-align:right;line-height:1.6">اختر اللاعب الذي خرج لتولّد كود يأخذ دوره</div>
+            <div id="mrj-player-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+                <div style="color:#374151;font-size:10px;text-align:center;padding:10px">Loading...</div>
             </div>
+            <div id="mrj-result" style="display:none;background:#060e06;border:1px solid #22c55e;border-radius:8px;padding:16px;text-align:center;margin-bottom:12px">
+                <div style="color:#4a5568;font-size:9px;letter-spacing:2px;margin-bottom:4px">REJOIN CODE</div>
+                <div id="mrj-role" style="color:#94a3b8;font-size:10px;margin-bottom:8px"></div>
+                <div id="mrj-code" style="color:#22c55e;font-size:44px;font-weight:bold;letter-spacing:12px"></div>
+                <div style="color:#374151;font-size:9px;margin-top:8px">valid 15 min</div>
+            </div>
+            <div id="mrj-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:12px;margin-bottom:8px"></div>
             <button id="mrj-close" style="width:100%;padding:10px;background:none;border:1px solid #21262d;border-radius:6px;color:#4a5568;font-size:11px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;touch-action:manipulation">CLOSE</button>
         `;
 
         popup.appendChild(box);
         document.body.appendChild(popup);
 
-        const genBtn  = box.querySelector<HTMLButtonElement>("#mrj-gen-btn")!;
-        const result  = box.querySelector<HTMLElement>("#mrj-result")!;
-        const codeEl  = box.querySelector<HTMLElement>("#mrj-code")!;
-        const closeBtn= box.querySelector<HTMLButtonElement>("#mrj-close")!;
+        const playerList = box.querySelector<HTMLElement>("#mrj-player-list")!;
+        const result     = box.querySelector<HTMLElement>("#mrj-result")!;
+        const roleEl     = box.querySelector<HTMLElement>("#mrj-role")!;
+        const codeEl     = box.querySelector<HTMLElement>("#mrj-code")!;
+        const errEl      = box.querySelector<HTMLElement>("#mrj-err")!;
+        const closeBtn   = box.querySelector<HTMLButtonElement>("#mrj-close")!;
 
-        const generate = () => {
-            socketService.socket.emit("admin_generate_room_code");
-            genBtn.textContent   = "Generating...";
-            genBtn.style.opacity = "0.6";
-            genBtn.style.pointerEvents = "none";
+        socketService.socket.emit("admin_generate_room_code", {});
 
-            socketService.socket.once("room_code_generated", (data: any) => {
-                result.style.display       = "block";
-                codeEl.textContent         = data.code;
-                genBtn.textContent         = "🔄 NEW CODE";
-                genBtn.style.opacity       = "1";
-                genBtn.style.pointerEvents = "auto";
+        socketService.socket.once("room_players_list", (data: any) => {
+            playerList.innerHTML = "";
+            if (!data.players?.length) {
+                playerList.innerHTML = `<div style="color:#374151;font-size:10px;text-align:center;padding:10px">No players</div>`;
+                return;
+            }
+            const roleColors: Record<string,string> = { MAFIA: "#ef4444", DOCTOR: "#4ade80", DETECTIVE: "#60a5fa", CITIZEN: "#64748b" };
+            data.players.forEach((p: any) => {
+                const btn = document.createElement("button");
+                btn.style.cssText = `display:flex;align-items:center;justify-content:space-between;width:100%;padding:10px 12px;border:1px solid #21262d;border-radius:6px;background:transparent;color:#f1f5f9;cursor:pointer;font-family:'Courier New',monospace;font-size:13px;touch-action:manipulation`;
+                btn.innerHTML = `<span>${p.alive ? "🟢" : "💀"} ${p.username}</span><span style="color:${roleColors[p.role]||"#64748b"};font-size:9px">${p.role}</span>`;
+                btn.addEventListener("click", () => {
+                    socketService.socket.emit("admin_generate_room_code", { username: p.username });
+                    playerList.style.opacity = "0.4";
+                    playerList.style.pointerEvents = "none";
+
+                    socketService.socket.once("room_code_generated", (d: any) => {
+                        result.style.display = "block";
+                        roleEl.textContent   = `${d.role} • replacing ${d.replaces}`;
+                        codeEl.textContent   = d.code;
+                        playerList.style.opacity = "1";
+                        playerList.style.pointerEvents = "auto";
+                    });
+                    socketService.socket.once("room_code_error", (d: any) => {
+                        errEl.textContent = d.message;
+                        playerList.style.opacity = "1";
+                        playerList.style.pointerEvents = "auto";
+                    });
+                });
+                playerList.appendChild(btn);
             });
-        };
+        });
 
-        genBtn.addEventListener("click", generate);
-        closeBtn.addEventListener("click", () => popup.remove());
-        popup.addEventListener("click", e => { if (e.target === popup) popup.remove(); });
+        closeBtn.addEventListener("click", () => {
+            socketService.socket.off("room_players_list");
+            socketService.socket.off("room_code_generated");
+            socketService.socket.off("room_code_error");
+            popup.remove();
+        });
+        popup.addEventListener("click", e => { if (e.target === popup) closeBtn.click(); });
     }
 
     private toggleAdminDrawer() {
