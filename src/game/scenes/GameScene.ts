@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { socketService } from "../../socket";
+import { voiceManager } from "../../VoiceManager";
 
 // ════════════════════════════════════════════════════════
 //  GameScene — Desktop + Mobile fully supported
@@ -125,6 +126,92 @@ export default class GameScene extends Phaser.Scene {
                 pending.forEach(({ msg, color }) => this.addEventLog(msg, color));
             });
         }
+
+        // ─── تهيئة الصوت بعد تحميل الـ scene ───
+        if (this.userType === "PLAYER" || this.userType === "ADMIN") {
+            this.time.delayedCall(1000, () => this.initVoice());
+        }
+    }
+
+    // ══════════════════════════════════════
+    //  Voice Chat
+    // ══════════════════════════════════════
+    private async initVoice() {
+        // طلب الميكروفون
+        const micOk = await voiceManager.requestMicrophone();
+        if (!micOk) {
+            this.showVoiceBtn("❌", "#ef4444", "Mic denied");
+            return;
+        }
+
+        // تهيئة الـ Peer
+        const peerId = await voiceManager.init();
+        if (!peerId) {
+            this.showVoiceBtn("❌", "#ef4444", "Voice failed");
+            return;
+        }
+
+        // أرسل الـ peer ID للسيرفر
+        socketService.socket.emit("voice_peer_id", { peerId });
+
+        // استقبل الـ peers الموجودين
+        socketService.socket.on("voice_peers", (data: any) => {
+            data.peers?.forEach((p: any) => {
+                voiceManager.callPeer(p.peerId, p.username, p.role);
+            });
+        });
+
+        // لما يجي peer جديد
+        socketService.socket.on("voice_peer_joined", (data: any) => {
+            // هو بيكلمنا، ما نحتاج نكلمه — PeerJS بيتعامل مع الـ answer تلقائياً
+            // بس نسجّل بياناته لو وصلنا call
+            console.log(`🎤 ${data.username} joined voice`);
+        });
+
+        // أظهر زر الميكروفون
+        this.showVoiceBtn("🎤", "#22c55e", "Voice ON");
+
+        // callbacks
+        voiceManager.onMuteChange = (muted) => {
+            const btn = document.getElementById("voice-btn");
+            if (btn) {
+                btn.textContent = muted ? "🔇" : "🎤";
+                btn.style.borderColor = muted ? "#ef4444" : "#22c55e";
+                btn.style.color       = muted ? "#ef4444" : "#22c55e";
+            }
+        };
+    }
+
+    private showVoiceBtn(icon: string, color: string, title: string) {
+        document.getElementById("voice-btn")?.remove();
+        const btn = document.createElement("button");
+        btn.id    = "voice-btn";
+        btn.title = title;
+        btn.textContent = icon;
+        Object.assign(btn.style, {
+            position:   "fixed",
+            bottom:     this.isMobile ? "80px" : "16px",
+            left:       "18px",
+            zIndex:     "9999",
+            width:      "44px",
+            height:     "44px",
+            borderRadius: "50%",
+            border:     `2px solid ${color}`,
+            background: "rgba(13,17,23,0.9)",
+            color,
+            fontSize:   "20px",
+            cursor:     "pointer",
+            backdropFilter: "blur(8px)",
+            display:    "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.2s",
+        });
+        btn.addEventListener("click", () => {
+            if (!voiceManager.isReady()) return;
+            voiceManager.toggleMute();
+        });
+        document.body.appendChild(btn);
     }
 
     // ══════════════════════════════════════
@@ -2593,6 +2680,9 @@ export default class GameScene extends Phaser.Scene {
             this.showPhaseTransition(data.phase);
             this.roundText?.setText(`ROUND ${data.round}`);
             this.updateChatUI(data.phase);
+            // ─── تحديث قواعد الصوت ───
+            const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
+            voiceManager.setPhase(data.phase, this.role, myPlayer?.alive ?? true);
             socketService.socket.emit("request_room_state");
         });
 
@@ -2716,6 +2806,7 @@ export default class GameScene extends Phaser.Scene {
         document.getElementById("win-bg-video")?.remove();
         document.getElementById("voting-chat-panel")?.remove();
         document.getElementById("voting-chat-toggle")?.remove();
+        document.getElementById("voice-btn")?.remove();
         if (this.outsideClickHandler) document.removeEventListener("click", this.outsideClickHandler);
     }
 
@@ -2727,9 +2818,12 @@ export default class GameScene extends Phaser.Scene {
             "room_state", "phase_changed", "game_over", "game_started",
             "vote_update", "player_killed", "receive_message",
             "detective_result", "voting_result", "voting_started",
-            "night_review", "night_story", "back_to_lobby", "night_action_status", "server_reset"
+            "night_review", "night_story", "back_to_lobby", "night_action_status", "server_reset",
+            "voice_peers", "voice_peer_joined",
         ];
         evts.forEach(e => socketService.socket.off(e));
+        // ─── تنظيف الصوت ───
+        voiceManager.disconnectAll();
         this.tweens.killAll();
     }
 }
