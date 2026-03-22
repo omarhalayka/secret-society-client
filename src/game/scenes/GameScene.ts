@@ -161,11 +161,17 @@ export default class GameScene extends Phaser.Scene {
             });
         });
 
-        // لما يجي peer جديد
+        // لما يجي peer جديد — الأصغر ID يبادر بالاتصال لتجنب race condition
         socketService.socket.on("voice_peer_joined", (data: any) => {
-            // هو بيكلمنا، ما نحتاج نكلمه — PeerJS بيتعامل مع الـ answer تلقائياً
-            // بس نسجّل بياناته لو وصلنا call
-            console.log(`🎤 ${data.username} joined voice`);
+            if (!data.peerId || data.peerId === voiceManager.getPeerId()) return;
+            const myId   = voiceManager.getPeerId() || "";
+            const shouldCall = myId < data.peerId; // الأصغر ID يبادر
+            console.log(`🎤 ${data.username} joined — ${shouldCall ? "I call" : "they call"}`);
+            if (shouldCall) {
+                this.time.delayedCall(500, () => {
+                    voiceManager.callPeer(data.peerId, data.username, data.role);
+                });
+            }
         });
 
         // أظهر زر الميكروفون — يبدأ muted
