@@ -174,6 +174,15 @@ export default class GameScene extends Phaser.Scene {
             }
         });
 
+        // لما يدخل بديل — نعيد تسجيل الـ peer ID عشان يسمعنا
+        socketService.socket.on("voice_reconnect_request", () => {
+            const peerId = voiceManager.getPeerId();
+            if (peerId) {
+                console.log("🔄 Voice reconnect requested — re-registering peer ID");
+                socketService.socket.emit("voice_peer_id", { peerId });
+            }
+        });
+
         // أظهر زر الميكروفون — يبدأ muted
         this.showVoiceBtn("🔇", "#ef4444", "Click to unmute");
 
@@ -2825,7 +2834,7 @@ export default class GameScene extends Phaser.Scene {
             "vote_update", "player_killed", "receive_message",
             "detective_result", "voting_result", "voting_started",
             "night_review", "night_story", "back_to_lobby", "night_action_status", "server_reset",
-            "voice_peers", "voice_peer_joined",
+            "voice_peers", "voice_peer_joined", "voice_reconnect_request",
         ];
         evts.forEach(e => socketService.socket.off(e));
         // ─── تنظيف الصوت ───
