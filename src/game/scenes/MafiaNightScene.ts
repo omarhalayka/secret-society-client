@@ -323,6 +323,11 @@ export default class MafiaNightScene extends Phaser.Scene {
             
             const btnLabel = this.add.text(0, cardH * 0.38, "ELIMINATE", { fontSize: "10px", color: "#cc2222", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
             container.add([shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel]);
+            
+            // store helpers
+            container.setData("drawBg", drawBg);
+            container.setData("drawBtnBg", drawBtnBg);
+            
             container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
             container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
             container.on("pointerout", () => { drawBg(false, false); topAccent.setAlpha(0); drawBtnBg(false); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 }); });
@@ -338,6 +343,13 @@ export default class MafiaNightScene extends Phaser.Scene {
 
         // reset كل الكروت
         this.playerCards.forEach(card => {
+            if (card !== selected) {
+                const drawBgFn = card.getData("drawBg");
+                const drawBtnBgFn = card.getData("drawBtnBg");
+                if (drawBgFn) drawBgFn(false, false);
+                if (drawBtnBgFn) drawBtnBgFn(false);
+            }
+            
             const cardBtn = card.list[7] as Phaser.GameObjects.Graphics;
             const cardLabel = card.list[8] as Phaser.GameObjects.Text;
             if (cardLabel) { cardLabel.setText("SUGGEST"); cardLabel.setColor("#cc2222"); }
