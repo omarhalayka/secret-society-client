@@ -271,9 +271,37 @@ export default class MafiaNightScene extends Phaser.Scene {
         targets.forEach((player, i) => {
             const x = startX + i * (cardW + gap);
             const container = this.add.container(x, cardY).setDepth(5).setAlpha(0);
-            const shadow = this.add.rectangle(4, 6, cardW, cardH, 0x000000, 0.5).setOrigin(0.5);
-            const bg = this.add.rectangle(0, 0, cardW, cardH, this.C.card); bg.setStrokeStyle(1, this.C.borderDim); bg.setOrigin(0.5);
-            const topAccent = this.add.rectangle(0, -cardH / 2 + 2, cardW - 2, 3, this.C.accent, 0); topAccent.setOrigin(0.5, 0);
+            const shadow = this.add.graphics();
+            shadow.fillStyle(0x000000, 0.6);
+            shadow.fillRoundedRect(-cardW / 2 + 4, -cardH / 2 + 6, cardW, cardH, 12);
+            
+            const bg = this.add.graphics();
+            const drawBg = (hover: boolean, selected: boolean) => {
+                bg.clear();
+                if (selected) {
+                    bg.fillGradientStyle(0x2a0a0a, 0x2a0a0a, 0x1a0505, 0x1a0505, 1);
+                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+                    bg.lineStyle(2, this.C.accentGlow, 1);
+                } else if (hover) {
+                    bg.fillGradientStyle(0x1f0f0f, 0x1f0f0f, 0x0f0707, 0x0f0707, 1);
+                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+                    bg.lineStyle(1.5, this.C.accent, 1);
+                } else {
+                    bg.fillGradientStyle(0x130a0a, 0x130a0a, 0x0a0505, 0x0a0505, 1);
+                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+                    bg.lineStyle(1.5, this.C.borderDim, 1);
+                }
+                bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+            };
+            drawBg(false, false);
+            
+            const topAccent = this.add.graphics().setAlpha(0);
+            topAccent.lineStyle(1.5, this.C.accent, 0.4);
+            topAccent.beginPath();
+            topAccent.arc(-cardW / 2 + 12, -cardH / 2 + 12, 12, Math.PI, Math.PI * 1.5);
+            topAccent.lineTo(cardW / 2 - 12, -cardH / 2);
+            topAccent.strokePath();
+
             const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x1a0a0a); avatarBg.setStrokeStyle(1, this.C.borderDim);
             const avatarIcon = this.add.text(0, -cardH * 0.23, "👤", { fontSize: `${Math.floor(cardW * 0.2)}px` }).setOrigin(0.5);
             const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
@@ -282,29 +310,35 @@ export default class MafiaNightScene extends Phaser.Scene {
                 fontSize: `${Math.max(10, Math.floor(cardW * 0.086))}px`,
                 color: "#c8b8b8", fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 1
             }).setOrigin(0.5);
-            const btnBg = this.add.rectangle(0, cardH * 0.38, cardW * 0.71, 28, this.C.accent, 0); btnBg.setStrokeStyle(1, this.C.accent); btnBg.setOrigin(0.5);
+            
+            const btnBg = this.add.graphics();
+            const drawBtnBg = (hover: boolean) => {
+                btnBg.clear();
+                btnBg.fillStyle(this.C.accent, hover ? 0.15 : 0);
+                btnBg.fillRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
+                btnBg.lineStyle(1, this.C.accent, 1);
+                btnBg.strokeRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
+            };
+            drawBtnBg(false);
+            
             const btnLabel = this.add.text(0, cardH * 0.38, "ELIMINATE", { fontSize: "10px", color: "#cc2222", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
             container.add([shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel]);
             container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
-            container.on("pointerover", () => { if (this.actionUsed) return; bg.setFillStyle(this.C.cardHover); bg.setStrokeStyle(1, this.C.accent); topAccent.setAlpha(1); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, duration: 150 }); });
-            container.on("pointerout", () => { bg.setFillStyle(this.C.card); bg.setStrokeStyle(1, this.C.borderDim); topAccent.setAlpha(0); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 150 }); });
-            container.on("pointerdown", () => { if (this.actionUsed) return; this.handleTarget(player, container, bg); });
+            container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
+            container.on("pointerout", () => { drawBg(false, false); topAccent.setAlpha(0); drawBtnBg(false); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 }); });
+            container.on("pointerdown", () => { if (this.actionUsed) return; drawBg(false, true); this.handleTarget(player, container, bg, drawBg, drawBtnBg); });
             this.playerCards.push(container);
             this.tweens.add({ targets: container, alpha: 1, y: cardY, duration: 500, delay: 200 + i * 120, ease: "Back.easeOut", onStart: () => container.setY(cardY + 40) });
         });
     }
 
-    private handleTarget(player: any, selected: Phaser.GameObjects.Container, bg: Phaser.GameObjects.Rectangle) {
+    private handleTarget(player: any, selected: Phaser.GameObjects.Container, bg: Phaser.GameObjects.Graphics, drawBg: any, drawBtnBg: any) {
         this.killedPlayerId = player.id;
         this.cameras.main.flash(300, 120, 0, 0);
 
         // reset كل الكروت
         this.playerCards.forEach(card => {
-            const cardBg = card.list[1] as Phaser.GameObjects.Rectangle;
-            cardBg?.setFillStyle(this.C.card);
-            cardBg?.setStrokeStyle(1, this.C.borderDim);
-            const cardBtn = card.list[7] as Phaser.GameObjects.Rectangle;
-            cardBtn?.setFillStyle(this.C.accent, 0);
+            const cardBtn = card.list[7] as Phaser.GameObjects.Graphics;
             const cardLabel = card.list[8] as Phaser.GameObjects.Text;
             if (cardLabel) { cardLabel.setText("SUGGEST"); cardLabel.setColor("#cc2222"); }
             card.setInteractive(new Phaser.Geom.Rectangle(-100, -90, 200, 180), Phaser.Geom.Rectangle.Contains);
@@ -312,7 +346,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         });
 
         // highlight المختار
-        bg.setFillStyle(0x2a0a0a); bg.setStrokeStyle(2, this.C.accentGlow);
+        drawBg(false, true);
         this.tweens.add({ targets: selected, scaleX: 1.08, scaleY: 1.08, duration: 200, ease: "Back.easeOut" });
         const btnLabel = selected.list[8] as Phaser.GameObjects.Text;
         if (btnLabel) { btnLabel.setText("✓ SUGGESTED"); btnLabel.setColor("#ff4444"); }
@@ -421,14 +455,19 @@ export default class MafiaNightScene extends Phaser.Scene {
                     row.id = `target-row-${player.id}`;
                     Object.assign(row.style, {
                         display: "flex", alignItems: "center", gap: "10px",
-                        padding: "10px 14px", borderBottom: "1px solid #1a0a0a",
-                        cursor: "pointer", transition: "background 0.2s",
+                        padding: "12px 16px", borderBottom: "1px solid #1a0a0a",
+                        cursor: "pointer", transition: "all 0.2s",
+                        background: "linear-gradient(145deg, rgba(30,10,10,0.8), rgba(15,5,5,0.9))",
+                        borderRadius: "10px",
+                        boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                        marginBottom: "8px"
                     });
 
                     row.innerHTML = `
                         <span style="font-size:22px">👤</span>
                         <span style="flex:1;color:#f1e8e8;font-size:14px;font-weight:bold">${player.username}</span>
-                        <button id="kill-btn-${player.id}" style="padding:8px 14px;font-size:10px;font-weight:bold;letter-spacing:2px;border:1px solid #cc2222;border-radius:4px;background:transparent;color:#cc2222;cursor:pointer;font-family:'Courier New',monospace;touch-action:manipulation">SUGGEST</button>
+                        <button id="kill-btn-${player.id}" style="padding:10px 16px;font-size:10px;font-weight:bold;letter-spacing:2px;border:1px solid rgba(204,34,34,0.5);border-radius:6px;background:linear-gradient(180deg, rgba(204,34,34,0.1), transparent);color:#cc2222;cursor:pointer;font-family:'Courier New',monospace;transition:all 0.2s;box-shadow:0 2px 4px rgba(0,0,0,0.5);touch-action:manipulation">SUGGEST</button>
                     `;
 
                     const btn = row.querySelector<HTMLButtonElement>(`#kill-btn-${player.id}`)!;
@@ -436,14 +475,18 @@ export default class MafiaNightScene extends Phaser.Scene {
                         // تحديث بصري لكل الأزرار
                         targetSection.querySelectorAll<HTMLButtonElement>("button[id^='kill-btn-']").forEach(b => {
                             b.textContent = "SUGGEST";
-                            b.style.backgroundColor = "transparent";
+                            b.style.background = "linear-gradient(180deg, rgba(204,34,34,0.1), transparent)";
                             b.style.color = "#cc2222";
-                            b.style.borderColor = "#cc2222";
+                            b.style.borderColor = "rgba(204,34,34,0.5)";
+                            b.style.transform = "scale(1)";
                         });
                         // هاد الزر = locked
                         btn.textContent = "✓ SUGGESTED";
-                        btn.style.backgroundColor = "#cc2222";
+                        btn.style.background = "linear-gradient(180deg, #cc2222, #991111)";
                         btn.style.color = "#fff";
+                        btn.style.borderColor = "#ff4444";
+                        btn.style.transform = "scale(0.96)";
+                        setTimeout(() => btn.style.transform = "scale(1)", 150);
 
                         socketService.socket.emit("mafia_kill", player.id);
                         this.killedPlayerId = player.id;

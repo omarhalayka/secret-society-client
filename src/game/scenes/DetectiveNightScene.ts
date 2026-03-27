@@ -147,9 +147,37 @@ export default class DetectiveNightScene extends Phaser.Scene {
         targets.forEach((player, i) => {
             const x = startX + i * (cardW + gap);
             const container = this.add.container(x, cardY).setDepth(5).setAlpha(0);
-            const shadow = this.add.rectangle(4, 6, cardW, cardH, 0x000000, 0.5).setOrigin(0.5);
-            const bg = this.add.rectangle(0, 0, cardW, cardH, this.C.card); bg.setStrokeStyle(1, this.C.borderDim); bg.setOrigin(0.5);
-            const topAccent = this.add.rectangle(0, -cardH / 2 + 2, cardW - 2, 3, this.C.accent, 0); topAccent.setOrigin(0.5, 0);
+            const shadow = this.add.graphics();
+            shadow.fillStyle(0x000000, 0.6);
+            shadow.fillRoundedRect(-cardW / 2 + 4, -cardH / 2 + 6, cardW, cardH, 12);
+            
+            const bg = this.add.graphics();
+            const drawBg = (hover: boolean, selected: boolean) => {
+                bg.clear();
+                if (selected) {
+                    bg.fillGradientStyle(0x051020, 0x051020, 0x020810, 0x020810, 1);
+                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+                    bg.lineStyle(2, this.C.accentGlow, 1);
+                } else if (hover) {
+                    bg.fillGradientStyle(0x0f1a30, 0x0f1a30, 0x0a1020, 0x0a1020, 1);
+                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+                    bg.lineStyle(1.5, this.C.accent, 1);
+                } else {
+                    bg.fillGradientStyle(0x080d1a, 0x080d1a, 0x040810, 0x040810, 1);
+                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+                    bg.lineStyle(1.5, this.C.borderDim, 1);
+                }
+                bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+            };
+            drawBg(false, false);
+            
+            const topAccent = this.add.graphics().setAlpha(0);
+            topAccent.lineStyle(1.5, this.C.accent, 0.4);
+            topAccent.beginPath();
+            topAccent.arc(-cardW / 2 + 12, -cardH / 2 + 12, 12, Math.PI, Math.PI * 1.5);
+            topAccent.lineTo(cardW / 2 - 12, -cardH / 2);
+            topAccent.strokePath();
+
             const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x040810); avatarBg.setStrokeStyle(1, this.C.borderDim);
             const avatarIcon = this.add.text(0, -cardH * 0.23, "◎", { fontSize: `${Math.floor(cardW * 0.2)}px`, color: "#1e3a5f" }).setOrigin(0.5);
             const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
@@ -162,25 +190,35 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 fontSize: "9px", color: "#1e3a5f",
                 fontFamily: "'Courier New', monospace", letterSpacing: 2
             }).setOrigin(0.5);
-            const btnBg = this.add.rectangle(0, cardH * 0.38, cardW * 0.71, 28, this.C.accent, 0); btnBg.setStrokeStyle(1, this.C.accent); btnBg.setOrigin(0.5);
+            
+            const btnBg = this.add.graphics();
+            const drawBtnBg = (hover: boolean) => {
+                btnBg.clear();
+                btnBg.fillStyle(this.C.accent, hover ? 0.15 : 0);
+                btnBg.fillRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
+                btnBg.lineStyle(1, this.C.accent, 1);
+                btnBg.strokeRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
+            };
+            drawBtnBg(false);
+            
             const btnLabel = this.add.text(0, cardH * 0.38, "INSPECT", { fontSize: "10px", color: "#3b82f6", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
             container.add([shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, statusTxt, btnBg, btnLabel]);
             container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
-            container.on("pointerover", () => { if (this.actionUsed) return; bg.setFillStyle(this.C.cardHover); bg.setStrokeStyle(1, this.C.accent); topAccent.setAlpha(1); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, duration: 150 }); });
-            container.on("pointerout", () => { bg.setFillStyle(this.C.card); bg.setStrokeStyle(1, this.C.borderDim); topAccent.setAlpha(0); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 150 }); });
-            container.on("pointerdown", () => { if (this.actionUsed) return; this.handleInspect(player, container, bg, avatarIcon, statusTxt); });
+            container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
+            container.on("pointerout", () => { drawBg(false, false); topAccent.setAlpha(0); drawBtnBg(false); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 }); });
+            container.on("pointerdown", () => { if (this.actionUsed) return; drawBg(false, true); this.handleInspect(player, container, bg, avatarIcon, statusTxt, drawBg, drawBtnBg); });
             this.playerCards.push(container);
             this.tweens.add({ targets: container, alpha: 1, y: cardY, duration: 500, delay: 200 + i * 120, ease: "Back.easeOut", onStart: () => container.setY(cardY + 40) });
         });
     }
 
-    private handleInspect(player: any, selected: Phaser.GameObjects.Container, bg: Phaser.GameObjects.Rectangle, iconText: Phaser.GameObjects.Text, statusTxt: Phaser.GameObjects.Text) {
+    private handleInspect(player: any, selected: Phaser.GameObjects.Container, bg: Phaser.GameObjects.Graphics, iconText: Phaser.GameObjects.Text, statusTxt: Phaser.GameObjects.Text, drawBg: any, drawBtnBg: any) {
         this.actionUsed = true;
         this.cameras.main.flash(300, 0, 50, 120);
         this.playerCards.forEach(card => {
             if (card !== selected) { card.disableInteractive(); this.tweens.add({ targets: card, alpha: 0.2, scaleX: 0.92, scaleY: 0.92, duration: 300 }); }
         });
-        bg.setFillStyle(0x040d1a); bg.setStrokeStyle(2, this.C.accentGlow);
+        drawBg(false, true);
         iconText.setText("?").setColor("#60a5fa");
         statusTxt.setText("INVESTIGATING...").setColor("#3b82f6");
         this.tweens.add({ targets: iconText, alpha: 0.3, duration: 400, yoyo: true, repeat: -1 });
@@ -318,9 +356,12 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 const row = document.createElement("div");
                 Object.assign(row.style, {
                     display: "flex", alignItems: "center", gap: "14px",
-                    padding: "14px 16px", borderRadius: "8px",
-                    backgroundColor: "rgba(8,13,26,0.9)",
-                    border: "1px solid #1e2d45",
+                    padding: "12px 16px", borderRadius: "10px",
+                    background: "linear-gradient(145deg, rgba(15,26,48,0.9), rgba(8,13,26,0.95))",
+                    border: "1px solid rgba(59,130,246,0.1)",
+                    boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
+                    marginBottom: "8px",
+                    transition: "all 0.2s"
                 });
 
                 const avatar = document.createElement("div");
@@ -336,23 +377,29 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 const btn = document.createElement("button");
                 btn.textContent = "INSPECT";
                 Object.assign(btn.style, {
-                    padding: "10px 18px", fontSize: "11px", fontWeight: "bold",
-                    letterSpacing: "2px", border: "1px solid #3b82f6",
-                    borderRadius: "4px", backgroundColor: "transparent",
+                    padding: "10px 16px", fontSize: "11px", fontWeight: "bold",
+                    letterSpacing: "2px", border: "1px solid rgba(59,130,246,0.5)",
+                    borderRadius: "6px", background: "linear-gradient(180deg, rgba(59,130,246,0.1), transparent)",
                     color: "#3b82f6", cursor: "pointer",
                     fontFamily: "'Courier New', monospace",
                     touchAction: "manipulation",
+                    transition: "all 0.2s",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.5)"
                 });
 
                 btn.addEventListener("click", () => {
                     if (this.actionUsed) return;
                     this.actionUsed = true;
                     btn.textContent = "⌛ SCANNING...";
-                    btn.style.opacity = "0.7";
-                    btn.style.pointerEvents = "none";
+                    btn.style.background = "linear-gradient(180deg, #3b82f6, #2563eb)";
+                    btn.style.color = "#000";
+                    btn.style.borderColor = "#60a5fa";
+                    btn.style.transform = "scale(0.96)";
+                    setTimeout(() => btn.style.transform = "scale(1)", 150);
                     avatar.textContent = "?";
                     avatar.style.color = "#60a5fa";
-                    row.style.borderColor = "#3b82f6";
+                    row.style.borderColor = "#60a5fa";
+                    row.style.boxShadow = "0 0 15px rgba(59,130,246,0.2)";
                     // Disable all other buttons
                     list.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
                         if (b !== btn) { b.style.opacity = "0.3"; b.style.pointerEvents = "none"; }

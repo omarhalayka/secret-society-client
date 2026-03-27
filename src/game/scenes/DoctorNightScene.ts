@@ -146,9 +146,37 @@ export default class DoctorNightScene extends Phaser.Scene {
             const isMe = player.id === socketService.socket.id;
             const x = startX + i * (cardW + gap);
             const container = this.add.container(x, cardY).setDepth(5).setAlpha(0);
-            const shadow = this.add.rectangle(4, 6, cardW, cardH, 0x000000, 0.5).setOrigin(0.5);
-            const bg = this.add.rectangle(0, 0, cardW, cardH, this.C.card); bg.setStrokeStyle(1, this.C.borderDim); bg.setOrigin(0.5);
-            const topAccent = this.add.rectangle(0, -cardH / 2 + 2, cardW - 2, 3, this.C.accent, 0); topAccent.setOrigin(0.5, 0);
+            const shadow = this.add.graphics();
+            shadow.fillStyle(0x000000, 0.6);
+            shadow.fillRoundedRect(-cardW / 2 + 4, -cardH / 2 + 6, cardW, cardH, 12);
+            
+            const bg = this.add.graphics();
+            const drawBg = (hover: boolean, selected: boolean) => {
+                bg.clear();
+                if (selected) {
+                    bg.fillGradientStyle(0x0a2a0a, 0x0a2a0a, 0x051a05, 0x051a05, 1);
+                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+                    bg.lineStyle(2, this.C.accentGlow, 1);
+                } else if (hover) {
+                    bg.fillGradientStyle(0x0f2a14, 0x0f2a14, 0x0a1a0c, 0x0a1a0c, 1);
+                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+                    bg.lineStyle(1.5, this.C.accent, 1);
+                } else {
+                    bg.fillGradientStyle(0x0a1a0c, 0x0a1a0c, 0x051006, 0x051006, 1);
+                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+                    bg.lineStyle(1.5, this.C.borderDim, 1);
+                }
+                bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+            };
+            drawBg(false, false);
+            
+            const topAccent = this.add.graphics().setAlpha(0);
+            topAccent.lineStyle(1.5, this.C.accent, 0.4);
+            topAccent.beginPath();
+            topAccent.arc(-cardW / 2 + 12, -cardH / 2 + 12, 12, Math.PI, Math.PI * 1.5);
+            topAccent.lineTo(cardW / 2 - 12, -cardH / 2);
+            topAccent.strokePath();
+
             const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x051a05); avatarBg.setStrokeStyle(1, this.C.borderDim);
             const avatarIcon = this.add.text(0, -cardH * 0.23, isMe ? "🧑" : "👤", { fontSize: `${Math.floor(cardW * 0.2)}px` }).setOrigin(0.5);
             const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
@@ -159,21 +187,31 @@ export default class DoctorNightScene extends Phaser.Scene {
                 fontFamily: "'Courier New', monospace", fontStyle: isMe ? "bold" : "normal", letterSpacing: 1
             }).setOrigin(0.5);
             const meLabel = isMe ? this.add.text(0, cardH * 0.16, "[ YOU ]", { fontSize: "9px", color: "#2d6640", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5) : null;
-            const btnBg = this.add.rectangle(0, cardH * 0.38, cardW * 0.71, 28, this.C.accent, 0); btnBg.setStrokeStyle(1, this.C.accent); btnBg.setOrigin(0.5);
+            
+            const btnBg = this.add.graphics();
+            const drawBtnBg = (hover: boolean) => {
+                btnBg.clear();
+                btnBg.fillStyle(this.C.accent, hover ? 0.15 : 0);
+                btnBg.fillRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
+                btnBg.lineStyle(1, this.C.accent, 1);
+                btnBg.strokeRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
+            };
+            drawBtnBg(false);
+            
             const btnLabel = this.add.text(0, cardH * 0.38, "PROTECT", { fontSize: "10px", color: "#22c55e", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
             const items: Phaser.GameObjects.GameObject[] = [shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel];
             if (meLabel) items.push(meLabel);
             container.add(items);
             container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
-            container.on("pointerover", () => { if (this.actionUsed) return; bg.setFillStyle(this.C.cardHover); bg.setStrokeStyle(1, this.C.accent); topAccent.setAlpha(1); btnBg.setFillStyle(this.C.accent, 0.15); btnLabel.setColor("#4ade80"); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, duration: 150 }); });
-            container.on("pointerout", () => { bg.setFillStyle(this.C.card); bg.setStrokeStyle(1, this.C.borderDim); topAccent.setAlpha(0); btnBg.setFillStyle(this.C.accent, 0); btnLabel.setColor("#22c55e"); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 150 }); });
-            container.on("pointerdown", () => { if (this.actionUsed) return; this.handleSave(player, container, bg, btnLabel); });
+            container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
+            container.on("pointerout", () => { drawBg(false, false); topAccent.setAlpha(0); drawBtnBg(false); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 }); });
+            container.on("pointerdown", () => { if (this.actionUsed) return; drawBg(false, true); this.handleSave(player, container, bg, btnLabel, drawBg, drawBtnBg); });
             this.playerCards.push(container);
             this.tweens.add({ targets: container, alpha: 1, y: cardY, duration: 500, delay: 200 + i * 120, ease: "Back.easeOut", onStart: () => container.setY(cardY + 40) });
         });
     }
 
-    private handleSave(player: any, selected: Phaser.GameObjects.Container, bg: Phaser.GameObjects.Rectangle, btnLabel: Phaser.GameObjects.Text) {
+    private handleSave(player: any, selected: Phaser.GameObjects.Container, bg: Phaser.GameObjects.Graphics, btnLabel: Phaser.GameObjects.Text, drawBg: any, drawBtnBg: any) {
         this.actionUsed = true;
         this.savedPlayerId = player.id;
         this.cameras.main.flash(400, 0, 100, 0);
@@ -182,7 +220,7 @@ export default class DoctorNightScene extends Phaser.Scene {
             if (card !== selected) { card.disableInteractive(); this.tweens.add({ targets: card, alpha: 0.2, scaleX: 0.92, scaleY: 0.92, duration: 300 }); }
         });
         this.tweens.add({ targets: selected, scaleX: 1.1, scaleY: 1.1, duration: 250, ease: "Back.easeOut" });
-        bg.setFillStyle(0x051a05); bg.setStrokeStyle(2, this.C.accentGlow);
+        drawBg(false, true);
         btnLabel.setText("SAVED ✓").setColor("#4ade80");
         const mark = this.add.text(selected.x, selected.y - 20, "✚", { fontSize: "52px", color: "#22c55e", fontStyle: "bold", fontFamily: "'Georgia', serif" }).setOrigin(0.5).setAlpha(0).setDepth(10);
         this.tweens.add({ targets: mark, alpha: 1, scaleX: 1.2, scaleY: 1.2, duration: 200, yoyo: true, repeat: 1, onComplete: () => this.tweens.add({ targets: mark, alpha: 0, duration: 400, onComplete: () => mark.destroy() }) });
@@ -233,9 +271,12 @@ export default class DoctorNightScene extends Phaser.Scene {
                 const row = document.createElement("div");
                 Object.assign(row.style, {
                     display: "flex", alignItems: "center", gap: "14px",
-                    padding: "14px 16px", borderRadius: "8px",
-                    backgroundColor: isMe ? "rgba(10,26,12,0.9)" : "rgba(10,26,12,0.7)",
-                    border: `1px solid ${isMe ? "#22c55e44" : "#1a3d20"}`,
+                    padding: "12px 16px", borderRadius: "10px",
+                    background: isMe ? "linear-gradient(145deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))" : "linear-gradient(145deg, rgba(10,26,12,0.9), rgba(5,13,6,0.95))",
+                    border: `1px solid ${isMe ? "rgba(34,197,94,0.4)" : "rgba(34,197,94,0.1)"}`,
+                    boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
+                    marginBottom: "8px",
+                    transition: "all 0.2s"
                 });
 
                 const avatar = document.createElement("div");
@@ -252,12 +293,14 @@ export default class DoctorNightScene extends Phaser.Scene {
                 const btn = document.createElement("button");
                 btn.textContent = "PROTECT";
                 Object.assign(btn.style, {
-                    padding: "10px 18px", fontSize: "11px", fontWeight: "bold",
-                    letterSpacing: "2px", border: "1px solid #22c55e",
-                    borderRadius: "4px", backgroundColor: "transparent",
+                    padding: "10px 16px", fontSize: "11px", fontWeight: "bold",
+                    letterSpacing: "2px", border: "1px solid rgba(34,197,94,0.5)",
+                    borderRadius: "6px", background: "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)",
                     color: "#22c55e", cursor: "pointer",
                     fontFamily: "'Courier New', monospace",
                     touchAction: "manipulation",
+                    transition: "all 0.2s",
+                    boxShadow: "0 2px 4px rgba(0,0,0,0.5)"
                 });
 
                 btn.addEventListener("click", () => {
@@ -265,9 +308,13 @@ export default class DoctorNightScene extends Phaser.Scene {
                     this.actionUsed = true;
                     this.savedPlayerId = player.id;
                     btn.textContent = "✓ SAVING";
-                    btn.style.backgroundColor = "#22c55e";
+                    btn.style.background = "linear-gradient(180deg, #22c55e, #16a34a)";
                     btn.style.color = "#000";
-                    row.style.borderColor = "#22c55e";
+                    btn.style.borderColor = "#4ade80";
+                    btn.style.transform = "scale(0.96)";
+                    setTimeout(() => btn.style.transform = "scale(1)", 150);
+                    row.style.borderColor = "#4ade80";
+                    row.style.boxShadow = "0 0 15px rgba(34,197,94,0.2)";
                     list.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
                         if (b !== btn) { b.style.opacity = "0.3"; b.style.pointerEvents = "none"; }
                     });
