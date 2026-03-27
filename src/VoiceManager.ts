@@ -27,12 +27,42 @@ class VoiceManagerClass {
     private currentPhase:  string = "DAY";
     private myRole:        string = "CITIZEN";
     private myAlive:       boolean = true;
+    private keepaliveTimer: any = null;
 
     // callbacks
     public onPeerIdReady:  ((id: string) => void) | null = null;
     public onMuteChange:   ((muted: boolean) => void) | null = null;
     public onPeerJoined:   ((username: string) => void) | null = null;
     public onPeerLeft:     ((username: string) => void) | null = null;
+
+    // ─── keepalive لمنع انقطاع الاتصال ───
+    private startKeepalive() {
+        if (this.keepaliveTimer) clearInterval(this.keepaliveTimer);
+        this.keepaliveTimer = setInterval(() => {
+            if (!this.peer || this.peer.destroyed) {
+                clearInterval(this.keepaliveTimer);
+                return;
+            }
+            // إعادة اتصال لو disconnected
+            if (this.peer.disconnected) {
+                console.log("🔄 Keepalive: reconnecting...");
+                this.peer.reconnect();
+            }
+            // تحقق من الـ connections وأعد أي connection مقطوع
+            this.connections.forEach((conn, peerId) => {
+                if (conn.call && conn.call.peerConnection) {
+                    const state = conn.call.peerConnection.connectionState;
+                    if (state === "failed" || state === "closed") {
+                        console.warn(`🔄 Reconnecting to ${conn.username}...`);
+                        this.removePeer(peerId);
+                        if (conn.username && conn.role) {
+                            setTimeout(() => this.callPeer(peerId, conn.username!, conn.role!, 2), 1000);
+                        }
+                    }
+                }
+            });
+        }, 20000); // كل 20 ثانية
+    }
 
     // ─── تهيئة الـ Peer ───
     async init(): Promise<string | null> {
@@ -46,15 +76,15 @@ class VoiceManagerClass {
 
         return new Promise((resolve) => {
             this.peer = new Peer({
-                host:   "0.peerjs.com",
+                host:   "secret-society-voice.onrender.com",
                 port:   443,
+                path:   "/voice",
                 secure: true,
                 config: {
                     iceServers: [
                         { urls: "stun:stun.l.google.com:19302" },
                         { urls: "stun:stun1.l.google.com:19302" },
                         { urls: "stun:stun2.l.google.com:19302" },
-                        // TURN servers مجانية عشان يتجاوز الـ NAT على الموبايل
                         {
                             urls:       "turn:openrelay.metered.ca:80",
                             username:   "openrelayproject",
@@ -74,6 +104,8 @@ class VoiceManagerClass {
                 this.myPeerId = id;
                 console.log("✅ PeerJS ready:", id);
                 if (this.onPeerIdReady) this.onPeerIdReady(id);
+                // ─── keepalive: نبعث ping كل 20 ثانية ───
+                this.startKeepalive();
                 resolve(id);
             });
 
@@ -81,8 +113,17 @@ class VoiceManagerClass {
                 this.answerCall(call);
             });
 
+            this.peer.on("disconnected", () => {
+                console.warn("⚠ PeerJS disconnected — reconnecting...");
+                this.peer?.reconnect();
+            });
+
             this.peer.on("error", (err: any) => {
-                console.error("PeerJS error:", err);
+                console.error("PeerJS error:", err.type);
+                // لو disconnected — حاول ترجع
+                if (err.type === "disconnected" || err.type === "network") {
+                    setTimeout(() => this.peer?.reconnect(), 2000);
+                }
                 resolve(null);
             });
 
@@ -134,6 +175,9 @@ class VoiceManagerClass {
             conn.audio  = this.createAudio(remoteStream, false);
             this.applyVolumeRules(peerId);
             if (this.onPeerJoined) this.onPeerJoined(username);
+
+            // ─── مراقبة الاتصال ───
+            this.monitorConnection(call, peerId, username, role);
         });
 
         call.on("close", () => {
@@ -154,6 +198,28 @@ class VoiceManagerClass {
                 if (retries > 0) this.callPeer(peerId, username, role, retries - 1);
             }
         }, 8000);
+    }
+
+    // ─── مراقبة الاتصال وإعادة الاتصال تلقائياً ───
+    private monitorConnection(call: any, peerId: string, username: string, role: string) {
+        const pc: RTCPeerConnection = call.peerConnection;
+        if (!pc) return;
+
+        pc.oniceconnectionstatechange = () => {
+            const state = pc.iceConnectionState;
+            console.log(`ICE ${username}: ${state}`);
+
+            if (state === "failed" || state === "disconnected") {
+                console.warn(`⚠ Connection lost with ${username}, reconnecting...`);
+                this.removePeer(peerId);
+                // انتظر ثانيتين وأعد الاتصال
+                setTimeout(() => {
+                    if (this.peer && this.myStream) {
+                        this.callPeer(peerId, username, role, 3);
+                    }
+                }, 2000);
+            }
+        };
     }
 
     // ─── الرد على اتصال ───
@@ -224,21 +290,8 @@ class VoiceManagerClass {
         this.connections.forEach((_, peerId) => this.applyVolumeRules(peerId));
     }
 
-    // ─── قواعد الصوت حسب الـ phase ───
-    private canHear(peerRole: string): boolean {
-        const phase = this.currentPhase;
-
-        // النهار والتصويت والـ review: الكل يسمع بعض
-        if (phase === "DAY" || phase === "VOTING" || phase === "NIGHT_REVIEW") return true;
-
-        // الميت: يسمع الكل دائماً
-        if (!this.myAlive) return true;
-
-        // الليل: بس المافيا يسمعوا بعض
-        if (phase === "NIGHT") {
-            return this.myRole === "MAFIA" && peerRole === "MAFIA";
-        }
-
+    // ─── الصوت مفتوح دائماً — اللاعب يتحكم بنفسه بالـ mute ───
+    private canHear(_peerRole: string): boolean {
         return true;
     }
 
@@ -265,6 +318,7 @@ class VoiceManagerClass {
 
     // ─── تنظيف كامل ───
     destroy() {
+        if (this.keepaliveTimer) clearInterval(this.keepaliveTimer);
         this.disconnectAll();
         this.myStream?.getTracks().forEach(t => t.stop());
         this.peer?.destroy();
