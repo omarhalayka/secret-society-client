@@ -1426,10 +1426,23 @@ export default class GameScene extends Phaser.Scene {
     // ══════════════════════════════════════
     //  Votes Bar (desktop event log)
     // ══════════════════════════════════════
-    private updateVotes(votes: Record<string, number>) {
+    private updateVotes(votes: Record<string, number>, remaining: number | null = null) {
         this.voteEntries.forEach(obj => { if ((obj as any).destroy) (obj as any).destroy(); });
         this.voteEntries = [];
         this.voteTitle?.destroy(); this.voteTitle = undefined;
+
+        // ─── تحديث عداد الأصوات المتبقية في الـ overlay ───
+        if (remaining !== null && this.votingOverlayContainer) {
+            const existingCounter = (this.votingOverlayContainer as any)._remainingTxt;
+            if (existingCounter) existingCounter.destroy();
+            const remainingTxt = this.add.text(this.W / 2, 144,
+                remaining > 0 ? `${remaining} vote${remaining !== 1 ? "s" : ""} remaining` : "All votes cast",
+                { fontSize: "11px", color: remaining > 0 ? "#64748b" : "#22c55e",
+                  fontFamily: "'Courier New', monospace", letterSpacing: 2 }
+            ).setOrigin(0.5).setDepth(51);
+            this.votingOverlayContainer.add(remainingTxt);
+            (this.votingOverlayContainer as any)._remainingTxt = remainingTxt;
+        }
 
         if (this.isMobile) {
             this.updateMobileVotes(votes);
@@ -2612,7 +2625,8 @@ export default class GameScene extends Phaser.Scene {
             "room_state", "phase_changed", "game_over", "game_started",
             "vote_update", "player_killed", "receive_message",
             "detective_result", "voting_result", "voting_started",
-            "night_review", "night_story", "back_to_lobby", "night_action_status"
+            "night_review", "night_story", "back_to_lobby", "night_action_status",
+            "doctor_error",
         ];
         evts.forEach(e => socketService.socket.off(e));
 
@@ -2719,7 +2733,10 @@ export default class GameScene extends Phaser.Scene {
         });
 
         socketService.socket.on("vote_update", (v: any) => {
-            this.updateVotes(v);
+            // v ممكن يكون { votes, remaining } أو object قديم مباشرة
+            const votes     = v?.votes ?? v;
+            const remaining = v?.remaining ?? null;
+            this.updateVotes(votes, remaining);
         });
 
         socketService.socket.on("voting_result", (data: any) => {
@@ -2738,6 +2755,10 @@ export default class GameScene extends Phaser.Scene {
         });
 
         socketService.socket.on("detective_result", (data: any) => this.showDetectiveResult(data));
+
+        socketService.socket.on("doctor_error", (data: any) => {
+            this.addEventLog(data.message || "❌ خطأ في اختيار الطبيب", "#ef4444");
+        });
 
         socketService.socket.on("receive_message", (data: any) => {
             this.addChatMessage(data.username, data.message, data.alive);
