@@ -1,6 +1,6 @@
 ﻿import Phaser from "phaser";
 import { socketService } from "../../socket";
-import { ar } from "../../i18n";
+import { ar, ARABIC_FONT_FAMILY } from "../../i18n";
 
 export default class DetectiveNightScene extends Phaser.Scene {
 
@@ -97,30 +97,30 @@ export default class DetectiveNightScene extends Phaser.Scene {
         const line = this.add.graphics().setDepth(3);
         line.lineStyle(2, this.C.accent, 0.8);
         line.moveTo(0, 56); line.lineTo(W, 56); line.strokePath();
-        this.add.text(20, 28, "ðŸ”  DETECTIVE", {
+        this.add.text(20, 28, ar.night.detectiveRoleLabel, {
             fontSize: "14px", color: "#3b82f6",
-            fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3
+            fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", align: "right"
         }).setOrigin(0, 0.5).setDepth(3);
-        this.add.text(W / 2, 28, `ROOM  ${this.roomId?.substring(0, 8).toUpperCase()}`, {
+        this.add.text(W / 2, 28, ar.night.room(this.roomId?.substring(0, 8).toUpperCase()), {
             fontSize: "11px", color: "#1e3a5f",
-            fontFamily: "'Courier New', monospace", letterSpacing: 2
+            fontFamily: ARABIC_FONT_FAMILY, align: "center"
         }).setOrigin(0.5, 0.5).setDepth(3);
-        this.add.text(W - 20, 28, "â—‰  NIGHT PHASE", {
+        this.add.text(W - 20, 28, ar.night.nightPhase, {
             fontSize: "11px", color: "#1e3a5f",
-            fontFamily: "'Courier New', monospace", letterSpacing: 2
+            fontFamily: ARABIC_FONT_FAMILY, align: "right"
         }).setOrigin(1, 0.5).setDepth(3);
     }
 
     private drawTitle(W: number) {
         const titleY = 110;
-        const title = this.add.text(W / 2, titleY, "INVESTIGATE A SUSPECT", {
+        const title = this.add.text(W / 2, titleY, ar.night.detectiveTitle, {
             fontSize: "32px", color: "#e8eef8",
-            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 6,
+            fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", align: "center",
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: title, alpha: 1, y: titleY - 5, duration: 700, ease: "Cubic.easeOut", delay: 300 });
-        const sub = this.add.text(W / 2, titleY + 38, "Reveal the true identity of one player", {
+        const sub = this.add.text(W / 2, titleY + 38, ar.night.detectiveSubtitle, {
             fontSize: "13px", color: "#1e3a5f",
-            fontFamily: "'Courier New', monospace", letterSpacing: 2
+            fontFamily: ARABIC_FONT_FAMILY, align: "center"
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: sub, alpha: 1, duration: 600, delay: 500 });
         const divider = this.add.graphics().setDepth(2).setAlpha(0);
@@ -180,16 +180,16 @@ export default class DetectiveNightScene extends Phaser.Scene {
             topAccent.strokePath();
 
             const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x040810); avatarBg.setStrokeStyle(1, this.C.borderDim);
-            const avatarIcon = this.add.text(0, -cardH * 0.23, "â—Ž", { fontSize: `${Math.floor(cardW * 0.2)}px`, color: "#1e3a5f" }).setOrigin(0.5);
+            const avatarIcon = this.add.text(0, -cardH * 0.23, "•", { fontSize: `${Math.floor(cardW * 0.2)}px`, color: "#1e3a5f", fontFamily: ARABIC_FONT_FAMILY }).setOrigin(0.5);
             const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
             this.tweens.add({ targets: pulse, alpha: 0.1, scaleX: 1.3, scaleY: 1.3, duration: 1200, yoyo: true, repeat: -1, delay: i * 200 });
             const name = this.add.text(0, cardH * 0.07, player.username.toUpperCase(), {
                 fontSize: `${Math.max(10, Math.floor(cardW * 0.086))}px`,
                 color: "#b8c4d8", fontFamily: "'Courier New', monospace", letterSpacing: 1
             }).setOrigin(0.5);
-            const statusTxt = this.add.text(0, cardH * 0.16, "SCANNING...", {
+            const statusTxt = this.add.text(0, cardH * 0.16, ar.night.detectiveScanning, {
                 fontSize: "9px", color: "#1e3a5f",
-                fontFamily: "'Courier New', monospace", letterSpacing: 2
+                fontFamily: ARABIC_FONT_FAMILY, align: "center"
             }).setOrigin(0.5);
 
             const btnBg = this.add.graphics();
@@ -202,7 +202,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             };
             drawBtnBg(false);
 
-            const btnLabel = this.add.text(0, cardH * 0.38, "INSPECT", { fontSize: "10px", color: "#3b82f6", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
+            const btnLabel = this.add.text(0, cardH * 0.38, ar.night.detectiveInspect, { fontSize: "10px", color: "#3b82f6", fontFamily: ARABIC_FONT_FAMILY, align: "center" }).setOrigin(0.5);
             container.add([shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, statusTxt, btnBg, btnLabel]);
             container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
             container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
@@ -221,7 +221,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
         });
         drawBg(false, true);
         iconText.setText("?").setColor("#60a5fa");
-        statusTxt.setText("INVESTIGATING...").setColor("#3b82f6");
+        statusTxt.setText(ar.night.detectiveScanning).setColor("#3b82f6");
         this.tweens.add({ targets: iconText, alpha: 0.3, duration: 400, yoyo: true, repeat: -1 });
         socketService.socket.emit("detective_check", player.id);
         this.showToast(ar.night.detectiveInvestigating(player.username), "info");
@@ -238,10 +238,10 @@ export default class DetectiveNightScene extends Phaser.Scene {
         }
 
         const roleConfig: Record<string, { color: string; border: number; bg: number; icon: string; label: string }> = {
-            MAFIA: { color: "#ff4444", border: 0xcc2222, bg: 0x1a0505, icon: "âš ", label: "âš   Ù…Ø§ÙÙŠØ§" },
-            DOCTOR: { color: "#4ade80", border: 0x22cc55, bg: 0x051a05, icon: "âœš", label: "âœš  Ø·Ø¨ÙŠØ¨" },
-            DETECTIVE: { color: "#60a5fa", border: 0x2255cc, bg: 0x05051a, icon: "ðŸ”", label: "ðŸ”  Ù…Ø­Ù‚Ù‚" },
-            CITIZEN: { color: "#94a3b8", border: 0x334155, bg: 0x0a0d13, icon: "âœ“", label: "âœ“  Ù…ÙˆØ§Ø·Ù†" },
+            MAFIA: { color: "#ff4444", border: 0xcc2222, bg: 0x1a0505, icon: "!", label: ar.roles.MAFIA },
+            DOCTOR: { color: "#4ade80", border: 0x22cc55, bg: 0x051a05, icon: "+", label: ar.roles.DOCTOR },
+            DETECTIVE: { color: "#60a5fa", border: 0x2255cc, bg: 0x05051a, icon: "?", label: ar.roles.DETECTIVE },
+            CITIZEN: { color: "#94a3b8", border: 0x334155, bg: 0x0a0d13, icon: "•", label: ar.roles.CITIZEN },
         };
         const cfg = roleConfig[role] ?? roleConfig["CITIZEN"];
 
@@ -253,8 +253,8 @@ export default class DetectiveNightScene extends Phaser.Scene {
             return !!nameText;
         });
         if (targetCard) {
-            const iconText = targetCard.list.find((obj: any) => obj instanceof Phaser.GameObjects.Text && (obj.text === "â—Ž" || obj.text === "?")) as Phaser.GameObjects.Text | undefined;
-            const statusTxt = targetCard.list.find((obj: any) => obj instanceof Phaser.GameObjects.Text && (obj.text === "SCANNING..." || obj.text === "INVESTIGATING...")) as Phaser.GameObjects.Text | undefined;
+            const iconText = targetCard.list.find((obj: any) => obj instanceof Phaser.GameObjects.Text && (obj.text === "•" || obj.text === "?")) as Phaser.GameObjects.Text | undefined;
+            const statusTxt = targetCard.list.find((obj: any) => obj instanceof Phaser.GameObjects.Text && (obj.text === ar.night.detectiveScanning || obj.text === ar.night.detectiveScanning)) as Phaser.GameObjects.Text | undefined;
             if (iconText) { this.tweens.killTweensOf(iconText); iconText.setText(cfg.icon).setColor(cfg.color).setAlpha(1); }
             if (statusTxt) { statusTxt.setText(role).setColor(cfg.color); }
         }
@@ -262,8 +262,8 @@ export default class DetectiveNightScene extends Phaser.Scene {
         const panelW = Math.min(380, W - 40);
         const container = this.add.container(W / 2, 200).setDepth(20).setAlpha(0);
         const panelBg = this.add.rectangle(0, 0, panelW, 80, cfg.bg); panelBg.setStrokeStyle(2, cfg.border);
-        const label = this.add.text(0, -10, cfg.label, { fontSize: "20px", color: cfg.color, fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3 }).setOrigin(0.5);
-        const username = this.add.text(0, 18, data.username, { fontSize: "13px", color: "#888899", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
+        const label = this.add.text(0, -10, cfg.label, { fontSize: "20px", color: cfg.color, fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", align: "right" }).setOrigin(0.5);
+        const username = this.add.text(0, 18, data.username, { fontSize: "13px", color: "#888899", fontFamily: ARABIC_FONT_FAMILY, align: "center" }).setOrigin(0.5);
         container.add([panelBg, label, username]);
         this.resultDisplay = container;
         this.tweens.add({ targets: container, alpha: 1, duration: 400, ease: "Back.easeOut" });
@@ -277,10 +277,10 @@ export default class DetectiveNightScene extends Phaser.Scene {
     private showMobileResult(username: string, role: string) {
         document.getElementById("mobile-detective-result")?.remove();
         const roleConfig: Record<string, { color: string; icon: string; label: string }> = {
-            MAFIA: { color: "#ef4444", icon: "âš ", label: "Ù…Ø§ÙÙŠØ§" },
-            DOCTOR: { color: "#4ade80", icon: "âœš", label: "Ø·Ø¨ÙŠØ¨" },
-            DETECTIVE: { color: "#60a5fa", icon: "ðŸ”", label: "Ù…Ø­Ù‚Ù‚" },
-            CITIZEN: { color: "#94a3b8", icon: "âœ“", label: "Ù…ÙˆØ§Ø·Ù†" },
+            MAFIA: { color: "#ef4444", icon: "!", label: ar.roles.MAFIA },
+            DOCTOR: { color: "#4ade80", icon: "+", label: ar.roles.DOCTOR },
+            DETECTIVE: { color: "#60a5fa", icon: "?", label: ar.roles.DETECTIVE },
+            CITIZEN: { color: "#94a3b8", icon: "•", label: ar.roles.CITIZEN },
         };
         const cfg = roleConfig[role] ?? roleConfig["CITIZEN"];
 
@@ -299,7 +299,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             <div style="font-size:36px;margin-bottom:12px">${cfg.icon}</div>
             <div style="color:${cfg.color};font-size:22px;font-weight:bold;letter-spacing:2px;margin-bottom:8px;direction:rtl">${cfg.label}</div>
             <div style="color:#94a3b8;font-size:14px;margin-bottom:12px">${username}</div>
-            <div style="color:#1e3a5f;font-size:10px;letter-spacing:2px">TAP TO DISMISS</div>
+            <div style="color:#1e3a5f;font-size:10px;letter-spacing:2px">اضغط للإغلاق</div>
         `;
 
         // ØªØ­Ø¯ÙŠØ« ÙƒØ±Øª Ø§Ù„Ù„Ø§Ø¹Ø¹ ÙÙŠ Ø§Ù„Ù€ mobile UI
@@ -325,7 +325,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             position: "fixed", top: "56px", left: "0", right: "0", bottom: "0",
             zIndex: "100", backgroundColor: "rgba(6,10,18,0.97)",
             display: "flex", flexDirection: "column",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
         });
 
         const header = document.createElement("div");
@@ -334,9 +334,9 @@ export default class DetectiveNightScene extends Phaser.Scene {
             backgroundColor: "rgba(0,0,0,0.4)",
         });
         header.innerHTML = `
-            <div style="color:#3b82f6;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">ðŸ” DETECTIVE</div>
-            <div style="color:#e8eef8;font-size:18px;font-weight:bold;letter-spacing:2px">INVESTIGATE A SUSPECT</div>
-            <div style="color:#1e3a5f;font-size:11px;margin-top:4px">Reveal the true identity of one player</div>
+            <div style="color:#3b82f6;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">${ar.night.detectiveRoleLabel}</div>
+            <div style="color:#e8eef8;font-size:18px;font-weight:bold;letter-spacing:0">${ar.night.detectiveTitle}</div>
+            <div style="color:#1e3a5f;font-size:11px;margin-top:4px">${ar.night.detectiveSubtitle}</div>
         `;
         ui.appendChild(header);
 
@@ -349,7 +349,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
         const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id);
         if (targets.length === 0) {
             const empty = document.createElement("div");
-            empty.textContent = "No suspects available";
+            empty.textContent = ar.night.noSuspects;
             Object.assign(empty.style, { color: "#1e3a5f", textAlign: "center", marginTop: "40px", fontSize: "14px" });
             list.appendChild(empty);
         } else {
@@ -366,8 +366,8 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 });
 
                 const avatar = document.createElement("div");
-                avatar.textContent = "â—Ž";
-                avatar.style.cssText = "font-size:28px;color:#1e3a5f;font-family:'Courier New',monospace;min-width:36px;text-align:center";
+                avatar.textContent = "•";
+                avatar.style.cssText = `font-size:28px;color:#1e3a5f;font-family:${ARABIC_FONT_FAMILY};min-width:36px;text-align:center`;
 
                 const nameEl = document.createElement("div");
                 nameEl.textContent = player.username;
@@ -376,13 +376,13 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 });
 
                 const btn = document.createElement("button");
-                btn.textContent = "INSPECT";
+                btn.textContent = ar.night.detectiveInspect;
                 Object.assign(btn.style, {
                     padding: "10px 16px", fontSize: "11px", fontWeight: "bold",
                     letterSpacing: "2px", border: "1px solid rgba(59,130,246,0.5)",
                     borderRadius: "6px", background: "linear-gradient(180deg, rgba(59,130,246,0.1), transparent)",
                     color: "#3b82f6", cursor: "pointer",
-                    fontFamily: "'Courier New', monospace",
+                    fontFamily: ARABIC_FONT_FAMILY,
                     touchAction: "manipulation",
                     transition: "all 0.2s",
                     boxShadow: "0 2px 4px rgba(0,0,0,0.5)"
@@ -391,7 +391,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 btn.addEventListener("click", () => {
                     if (this.actionUsed) return;
                     this.actionUsed = true;
-                    btn.textContent = "âŒ› SCANNING...";
+                    btn.textContent = ar.night.detectiveScanning;
                     btn.style.background = "linear-gradient(180deg, #3b82f6, #2563eb)";
                     btn.style.color = "#000";
                     btn.style.borderColor = "#60a5fa";
@@ -476,7 +476,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
         const card = document.createElement("div");
         card.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid #ef444444;border-left:3px solid ${color};animation:eventSlideIn 0.3s ease-out`;
         card.innerHTML = `
-            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">ðŸ”ª</div>
+            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">!</div>
             <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;margin-bottom:3px">
                     <span style="font-size:9px;font-weight:bold;letter-spacing:2px;color:${color};font-family:'Courier New',monospace">ELIMINATED</span>

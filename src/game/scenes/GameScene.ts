@@ -1,16 +1,16 @@
-import Phaser from "phaser";
+﻿import Phaser from "phaser";
 import { socketService } from "../../socket";
 import { voiceManager } from "../../VoiceManager";
-import { ar, getPhaseLabel } from "../../i18n";
+import { ar, ARABIC_FONT_FAMILY, getPhaseLabel } from "../../i18n";
 
-// ════════════════════════════════════════════════════════
-//  GameScene — Desktop + Mobile fully supported
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  GameScene â€” Desktop + Mobile fully supported
 //  Mobile (< 700px): HTML overlay tabs (Players / Events / Chat)
-//  Desktop (≥ 700px): Phaser panels (Players | Events | Chat)
-// ════════════════════════════════════════════════════════
+//  Desktop (â‰¥ 700px): Phaser panels (Players | Events | Chat)
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 export default class GameScene extends Phaser.Scene {
 
-    // ─── بيانات اللعبة ───
+    // â”€â”€â”€ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ù„Ø¹Ø¨Ø© â”€â”€â”€
     private role!: string;
     private roomId!: string;
     private userType: string = "PLAYER";
@@ -19,7 +19,7 @@ export default class GameScene extends Phaser.Scene {
     private myVote: string | null = null;
     private isNightSceneActive: boolean = false;
 
-    // ─── Phaser elements (desktop only) ───
+    // â”€â”€â”€ Phaser elements (desktop only) â”€â”€â”€
     private phaseText!: Phaser.GameObjects.Text;
     private roundText!: Phaser.GameObjects.Text;
     private roleChip!: Phaser.GameObjects.Container;
@@ -41,7 +41,7 @@ export default class GameScene extends Phaser.Scene {
     private winOverlay?: Phaser.GameObjects.Container;
     private chatStatusText?: Phaser.GameObjects.Text;
 
-    // ─── HTML elements (desktop chat) ───
+    // â”€â”€â”€ HTML elements (desktop chat) â”€â”€â”€
     private chatInput!: HTMLInputElement;
     private sendBtn!: HTMLButtonElement;
     private adminDrawer?: HTMLDivElement;
@@ -49,11 +49,11 @@ export default class GameScene extends Phaser.Scene {
     private adminDrawerOpen: boolean = false;
     private outsideClickHandler?: (e: MouseEvent) => void;
 
-    // ─── Mobile HTML ───
+    // â”€â”€â”€ Mobile HTML â”€â”€â”€
     private mobileActiveTab: string = "players";
     private mobileEventBuffer: Array<{ msg: string; color: string }> = [];
 
-    // ─── تخطيط ───
+    // â”€â”€â”€ ØªØ®Ø·ÙŠØ· â”€â”€â”€
     private readonly TOPBAR_H = 58;
     private PLAYERS_W: number = 220;
     private CHAT_W: number = 280;
@@ -63,7 +63,7 @@ export default class GameScene extends Phaser.Scene {
     private EVENTS_W!: number;
     private isMobile: boolean = false;
 
-    // ─── ألوان ───
+    // â”€â”€â”€ Ø£Ù„ÙˆØ§Ù† â”€â”€â”€
     private readonly C = {
         bg: 0x0a0d13, surface: 0x111827,
         surfaceAlt: 0x0f1520, border: 0x1e2d45,
@@ -118,56 +118,56 @@ export default class GameScene extends Phaser.Scene {
         this.setupSocketListeners();
         socketService.socket.emit("request_room_state");
 
-        // عرض الأحداث المعلقة من NightScene (مثل player_killed)
+        // Ø¹Ø±Ø¶ Ø§Ù„Ø£Ø­Ø¯Ø§Ø« Ø§Ù„Ù…Ø¹Ù„Ù‚Ø© Ù…Ù† NightScene (Ù…Ø«Ù„ player_killed)
         if (socketService.pendingEvents.length > 0) {
             const pending = [...socketService.pendingEvents];
             socketService.pendingEvents = [];
-            // نأخر قليلاً عشان الـ scene تخلص setup
+            // Ù†Ø£Ø®Ø± Ù‚Ù„ÙŠÙ„Ø§Ù‹ Ø¹Ø´Ø§Ù† Ø§Ù„Ù€ scene ØªØ®Ù„Øµ setup
             this.time.delayedCall(300, () => {
                 pending.forEach(({ msg, color }) => this.addEventLog(msg, color));
             });
         }
 
-        // ─── تهيئة الصوت بعد تحميل الـ scene ───
+        // â”€â”€â”€ ØªÙ‡ÙŠØ¦Ø© Ø§Ù„ØµÙˆØª Ø¨Ø¹Ø¯ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù€ scene â”€â”€â”€
         if (this.userType === "PLAYER" || this.userType === "ADMIN") {
             this.time.delayedCall(1000, () => this.initVoice());
         }
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Voice Chat
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private async initVoice() {
-        // طلب الميكروفون
+        socketService.socket.off("voice_peers");
+        socketService.socket.off("voice_peer_joined");
+        socketService.socket.off("voice_reconnect_request");
+
         const micOk = await voiceManager.requestMicrophone();
         if (!micOk) {
-            this.showVoiceBtn("❌", "#ef4444", "Mic denied");
+            this.showVoiceBtn("!", "#ef4444", ar.game.voiceMicDenied);
             return;
         }
 
-        // تهيئة الـ Peer
-        const peerId = await voiceManager.init();
+        const peerId = voiceManager.getPeerId() || await voiceManager.init();
         if (!peerId) {
-            this.showVoiceBtn("❌", "#ef4444", "Voice failed");
+            this.showVoiceBtn("!", "#ef4444", ar.game.voiceFailed);
             return;
         }
 
-        // أرسل الـ peer ID للسيرفر
+        console.log("[Voice] Registering peer with server:", peerId);
         socketService.socket.emit("voice_peer_id", { peerId });
 
-        // استقبل الـ peers الموجودين
         socketService.socket.on("voice_peers", (data: any) => {
             data.peers?.forEach((p: any) => {
                 voiceManager.callPeer(p.peerId, p.username, p.role);
             });
         });
 
-        // لما يجي peer جديد — الأصغر ID يبادر بالاتصال لتجنب race condition
         socketService.socket.on("voice_peer_joined", (data: any) => {
             if (!data.peerId || data.peerId === voiceManager.getPeerId()) return;
             const myId = voiceManager.getPeerId() || "";
-            const shouldCall = myId < data.peerId; // الأصغر ID يبادر
-            console.log(`🎤 ${data.username} joined — ${shouldCall ? "I call" : "they call"}`);
+            const shouldCall = myId < data.peerId;
+            console.log("[Voice] " + data.username + " joined. " + (shouldCall ? "Initiating call." : "Waiting for incoming call."));
             if (shouldCall) {
                 this.time.delayedCall(500, () => {
                     voiceManager.callPeer(data.peerId, data.username, data.role);
@@ -175,25 +175,27 @@ export default class GameScene extends Phaser.Scene {
             }
         });
 
-        // لما يدخل بديل — نعيد تسجيل الـ peer ID عشان يسمعنا
         socketService.socket.on("voice_reconnect_request", () => {
-            const peerId = voiceManager.getPeerId();
-            if (peerId) {
-                console.log("🔄 Voice reconnect requested — re-registering peer ID");
-                socketService.socket.emit("voice_peer_id", { peerId });
+            const activePeerId = voiceManager.getPeerId();
+            if (activePeerId) {
+                console.log("[Voice] Re-registering peer ID after reconnect request");
+                socketService.socket.emit("voice_peer_id", { peerId: activePeerId });
             }
         });
 
-        // أظهر زر الميكروفون — يبدأ muted
-        this.showVoiceBtn("🔇", "#ef4444", "Click to unmute");
+        this.showVoiceBtn(
+            voiceManager.getMuted() ? "M" : "U",
+            voiceManager.getMuted() ? "#ef4444" : "#22c55e",
+            voiceManager.getMuted() ? ar.game.voiceClickToUnmute : ar.game.voiceClickToMute
+        );
 
-        // callbacks
         voiceManager.onMuteChange = (muted) => {
             const btn = document.getElementById("voice-btn");
             if (btn) {
-                btn.textContent = muted ? "🔇" : "🎤";
+                btn.textContent = muted ? "M" : "U";
                 btn.style.borderColor = muted ? "#ef4444" : "#22c55e";
                 btn.style.color = muted ? "#ef4444" : "#22c55e";
+                btn.setAttribute("title", muted ? ar.game.voiceClickToUnmute : ar.game.voiceClickToMute);
             }
         };
     }
@@ -230,9 +232,9 @@ export default class GameScene extends Phaser.Scene {
         document.body.appendChild(btn);
     }
 
-    // ══════════════════════════════════════
-    //  خلفية
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  Ø®Ù„ÙÙŠØ©
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawBackground() {
         this.add.rectangle(0, 0, this.W, this.H, this.C.bg).setOrigin(0).setDepth(0);
         const g = this.add.graphics().setDepth(0);
@@ -242,9 +244,9 @@ export default class GameScene extends Phaser.Scene {
         g.strokePath();
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Panels (desktop)
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawPanels() {
         const chatX = this.PLAYERS_W + this.EVENTS_W;
         const pH = this.CONTENT_H;
@@ -263,9 +265,9 @@ export default class GameScene extends Phaser.Scene {
         g.strokeRect(x, y, w, h);
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  TopBar
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawTopBar() {
         this.add.rectangle(0, 0, this.W, this.TOPBAR_H, this.C.surface).setOrigin(0).setDepth(3);
         const line = this.add.graphics().setDepth(4);
@@ -273,14 +275,14 @@ export default class GameScene extends Phaser.Scene {
         line.moveTo(0, this.TOPBAR_H); line.lineTo(this.W, this.TOPBAR_H);
         line.strokePath();
 
-        // اسم اللعبة
+        // Ø§Ø³Ù… Ø§Ù„Ù„Ø¹Ø¨Ø©
         const titleFontSize = this.isMobile ? "12px" : "16px";
         this.add.text(12, this.TOPBAR_H / 2, ar.appTitle, {
             fontSize: titleFontSize, color: "#f1f5f9",
-            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 3
+            fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", align: "right"
         }).setOrigin(0, 0.5).setDepth(4);
 
-        // الغرفة - مخفية على الهاتف إذا ضيقة
+        // Ø§Ù„ØºØ±ÙØ© - Ù…Ø®ÙÙŠØ© Ø¹Ù„Ù‰ Ø§Ù„Ù‡Ø§ØªÙ Ø¥Ø°Ø§ Ø¶ÙŠÙ‚Ø©
         if (!this.isMobile) {
             this.add.text(this.W / 2, this.TOPBAR_H / 2,
                 ar.game.room(this.roomId?.substring(0, 8).toUpperCase()), {
@@ -288,7 +290,7 @@ export default class GameScene extends Phaser.Scene {
                 fontFamily: "'Courier New', monospace", letterSpacing: 2
             }).setOrigin(0.5, 0.5).setDepth(4);
 
-            this.phaseText = this.add.text(this.W / 2 + 130, this.TOPBAR_H / 2, `◉  ${getPhaseLabel("WAITING")}`, {
+            this.phaseText = this.add.text(this.W / 2 + 130, this.TOPBAR_H / 2, `â—‰  ${getPhaseLabel("WAITING")}`, {
                 fontSize: "11px", color: "#64748b",
                 fontFamily: "'Courier New', monospace", letterSpacing: 2
             }).setOrigin(0, 0.5).setDepth(4);
@@ -298,8 +300,8 @@ export default class GameScene extends Phaser.Scene {
                 fontFamily: "'Courier New', monospace", letterSpacing: 2
             }).setOrigin(0, 0.5).setDepth(4);
         } else {
-            // على الهاتف: phase في المنتصف
-            this.phaseText = this.add.text(this.W / 2, this.TOPBAR_H / 2, `◉  ${getPhaseLabel("WAITING")}`, {
+            // Ø¹Ù„Ù‰ Ø§Ù„Ù‡Ø§ØªÙ: phase ÙÙŠ Ø§Ù„Ù…Ù†ØªØµÙ
+            this.phaseText = this.add.text(this.W / 2, this.TOPBAR_H / 2, `â—‰  ${getPhaseLabel("WAITING")}`, {
                 fontSize: "10px", color: "#64748b",
                 fontFamily: "'Courier New', monospace", letterSpacing: 1
             }).setOrigin(0.5, 0.5).setDepth(4);
@@ -315,8 +317,8 @@ export default class GameScene extends Phaser.Scene {
             DOCTOR: this.C.doctor, CITIZEN: this.C.citizen, SPECTATOR: 0x64748b
         };
         const icons: Record<string, string> = {
-            ADMIN: "👑", MAFIA: "🔪", DETECTIVE: "🔍",
-            DOCTOR: "✚", CITIZEN: "◎", SPECTATOR: "👁"
+            ADMIN: "ðŸ‘‘", MAFIA: "ðŸ”ª", DETECTIVE: "ðŸ”",
+            DOCTOR: "âœš", CITIZEN: "â—Ž", SPECTATOR: "ðŸ‘"
         };
         const chipColor = colors[this.role] || 0x64748b;
         const chipHex = "#" + chipColor.toString(16).padStart(6, "0");
@@ -327,7 +329,7 @@ export default class GameScene extends Phaser.Scene {
         const c = this.add.container(this.W - 6, this.TOPBAR_H / 2).setDepth(4);
         const bg = this.add.rectangle(0, 0, chipW, this.isMobile ? 24 : 30, 0x0f1520);
         bg.setStrokeStyle(1, chipColor); bg.setOrigin(1, 0.5);
-        const lbl = this.add.text(-8, 0, `${icons[this.role] || "◎"}  ${ar.roles[this.role as keyof typeof ar.roles] || this.role}`, {
+        const lbl = this.add.text(-8, 0, `${icons[this.role] || "â—Ž"}  ${ar.roles[this.role as keyof typeof ar.roles] || this.role}`, {
             fontSize, color: chipHex,
             fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 2
         }).setOrigin(1, 0.5);
@@ -336,9 +338,9 @@ export default class GameScene extends Phaser.Scene {
         this.tweens.add({ targets: bg, alpha: 0.5, duration: 1200, yoyo: true, repeat: -1 });
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Section Headers (desktop)
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawSectionHeaders() {
         const chatX = this.PLAYERS_W + this.EVENTS_W;
         [
@@ -364,13 +366,13 @@ export default class GameScene extends Phaser.Scene {
 
         this.chatStatusText = this.add.text(
             chatX + this.CHAT_W - 14, this.TOPBAR_H + 16,
-            `● ${ar.game.live}`, { fontSize: "9px", color: "#22c55e", fontFamily: "'Courier New', monospace", letterSpacing: 1 }
+            `â— ${ar.game.live}`, { fontSize: "9px", color: "#22c55e", fontFamily: "'Courier New', monospace", letterSpacing: 1 }
         ).setOrigin(1, 0.5).setDepth(3);
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Mobile Tabs System
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private createMobileTabs() {
         const ui = document.createElement("div");
         ui.id = "mobile-game-ui";
@@ -382,7 +384,7 @@ export default class GameScene extends Phaser.Scene {
             fontFamily: "'Courier New', monospace",
         });
 
-        // ─── Tab Buttons ───
+        // â”€â”€â”€ Tab Buttons â”€â”€â”€
         const tabBar = document.createElement("div");
         tabBar.id = "mobile-tab-bar";
         Object.assign(tabBar.style, {
@@ -391,9 +393,9 @@ export default class GameScene extends Phaser.Scene {
         });
 
         const tabs = [
-            { id: "players", icon: "👥", label: "PLAYERS" },
-            { id: "events", icon: "📋", label: "EVENTS" },
-            { id: "chat", icon: "💬", label: "CHAT" },
+            { id: "players", icon: "ðŸ‘¥", label: "PLAYERS" },
+            { id: "events", icon: "ðŸ“‹", label: "EVENTS" },
+            { id: "chat", icon: "ðŸ’¬", label: "CHAT" },
         ];
 
         tabs.forEach(tab => {
@@ -412,7 +414,7 @@ export default class GameScene extends Phaser.Scene {
         });
         ui.appendChild(tabBar);
 
-        // ─── Tab Panels ───
+        // â”€â”€â”€ Tab Panels â”€â”€â”€
         // Players Panel
         const playersPanel = document.createElement("div");
         playersPanel.id = "tab-panel-players";
@@ -431,7 +433,7 @@ export default class GameScene extends Phaser.Scene {
         });
         ui.appendChild(eventsPanel);
 
-        // أفرغ الـ buffer لو فيه أحداث محفوظة من قبل
+        // Ø£ÙØ±Øº Ø§Ù„Ù€ buffer Ù„Ùˆ ÙÙŠÙ‡ Ø£Ø­Ø¯Ø§Ø« Ù…Ø­ÙÙˆØ¸Ø© Ù…Ù† Ù‚Ø¨Ù„
         this.time.delayedCall(50, () => this.flushMobileEventBuffer());
 
         // Chat Panel
@@ -451,7 +453,7 @@ export default class GameScene extends Phaser.Scene {
         });
         chatPanel.appendChild(chatMessages);
 
-        // Chat Input Row — ثابت في الأسفل
+        // Chat Input Row â€” Ø«Ø§Ø¨Øª ÙÙŠ Ø§Ù„Ø£Ø³ÙÙ„
         const chatInputRow = document.createElement("div");
         Object.assign(chatInputRow.style, {
             position: "absolute", bottom: "0", left: "0", right: "0",
@@ -476,7 +478,7 @@ export default class GameScene extends Phaser.Scene {
         mobileInput.addEventListener("blur", () => { mobileInput.style.borderColor = "#1e2d45"; });
 
         const mobileSendBtn = document.createElement("button");
-        mobileSendBtn.textContent = "➤";
+        mobileSendBtn.textContent = "âž¤";
         Object.assign(mobileSendBtn.style, {
             padding: "10px 16px", fontSize: "16px",
             backgroundColor: "#3b82f6", color: "#fff",
@@ -486,7 +488,7 @@ export default class GameScene extends Phaser.Scene {
             touchAction: "manipulation",
         });
 
-        // ─── دالة الإرسال ───
+        // â”€â”€â”€ Ø¯Ø§Ù„Ø© Ø§Ù„Ø¥Ø±Ø³Ø§Ù„ â”€â”€â”€
         const doSend = () => {
             const msg = mobileInput.value.trim();
             if (!msg) return;
@@ -496,18 +498,18 @@ export default class GameScene extends Phaser.Scene {
             }
             socketService.socket.emit("send_message", msg);
             mobileInput.value = "";
-            // لا نعيد focus على iOS عشان ما تنفتح الكيبورد تلقائياً
+            // Ù„Ø§ Ù†Ø¹ÙŠØ¯ focus Ø¹Ù„Ù‰ iOS Ø¹Ø´Ø§Ù† Ù…Ø§ ØªÙ†ÙØªØ­ Ø§Ù„ÙƒÙŠØ¨ÙˆØ±Ø¯ ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹
         };
 
         mobileInput.addEventListener("keypress", (e) => {
             if (e.key === "Enter") { e.preventDefault(); doSend(); }
         });
-        // نستخدم pointerup بدل touchend لأنه أكثر موثوقية على iOS
+        // Ù†Ø³ØªØ®Ø¯Ù… pointerup Ø¨Ø¯Ù„ touchend Ù„Ø£Ù†Ù‡ Ø£ÙƒØ«Ø± Ù…ÙˆØ«ÙˆÙ‚ÙŠØ© Ø¹Ù„Ù‰ iOS
         mobileSendBtn.addEventListener("pointerup", (e) => {
             e.preventDefault();
             doSend();
         });
-        // fallback للـ click
+        // fallback Ù„Ù„Ù€ click
         mobileSendBtn.addEventListener("click", (e) => {
             e.preventDefault();
             doSend();
@@ -536,7 +538,7 @@ export default class GameScene extends Phaser.Scene {
             btn.style.borderBottomColor = active ? "#3b82f6" : "transparent";
             panel.style.display = active ? "flex" : "none";
         });
-        // لما يفتح CHAT — scroll للأسفل
+        // Ù„Ù…Ø§ ÙŠÙØªØ­ CHAT â€” scroll Ù„Ù„Ø£Ø³ÙÙ„
         if (tabId === "chat") {
             const msgs = document.getElementById("mobile-chat-messages");
             if (msgs) this.time.delayedCall(50, () => { msgs.scrollTop = msgs.scrollHeight; });
@@ -544,7 +546,7 @@ export default class GameScene extends Phaser.Scene {
         // reset badge
         const btn = document.getElementById(`tab-btn-${tabId}`);
         if (btn) {
-            const labels: Record<string, string> = { players: "👥 PLAYERS", events: "📋 EVENTS", chat: "💬 CHAT" };
+            const labels: Record<string, string> = { players: "ðŸ‘¥ PLAYERS", events: "ðŸ“‹ EVENTS", chat: "ðŸ’¬ CHAT" };
             btn.textContent = labels[tabId];
             btn.style.color = "#f1f5f9";
         }
@@ -554,15 +556,15 @@ export default class GameScene extends Phaser.Scene {
         if (this.mobileActiveTab === tabId) return;
         const btn = document.getElementById(`tab-btn-${tabId}`);
         if (btn) {
-            const icons: Record<string, string> = { players: "👥", events: "📋", chat: "💬" };
-            btn.textContent = `${icons[tabId]} ● ${label}`;
+            const icons: Record<string, string> = { players: "ðŸ‘¥", events: "ðŸ“‹", chat: "ðŸ’¬" };
+            btn.textContent = `${icons[tabId]} â— ${label}`;
             btn.style.color = "#22c55e";
         }
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Players Panel
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawPlayers(players: any[], phase: string) {
         this.currentPlayers = players;
         if (this.isMobile) {
@@ -604,10 +606,10 @@ export default class GameScene extends Phaser.Scene {
                 border: `1px solid ${p.alive ? "#22c55e44" : "#37415144"}`,
                 opacity: p.alive ? "1" : "0.4",
             });
-            avatarDiv.textContent = p.avatar || "😎";
+            avatarDiv.textContent = p.avatar || "ðŸ˜Ž";
 
-            const dot = document.createElement("span"); // نبقيها للـ alive indicator
-            dot.style.display = "none"; // مش محتاجينها هلق
+            const dot = document.createElement("span"); // Ù†Ø¨Ù‚ÙŠÙ‡Ø§ Ù„Ù„Ù€ alive indicator
+            dot.style.display = "none"; // Ù…Ø´ Ù…Ø­ØªØ§Ø¬ÙŠÙ†Ù‡Ø§ Ù‡Ù„Ù‚
 
             const name = document.createElement("span");
             let nameText = p.username;
@@ -622,7 +624,7 @@ export default class GameScene extends Phaser.Scene {
             row.appendChild(avatarDiv);
             row.appendChild(name);
 
-            // ── أظهر الدور فقط لنفسك أو إذا ميت ──
+            // â”€â”€ Ø£Ø¸Ù‡Ø± Ø§Ù„Ø¯ÙˆØ± ÙÙ‚Ø· Ù„Ù†ÙØ³Ùƒ Ø£Ùˆ Ø¥Ø°Ø§ Ù…ÙŠØª â”€â”€
             const showRole = isMe || !p.alive || this.isAdmin ||
                 (this.role === "MAFIA" && p.role === "MAFIA") ||
                 this.userType === "SPECTATOR";
@@ -656,15 +658,15 @@ export default class GameScene extends Phaser.Scene {
             this.tweens.add({ targets: dot, alpha: 0.3, duration: 900, yoyo: true, repeat: -1, delay: Math.random() * 600 });
         }
 
-        // ─── أظهر الدور فقط لنفسك أو الأدمن أو الزملاء في المافيا ───
+        // â”€â”€â”€ Ø£Ø¸Ù‡Ø± Ø§Ù„Ø¯ÙˆØ± ÙÙ‚Ø· Ù„Ù†ÙØ³Ùƒ Ø£Ùˆ Ø§Ù„Ø£Ø¯Ù…Ù† Ø£Ùˆ Ø§Ù„Ø²Ù…Ù„Ø§Ø¡ ÙÙŠ Ø§Ù„Ù…Ø§ÙÙŠØ§ â”€â”€â”€
         let tag = "";
         if (this.isAdmin || isMe) tag = `  [${player.role}]`;
         else if (this.role === "MAFIA" && player.role === "MAFIA") tag = "  [MAFIA]";
         else if (this.userType === "SPECTATOR") tag = `  [${player.role}]`;
         else if (!isAlive) tag = `  [${player.role}]`;
 
-        // avatar emoji قبل الاسم
-        const avatarEmoji = player.avatar || "😎";
+        // avatar emoji Ù‚Ø¨Ù„ Ø§Ù„Ø§Ø³Ù…
+        const avatarEmoji = player.avatar || "ðŸ˜Ž";
         const avatarText = this.add.text(30, 0, avatarEmoji, {
             fontSize: "14px"
         }).setOrigin(0, 0.5);
@@ -682,15 +684,15 @@ export default class GameScene extends Phaser.Scene {
         if (isAlive && !this.isAdmin && this.userType !== "SPECTATOR") {
             const btnX = this.PLAYERS_W - 32;
             if (this.role === "MAFIA" && isNight && !isMe)
-                this.addActionBtn(container, btnX, 0, "⚔", "#ef4444", () => {
+                this.addActionBtn(container, btnX, 0, "âš”", "#ef4444", () => {
                     socketService.socket.emit("mafia_kill", player.id);
                 });
             if (this.role === "DOCTOR" && isNight)
-                this.addActionBtn(container, btnX, 0, "✚", "#22c55e", () => {
+                this.addActionBtn(container, btnX, 0, "âœš", "#22c55e", () => {
                     socketService.socket.emit("doctor_save", player.id);
                 });
             if (this.role === "DETECTIVE" && isNight && !isMe)
-                this.addActionBtn(container, btnX, 0, "🔍", "#3b82f6", () => {
+                this.addActionBtn(container, btnX, 0, "ðŸ”", "#3b82f6", () => {
                     socketService.socket.emit("detective_check", player.id);
                 });
         }
@@ -714,22 +716,22 @@ export default class GameScene extends Phaser.Scene {
         parent.add(btn);
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Event Log
-    // ══════════════════════════════════════
-    // ─── helper: نحدد نوع الـ event من اللون والنص ───
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // â”€â”€â”€ helper: Ù†Ø­Ø¯Ø¯ Ù†ÙˆØ¹ Ø§Ù„Ù€ event Ù…Ù† Ø§Ù„Ù„ÙˆÙ† ÙˆØ§Ù„Ù†Øµ â”€â”€â”€
     private getEventMeta(msg: string, color: string): { icon: string; label: string; bgAlpha: number; glowColor: number } {
         if (color === "#f87171" && msg.toLowerCase().includes("kill"))
-            return { icon: "🔪", label: "ELIMINATED", bgAlpha: 0.18, glowColor: 0xef4444 };
+            return { icon: "ðŸ”ª", label: "ELIMINATED", bgAlpha: 0.18, glowColor: 0xef4444 };
         if (color === "#f87171" && msg.toLowerCase().includes("eliminat"))
-            return { icon: "⚖️", label: "VOTED OUT", bgAlpha: 0.16, glowColor: 0xef4444 };
+            return { icon: "âš–ï¸", label: "VOTED OUT", bgAlpha: 0.16, glowColor: 0xef4444 };
         if (color === "#fbbf24")
-            return { icon: "🗳", label: "VOTE", bgAlpha: 0.14, glowColor: 0xf59e0b };
+            return { icon: "ðŸ—³", label: "VOTE", bgAlpha: 0.14, glowColor: 0xf59e0b };
         if (color === "#c084fc")
-            return { icon: "📖", label: "STORY", bgAlpha: 0.14, glowColor: 0xa855f7 };
+            return { icon: "ðŸ“–", label: "STORY", bgAlpha: 0.14, glowColor: 0xa855f7 };
         if (color === "#3b82f6")
-            return { icon: "⟳", label: "SYSTEM", bgAlpha: 0.12, glowColor: 0x3b82f6 };
-        return { icon: "◉", label: "EVENT", bgAlpha: 0.12, glowColor: 0x64748b };
+            return { icon: "âŸ³", label: "SYSTEM", bgAlpha: 0.12, glowColor: 0x3b82f6 };
+        return { icon: "â—‰", label: "EVENT", bgAlpha: 0.12, glowColor: 0x64748b };
     }
 
     private addEventLog(msg: string, color: string) {
@@ -746,10 +748,10 @@ export default class GameScene extends Phaser.Scene {
         const gap = 6;
         const maxCards = 10;
 
-        // ─── Container الكرت الجديد ───
+        // â”€â”€â”€ Container Ø§Ù„ÙƒØ±Øª Ø§Ù„Ø¬Ø¯ÙŠØ¯ â”€â”€â”€
         const container = this.add.container(cardX, baseY).setDepth(3).setAlpha(0);
 
-        // خلفية الكرت
+        // Ø®Ù„ÙÙŠØ© Ø§Ù„ÙƒØ±Øª
         const bg = this.add.graphics();
         const colorInt = parseInt(color.replace("#", ""), 16);
         bg.fillStyle(colorInt, meta.bgAlpha);
@@ -757,25 +759,25 @@ export default class GameScene extends Phaser.Scene {
         bg.lineStyle(1, meta.glowColor, 0.35);
         bg.strokeRoundedRect(0, 0, cardW, cardH, 6);
 
-        // شريط لوني على اليسار
+        // Ø´Ø±ÙŠØ· Ù„ÙˆÙ†ÙŠ Ø¹Ù„Ù‰ Ø§Ù„ÙŠØ³Ø§Ø±
         const bar = this.add.graphics();
         bar.fillStyle(meta.glowColor, 0.9);
         bar.fillRoundedRect(0, 6, 3, cardH - 12, 2);
 
-        // أيقونة
+        // Ø£ÙŠÙ‚ÙˆÙ†Ø©
         const icon = this.add.text(14, cardH / 2, meta.icon, {
             fontSize: "16px"
         }).setOrigin(0, 0.5);
 
-        // نوع الحدث
+        // Ù†ÙˆØ¹ Ø§Ù„Ø­Ø¯Ø«
         const labelTxt = this.add.text(36, 9, meta.label, {
             fontSize: "8px", color: color,
             fontFamily: "'Courier New', monospace",
             fontStyle: "bold", letterSpacing: 2,
         }).setOrigin(0, 0);
 
-        // النص الرئيسي
-        const cleanMsg = msg.replace(/^[📖⟳◉›\s]+/, "").trim();
+        // Ø§Ù„Ù†Øµ Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ
+        const cleanMsg = msg.replace(/^[ðŸ“–âŸ³â—‰â€º\s]+/, "").trim();
         const mainTxt = this.add.text(36, 20, cleanMsg, {
             fontSize: "12px", color: "#e2e8f0",
             fontFamily: "'Courier New', monospace",
@@ -792,26 +794,26 @@ export default class GameScene extends Phaser.Scene {
 
         container.add([bg, bar, icon, labelTxt, mainTxt, timeTxt]);
 
-        // أضف الكرت للقائمة أولاً
+        // Ø£Ø¶Ù Ø§Ù„ÙƒØ±Øª Ù„Ù„Ù‚Ø§Ø¦Ù…Ø© Ø£ÙˆÙ„Ø§Ù‹
         this.eventLogItems.push(container as any);
 
-        // رتّب كل الكروت بالترتيب الصح من فوق لتحت
+        // Ø±ØªÙ‘Ø¨ ÙƒÙ„ Ø§Ù„ÙƒØ±ÙˆØª Ø¨Ø§Ù„ØªØ±ØªÙŠØ¨ Ø§Ù„ØµØ­ Ù…Ù† ÙÙˆÙ‚ Ù„ØªØ­Øª
         this.eventLogItems.forEach((item, i) => {
             const targetY = baseY + i * (cardH + gap);
             if (i === this.eventLogItems.length - 1) {
-                // الكرت الجديد — أنيميشن دخول
+                // Ø§Ù„ÙƒØ±Øª Ø§Ù„Ø¬Ø¯ÙŠØ¯ â€” Ø£Ù†ÙŠÙ…ÙŠØ´Ù† Ø¯Ø®ÙˆÙ„
                 this.tweens.add({ targets: item, alpha: 1, y: targetY, duration: 350, ease: "Back.easeOut" });
             } else {
-                // الكروت القديمة — تنزل بسلاسة
+                // Ø§Ù„ÙƒØ±ÙˆØª Ø§Ù„Ù‚Ø¯ÙŠÙ…Ø© â€” ØªÙ†Ø²Ù„ Ø¨Ø³Ù„Ø§Ø³Ø©
                 this.tweens.add({ targets: item, y: targetY, duration: 220, ease: "Cubic.easeOut" });
             }
         });
 
-        // نشيل الكروت الزيادة
+        // Ù†Ø´ÙŠÙ„ Ø§Ù„ÙƒØ±ÙˆØª Ø§Ù„Ø²ÙŠØ§Ø¯Ø©
         if (this.eventLogItems.length > maxCards) {
             const old = this.eventLogItems.shift()!;
             this.tweens.add({ targets: old, alpha: 0, duration: 200, onComplete: () => (old as any).destroy() });
-            // نعيد ترتيب الباقيين بعد الحذف
+            // Ù†Ø¹ÙŠØ¯ ØªØ±ØªÙŠØ¨ Ø§Ù„Ø¨Ø§Ù‚ÙŠÙŠÙ† Ø¨Ø¹Ø¯ Ø§Ù„Ø­Ø°Ù
             this.eventLogItems.forEach((item, i) => {
                 this.tweens.add({ targets: item, y: baseY + i * (cardH + gap), duration: 180, ease: "Cubic.easeOut" });
             });
@@ -832,25 +834,25 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private buildMobileEventCard(msg: string, color: string): HTMLElement {
-        // تحديد نوع الحدث
+        // ØªØ­Ø¯ÙŠØ¯ Ù†ÙˆØ¹ Ø§Ù„Ø­Ø¯Ø«
         type EventType = { icon: string; label: string; bg: string; border: string };
         let meta: EventType;
         if (color === "#f87171" && msg.toLowerCase().includes("kill"))
-            meta = { icon: "🔪", label: "ELIMINATED", bg: "rgba(239,68,68,0.1)", border: "#ef4444" };
+            meta = { icon: "ðŸ”ª", label: "ELIMINATED", bg: "rgba(239,68,68,0.1)", border: "#ef4444" };
         else if (color === "#f87171")
-            meta = { icon: "⚖️", label: "VOTED OUT", bg: "rgba(239,68,68,0.1)", border: "#ef4444" };
+            meta = { icon: "âš–ï¸", label: "VOTED OUT", bg: "rgba(239,68,68,0.1)", border: "#ef4444" };
         else if (color === "#fbbf24")
-            meta = { icon: "🗳", label: "VOTE", bg: "rgba(245,158,11,0.1)", border: "#f59e0b" };
+            meta = { icon: "ðŸ—³", label: "VOTE", bg: "rgba(245,158,11,0.1)", border: "#f59e0b" };
         else if (color === "#c084fc")
-            meta = { icon: "📖", label: "STORY", bg: "rgba(168,85,247,0.1)", border: "#a855f7" };
+            meta = { icon: "ðŸ“–", label: "STORY", bg: "rgba(168,85,247,0.1)", border: "#a855f7" };
         else if (color === "#3b82f6")
-            meta = { icon: "⟳", label: "SYSTEM", bg: "rgba(59,130,246,0.1)", border: "#3b82f6" };
+            meta = { icon: "âŸ³", label: "SYSTEM", bg: "rgba(59,130,246,0.1)", border: "#3b82f6" };
         else
-            meta = { icon: "◉", label: "EVENT", bg: "rgba(100,116,139,0.1)", border: "#64748b" };
+            meta = { icon: "â—‰", label: "EVENT", bg: "rgba(100,116,139,0.1)", border: "#64748b" };
 
         const now = new Date();
         const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-        const cleanMsg = msg.replace(/^[📖⟳◉›\s]+/, "").trim();
+        const cleanMsg = msg.replace(/^[ðŸ“–âŸ³â—‰â€º\s]+/, "").trim();
 
         const card = document.createElement("div");
         Object.assign(card.style, {
@@ -865,12 +867,12 @@ export default class GameScene extends Phaser.Scene {
             animation: "eventSlideIn 0.3s ease-out",
         });
 
-        // أيقونة
+        // Ø£ÙŠÙ‚ÙˆÙ†Ø©
         const iconEl = document.createElement("div");
         iconEl.textContent = meta.icon;
         iconEl.style.cssText = "font-size:18px;line-height:1;margin-top:1px;min-width:22px;text-align:center";
 
-        // المحتوى
+        // Ø§Ù„Ù…Ø­ØªÙˆÙ‰
         const body = document.createElement("div");
         body.style.cssText = "flex:1;min-width:0";
 
@@ -897,7 +899,7 @@ export default class GameScene extends Phaser.Scene {
         card.appendChild(iconEl);
         card.appendChild(body);
 
-        // أضف الـ CSS animation لو ما موجودة
+        // Ø£Ø¶Ù Ø§Ù„Ù€ CSS animation Ù„Ùˆ Ù…Ø§ Ù…ÙˆØ¬ÙˆØ¯Ø©
         if (!document.getElementById("event-card-style")) {
             const style = document.createElement("style");
             style.id = "event-card-style";
@@ -924,9 +926,9 @@ export default class GameScene extends Phaser.Scene {
         panel.scrollTop = panel.scrollHeight;
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Chat
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private addChatMessage(username: string, message: string, alive?: boolean) {
         if (this.isMobile) {
             this.addMobileChat(username, message, alive !== false);
@@ -944,7 +946,7 @@ export default class GameScene extends Phaser.Scene {
             this.tweens.add({ targets: t, y: baseY + i * lineH, duration: 180 })
         );
         const text = this.add.text(chatX + 14, baseY + this.chatMessages.length * lineH + lineH,
-            `${isAlive ? "" : "☠ "}${username}: ${message}`,
+            `${isAlive ? "" : "â˜  "}${username}: ${message}`,
             { fontSize: "12px", color: msgColor, fontFamily: "'Courier New', monospace", wordWrap: { width: this.CHAT_W - 28 } }
         ).setDepth(3).setAlpha(0);
         this.tweens.add({ targets: text, alpha: 1, y: text.y - lineH, duration: 280, ease: "Back.easeOut" });
@@ -970,12 +972,12 @@ export default class GameScene extends Phaser.Scene {
         msgs.appendChild(el);
         msgs.scrollTop = msgs.scrollHeight;
         while (msgs.children.length > 40) msgs.removeChild(msgs.firstChild!);
-        this.showMobileTabBadge("chat", "💬");
+        this.showMobileTabBadge("chat", "ðŸ’¬");
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Desktop Chat Input
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private createDesktopChatInput() {
         const chatX = this.PLAYERS_W + this.EVENTS_W;
 
@@ -997,7 +999,7 @@ export default class GameScene extends Phaser.Scene {
 
         this.sendBtn = document.createElement("button");
         this.sendBtn.id = "desktop-send-btn";
-        this.sendBtn.textContent = "➤";
+        this.sendBtn.textContent = "âž¤";
         Object.assign(this.sendBtn.style, {
             position: "absolute", left: `${chatX + this.CHAT_W - 44}px`, bottom: "14px",
             width: "36px", height: "36px", fontSize: "14px",
@@ -1018,17 +1020,17 @@ export default class GameScene extends Phaser.Scene {
         document.body.appendChild(this.sendBtn);
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Chat UI State
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private updateChatUI(phase: string) {
         if (!this.isMobile && this.chatStatusText?.active) {
             const map: Record<string, [string, string]> = {
-                NIGHT: ["● NIGHT", "#6366f1"],
-                NIGHT_REVIEW: ["● NIGHT", "#6366f1"],
-                VOTING: ["● VOTING", "#f59e0b"],
+                NIGHT: ["â— NIGHT", "#6366f1"],
+                NIGHT_REVIEW: ["â— NIGHT", "#6366f1"],
+                VOTING: ["â— VOTING", "#f59e0b"],
             };
-            const [txt, clr] = map[phase] || ["● LIVE", "#22c55e"];
+            const [txt, clr] = map[phase] || ["â— LIVE", "#22c55e"];
             this.chatStatusText.setText(txt).setColor(clr);
         }
 
@@ -1044,9 +1046,9 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Voting Overlay (Desktop)
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showVotingOverlay() {
         this.closeVotingOverlay(false);
         this.myVote = null;
@@ -1099,7 +1101,7 @@ export default class GameScene extends Phaser.Scene {
         const bg = this.add.rectangle(0, 0, cardW, cardH, 0x0d1117); bg.setStrokeStyle(1, this.C.border); bg.setOrigin(0.5);
         const topBar = this.add.rectangle(0, -(cardH / 2) + 2, cardW - 2, 3, 0xf59e0b, 0); topBar.setOrigin(0.5, 0);
         const avatarBg = this.add.circle(0, -60, 27, 0x0a0d13); avatarBg.setStrokeStyle(1, this.C.border);
-        const avatarIcon = this.add.text(0, -60, isMe ? "🧑" : "👤", { fontSize: "24px" }).setOrigin(0.5);
+        const avatarIcon = this.add.text(0, -60, isMe ? "ðŸ§‘" : "ðŸ‘¤", { fontSize: "24px" }).setOrigin(0.5);
         const pulse = this.add.circle(0, -60, 34, 0xf59e0b, 0);
         this.tweens.add({ targets: pulse, alpha: 0.1, scaleX: 1.3, scaleY: 1.3, duration: 1000, yoyo: true, repeat: -1, delay: Math.random() * 500 });
         const nameTxt = this.add.text(0, -20, player.username.toUpperCase(), {
@@ -1111,7 +1113,7 @@ export default class GameScene extends Phaser.Scene {
         const barFill = this.add.rectangle(-(cardW - 24) / 2, 34, 0, 6, 0xf59e0b, 0.8).setOrigin(0, 0.5);
         const voteLabel = this.add.text(0, 50, "0 votes", { fontSize: "10px", color: "#64748b", fontFamily: "'Courier New', monospace", letterSpacing: 1 }).setOrigin(0.5);
         const btnBg = this.add.rectangle(0, 74, cardW - 24, 26, 0x0a0d13); btnBg.setStrokeStyle(1, isSpectator ? 0x1e2d45 : 0xf59e0b, isSpectator ? 0.3 : 0.45).setOrigin(0.5);
-        const btnLabel = this.add.text(0, 74, isSpectator ? "WATCHING" : (isMe ? "—" : "VOTE"), {
+        const btnLabel = this.add.text(0, 74, isSpectator ? "WATCHING" : (isMe ? "â€”" : "VOTE"), {
             fontSize: "10px", color: isSpectator ? "#334155" : (isMe ? "#374151" : "#f59e0b"),
             fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3
         }).setOrigin(0.5);
@@ -1140,7 +1142,7 @@ export default class GameScene extends Phaser.Scene {
         });
         bg.setFillStyle(0x150c00); bg.setStrokeStyle(2, 0xef4444);
         topBar.setFillStyle(0xef4444); topBar.setAlpha(1);
-        btnLabel.setText("VOTED ✓").setColor("#f87171");
+        btnLabel.setText("VOTED âœ“").setColor("#f87171");
         this.cameras.main.flash(220, 50, 20, 0);
     }
 
@@ -1161,7 +1163,7 @@ export default class GameScene extends Phaser.Scene {
         document.getElementById("voting-chat-toggle")?.remove();
 
         if (this.isMobile) {
-            // ─── موبايل: زر toggle صغير فوق يمين ───
+            // â”€â”€â”€ Ù…ÙˆØ¨Ø§ÙŠÙ„: Ø²Ø± toggle ØµØºÙŠØ± ÙÙˆÙ‚ ÙŠÙ…ÙŠÙ† â”€â”€â”€
             const toggle = document.createElement("button");
             toggle.id = "voting-chat-toggle";
             Object.assign(toggle.style, {
@@ -1174,7 +1176,7 @@ export default class GameScene extends Phaser.Scene {
                 fontWeight: "bold", cursor: "pointer",
                 boxShadow: "0 0 15px rgba(251,191,36,0.2)",
             });
-            toggle.textContent = "⚖ CHAT";
+            toggle.textContent = "âš– CHAT";
             let chatOpen = false;
 
             const panel = document.createElement("div");
@@ -1189,14 +1191,14 @@ export default class GameScene extends Phaser.Scene {
                 boxShadow: "0 0 20px rgba(251,191,36,0.1)",
             });
             panel.innerHTML = `
-                <div style="padding:8px 12px;border-bottom:1px solid rgba(251,191,36,0.15);color:#fbbf24;font-size:9px;letter-spacing:2px">⚖ VOTING DISCUSSION</div>
+                <div style="padding:8px 12px;border-bottom:1px solid rgba(251,191,36,0.15);color:#fbbf24;font-size:9px;letter-spacing:2px">âš– VOTING DISCUSSION</div>
                 <div id="voting-chat-messages" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px">
-                    <div style="color:#374151;font-size:9px;text-align:center">── discuss ──</div>
+                    <div style="color:#374151;font-size:9px;text-align:center">â”€â”€ discuss â”€â”€</div>
                 </div>
                 <div style="display:flex;gap:5px;padding:6px;border-top:1px solid rgba(251,191,36,0.1)">
                     <input id="voting-chat-input" type="text" placeholder="Opinion..."
                         style="flex:1;padding:6px 8px;background:#060a04;color:#f1f5f9;border:1px solid rgba(251,191,36,0.2);border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
-                    <button id="voting-chat-send" style="padding:6px 10px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer">▶</button>
+                    <button id="voting-chat-send" style="padding:6px 10px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer">â–¶</button>
                 </div>
             `;
             document.body.appendChild(toggle);
@@ -1205,7 +1207,7 @@ export default class GameScene extends Phaser.Scene {
             toggle.addEventListener("click", () => {
                 chatOpen = !chatOpen;
                 panel.style.display = chatOpen ? "flex" : "none";
-                toggle.textContent = chatOpen ? "✕ CLOSE" : "⚖ CHAT";
+                toggle.textContent = chatOpen ? "âœ• CLOSE" : "âš– CHAT";
             });
 
             const input = panel.querySelector<HTMLInputElement>("#voting-chat-input")!;
@@ -1220,7 +1222,7 @@ export default class GameScene extends Phaser.Scene {
             input.addEventListener("keydown", e => { if (e.key === "Enter") sendMsg(); });
 
         } else {
-            // ─── ديسكتوب: panel ثابت ───
+            // â”€â”€â”€ Ø¯ÙŠØ³ÙƒØªÙˆØ¨: panel Ø«Ø§Ø¨Øª â”€â”€â”€
             const panel = document.createElement("div");
             panel.id = "voting-chat-panel";
             Object.assign(panel.style, {
@@ -1233,14 +1235,14 @@ export default class GameScene extends Phaser.Scene {
                 boxShadow: "0 0 30px rgba(251,191,36,0.1)",
             });
             panel.innerHTML = `
-                <div style="padding:8px 14px;border-bottom:1px solid rgba(251,191,36,0.15);background:rgba(0,0,0,0.3);border-radius:10px 10px 0 0;color:#fbbf24;font-size:10px;letter-spacing:3px;font-weight:bold">⚖ VOTING DISCUSSION</div>
+                <div style="padding:8px 14px;border-bottom:1px solid rgba(251,191,36,0.15);background:rgba(0,0,0,0.3);border-radius:10px 10px 0 0;color:#fbbf24;font-size:10px;letter-spacing:3px;font-weight:bold">âš– VOTING DISCUSSION</div>
                 <div id="voting-chat-messages" style="flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:4px">
-                    <div style="color:#374151;font-size:9px;text-align:center;letter-spacing:1px">── discuss before voting ──</div>
+                    <div style="color:#374151;font-size:9px;text-align:center;letter-spacing:1px">â”€â”€ discuss before voting â”€â”€</div>
                 </div>
                 <div style="display:flex;gap:6px;padding:8px;border-top:1px solid rgba(251,191,36,0.1)">
                     <input id="voting-chat-input" type="text" placeholder="Your opinion..."
                         style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(251,191,36,0.2);border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
-                    <button id="voting-chat-send" style="padding:7px 12px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer;font-family:'Courier New',monospace">▶</button>
+                    <button id="voting-chat-send" style="padding:7px 12px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer;font-family:'Courier New',monospace">â–¶</button>
                 </div>
             `;
             document.body.appendChild(panel);
@@ -1259,14 +1261,14 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private closeVotingOverlay(showResult: boolean, result?: { eliminated?: string; tie?: boolean }) {
-        // أغلق mobile voting أيضاً
+        // Ø£ØºÙ„Ù‚ mobile voting Ø£ÙŠØ¶Ø§Ù‹
         document.getElementById("mobile-voting-overlay")?.remove();
 
         if (!this.votingOverlayContainer) return;
         const ov = this.votingOverlayContainer;
         if (showResult && result) {
             const isTie = result.tie;
-            const label = isTie ? "TIE — No one eliminated" : `${result.eliminated} eliminated`;
+            const label = isTie ? "TIE â€” No one eliminated" : `${result.eliminated} eliminated`;
             const bColor = isTie ? 0xfbbf24 : 0xef4444;
             const tColor = isTie ? "#fcd34d" : "#f87171";
             const banner = this.add.container(this.W / 2, this.H / 2).setDepth(55).setAlpha(0);
@@ -1283,9 +1285,9 @@ export default class GameScene extends Phaser.Scene {
         }
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Mobile Voting Overlay
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showMobileVoting() {
         document.getElementById("mobile-voting-overlay")?.remove();
         document.getElementById("voting-chat-panel")?.remove();
@@ -1305,20 +1307,20 @@ export default class GameScene extends Phaser.Scene {
             fontFamily: "'Courier New', monospace",
         });
 
-        // ─── Header ───
+        // â”€â”€â”€ Header â”€â”€â”€
         const header = document.createElement("div");
         Object.assign(header.style, {
             padding: "12px 16px", borderBottom: "1px solid rgba(245,158,11,0.2)",
             backgroundColor: "rgba(0,0,0,0.4)", flexShrink: "0",
         });
         header.innerHTML = `
-            <div style="color:#f59e0b;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:4px">⚖ VOTING</div>
+            <div style="color:#f59e0b;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:4px">âš– VOTING</div>
             <div style="color:#f1f5f9;font-size:16px;font-weight:bold">Vote to Eliminate</div>
             <div style="color:#4b5563;font-size:11px;margin-top:3px">Choose who threatens the community</div>
         `;
         overlay.appendChild(header);
 
-        // ─── Chat Box ───
+        // â”€â”€â”€ Chat Box â”€â”€â”€
         const chatBox = document.createElement("div");
         chatBox.id = "voting-chat-messages";
         Object.assign(chatBox.style, {
@@ -1329,11 +1331,11 @@ export default class GameScene extends Phaser.Scene {
         });
         const welcomeMsg = document.createElement("div");
         welcomeMsg.style.cssText = "color:#374151;font-size:9px;text-align:center;letter-spacing:1px;padding:4px";
-        welcomeMsg.textContent = "── discuss before voting ──";
+        welcomeMsg.textContent = "â”€â”€ discuss before voting â”€â”€";
         chatBox.appendChild(welcomeMsg);
         overlay.appendChild(chatBox);
 
-        // ─── Chat Input ───
+        // â”€â”€â”€ Chat Input â”€â”€â”€
         const chatInput = document.createElement("div");
         Object.assign(chatInput.style, {
             display: "flex", gap: "6px", padding: "6px 10px",
@@ -1343,7 +1345,7 @@ export default class GameScene extends Phaser.Scene {
         chatInput.innerHTML = `
             <input id="mvoting-chat-input" type="text" placeholder="Your opinion..."
                 style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(245,158,11,0.2);border-radius:5px;font-size:13px;font-family:'Courier New',monospace;outline:none"/>
-            <button id="mvoting-chat-send" style="padding:7px 12px;border:1px solid rgba(245,158,11,0.4);border-radius:5px;background:transparent;color:#f59e0b;font-size:13px;cursor:pointer;touch-action:manipulation">▶</button>
+            <button id="mvoting-chat-send" style="padding:7px 12px;border:1px solid rgba(245,158,11,0.4);border-radius:5px;background:transparent;color:#f59e0b;font-size:13px;cursor:pointer;touch-action:manipulation">â–¶</button>
         `;
         overlay.appendChild(chatInput);
 
@@ -1358,7 +1360,7 @@ export default class GameScene extends Phaser.Scene {
         chatSendBtn.addEventListener("click", sendChatMsg);
         chatInputEl.addEventListener("keydown", e => { if (e.key === "Enter") sendChatMsg(); });
 
-        // ─── قائمة اللاعبين ───
+        // â”€â”€â”€ Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ù„Ø§Ø¹Ø¨ÙŠÙ† â”€â”€â”€
         const playerList = document.createElement("div");
         Object.assign(playerList.style, {
             flex: "1", overflowY: "auto", padding: "8px 12px",
@@ -1377,7 +1379,7 @@ export default class GameScene extends Phaser.Scene {
             });
 
             row.innerHTML = `
-                <span style="font-size:22px">${isMe ? "🧑" : "👤"}</span>
+                <span style="font-size:22px">${isMe ? "ðŸ§‘" : "ðŸ‘¤"}</span>
                 <div style="flex:1">
                     <div style="color:#f1f5f9;font-size:14px;font-weight:bold;letter-spacing:1px">${p.username}${isMe ? " (YOU)" : ""}</div>
                     <div style="height:3px;background:#1e2d45;border-radius:2px;margin-top:5px;overflow:hidden">
@@ -1385,7 +1387,7 @@ export default class GameScene extends Phaser.Scene {
                     </div>
                     <div id="mvote-label-${p.id}" style="color:#4b5563;font-size:10px;margin-top:3px">0 votes</div>
                 </div>
-                <button id="mvote-btn-${p.id}" style="padding:8px 16px;font-size:11px;font-weight:bold;letter-spacing:2px;border:1px solid #f59e0b;border-radius:5px;background:transparent;color:#f59e0b;cursor:${isMe ? "default" : "pointer"};font-family:'Courier New',monospace;touch-action:manipulation;pointer-events:${isMe ? "none" : "auto"}">${isMe ? "—" : "VOTE"}</button>
+                <button id="mvote-btn-${p.id}" style="padding:8px 16px;font-size:11px;font-weight:bold;letter-spacing:2px;border:1px solid #f59e0b;border-radius:5px;background:transparent;color:#f59e0b;cursor:${isMe ? "default" : "pointer"};font-family:'Courier New',monospace;touch-action:manipulation;pointer-events:${isMe ? "none" : "auto"}">${isMe ? "â€”" : "VOTE"}</button>
             `;
 
             if (!isMe) {
@@ -1394,7 +1396,7 @@ export default class GameScene extends Phaser.Scene {
                     if (this.myVote) return;
                     this.myVote = p.id;
                     socketService.socket.emit("vote", p.id);
-                    btn.textContent = "✓ VOTED";
+                    btn.textContent = "âœ“ VOTED";
                     btn.style.backgroundColor = "#f59e0b";
                     btn.style.color = "#000";
                     row.style.borderColor = "#f59e0b";
@@ -1424,15 +1426,15 @@ export default class GameScene extends Phaser.Scene {
         });
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Votes Bar (desktop event log)
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private updateVotes(votes: Record<string, number>, remaining: number | null = null) {
         this.voteEntries.forEach(obj => { if ((obj as any).destroy) (obj as any).destroy(); });
         this.voteEntries = [];
         this.voteTitle?.destroy(); this.voteTitle = undefined;
 
-        // ─── تحديث عداد الأصوات المتبقية في الـ overlay ───
+        // â”€â”€â”€ ØªØ­Ø¯ÙŠØ« Ø¹Ø¯Ø§Ø¯ Ø§Ù„Ø£ØµÙˆØ§Øª Ø§Ù„Ù…ØªØ¨Ù‚ÙŠØ© ÙÙŠ Ø§Ù„Ù€ overlay â”€â”€â”€
         if (remaining !== null && this.votingOverlayContainer) {
             const existingCounter = (this.votingOverlayContainer as any)._remainingTxt;
             if (existingCounter) existingCounter.destroy();
@@ -1466,7 +1468,7 @@ export default class GameScene extends Phaser.Scene {
             const barW = Math.min(count * 22, this.EVENTS_W - 130);
             const bgBar = this.add.rectangle(baseX, baseY + 8, this.EVENTS_W - 64, 15, 0x111827).setOrigin(0, 0.5).setDepth(3);
             const bar = this.add.rectangle(baseX, baseY + 8, 2, 15, 0xf59e0b, 0.45).setOrigin(0, 0.5).setDepth(4); bar.setStrokeStyle(1, 0xf59e0b, 0.55);
-            const lbl = this.add.text(baseX + 8, baseY + 8, `${uname}  ×${count}`, { fontSize: "11px", color: "#fbbf24", fontFamily: "'Courier New', monospace" }).setOrigin(0, 0.5).setDepth(5);
+            const lbl = this.add.text(baseX + 8, baseY + 8, `${uname}  Ã—${count}`, { fontSize: "11px", color: "#fbbf24", fontFamily: "'Courier New', monospace" }).setOrigin(0, 0.5).setDepth(5);
             this.tweens.add({ targets: bar, width: barW, duration: 400, ease: "Cubic.easeOut" });
             this.voteEntries.push(bgBar, bar, lbl);
             baseY += 24;
@@ -1474,9 +1476,9 @@ export default class GameScene extends Phaser.Scene {
         this.updateVotingCards(votes);
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Night Result Overlay
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showNightResultOverlay(data: any) {
         this.nightResultOverlay?.destroy();
         this.nightResultOverlay = undefined;
@@ -1488,15 +1490,15 @@ export default class GameScene extends Phaser.Scene {
 
         const rows: Array<{ icon: string; label: string; value: string; color: string }> = [];
         if (this.role === "MAFIA") {
-            rows.push({ icon: "🔪", label: "Your target", value: mafiaTarget?.username || "—", color: "#f87171" });
-            rows.push({ icon: "☠", label: "Outcome", value: victim ? `${victim.username} eliminated` : "Target was saved!", color: victim ? "#f87171" : "#4ade80" });
+            rows.push({ icon: "ðŸ”ª", label: "Your target", value: mafiaTarget?.username || "â€”", color: "#f87171" });
+            rows.push({ icon: "â˜ ", label: "Outcome", value: victim ? `${victim.username} eliminated` : "Target was saved!", color: victim ? "#f87171" : "#4ade80" });
         }
         if (this.role === "DOCTOR") {
-            rows.push({ icon: "✚", label: "You protected", value: doctorSave?.username || "—", color: "#4ade80" });
-            rows.push({ icon: "☠", label: "Outcome", value: victim ? `${victim.username} died` : "You saved them! ✓", color: victim ? "#f87171" : "#4ade80" });
+            rows.push({ icon: "âœš", label: "You protected", value: doctorSave?.username || "â€”", color: "#4ade80" });
+            rows.push({ icon: "â˜ ", label: "Outcome", value: victim ? `${victim.username} died` : "You saved them! âœ“", color: victim ? "#f87171" : "#4ade80" });
         }
         if (this.role === "DETECTIVE") {
-            rows.push({ icon: "🔍", label: "Night victim", value: victim ? victim.username : "Nobody died tonight", color: victim ? "#f87171" : "#4ade80" });
+            rows.push({ icon: "ðŸ”", label: "Night victim", value: victim ? victim.username : "Nobody died tonight", color: victim ? "#f87171" : "#4ade80" });
         }
 
         if (this.isMobile) {
@@ -1508,7 +1510,7 @@ export default class GameScene extends Phaser.Scene {
         const panelW = 340, panelH = 64 + rows.length * 46 + 24;
         const c = this.add.container(this.W / 2, this.H / 2 - 50).setDepth(48).setAlpha(0);
         const bg = this.add.rectangle(0, 0, panelW, panelH, 0x08090f); bg.setStrokeStyle(2, 0xa855f7); bg.setOrigin(0.5);
-        const titleTxt = this.add.text(0, -(panelH / 2) + 22, "🌙  NIGHT RESULTS", { fontSize: "13px", color: "#c084fc", fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3 }).setOrigin(0.5);
+        const titleTxt = this.add.text(0, -(panelH / 2) + 22, "ðŸŒ™  NIGHT RESULTS", { fontSize: "13px", color: "#c084fc", fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3 }).setOrigin(0.5);
         c.add([bg, titleTxt]);
         rows.forEach((row, i) => {
             const rowY = -(panelH / 2) + 58 + i * 46;
@@ -1541,7 +1543,7 @@ export default class GameScene extends Phaser.Scene {
         });
 
         const titleEl = document.createElement("div");
-        titleEl.textContent = "🌙  NIGHT RESULTS";
+        titleEl.textContent = "ðŸŒ™  NIGHT RESULTS";
         Object.assign(titleEl.style, { color: "#c084fc", fontSize: "12px", letterSpacing: "3px", fontWeight: "bold", marginBottom: "12px" });
         banner.appendChild(titleEl);
 
@@ -1573,9 +1575,9 @@ export default class GameScene extends Phaser.Scene {
         setTimeout(() => banner?.remove(), 9000);
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Detective Result (desktop)
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showDetectiveResult(data: any) {
         const isMafia = data.role === "MAFIA";
         const color = isMafia ? this.C.mafia : this.C.alive;
@@ -1583,7 +1585,7 @@ export default class GameScene extends Phaser.Scene {
 
         if (this.isMobile) {
             const rows = [{
-                icon: isMafia ? "⚠" : "✓",
+                icon: isMafia ? "âš " : "âœ“",
                 label: "Investigation Result",
                 value: `${data.username} is ${data.role || (isMafia ? "MAFIA" : "INNOCENT")}`,
                 color: hex,
@@ -1594,16 +1596,16 @@ export default class GameScene extends Phaser.Scene {
 
         const c = this.add.container(this.W / 2, this.H / 2 - 40).setDepth(45).setAlpha(0);
         const bg = this.add.rectangle(0, 0, 360, 88, isMafia ? 0x1a0505 : 0x051a0a); bg.setStrokeStyle(2, color);
-        const title = this.add.text(0, -15, isMafia ? "⚠  MAFIA CONFIRMED" : "✓  INNOCENT CITIZEN", { fontSize: "22px", color: hex, fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 4 }).setOrigin(0.5);
+        const title = this.add.text(0, -15, isMafia ? "âš   MAFIA CONFIRMED" : "âœ“  INNOCENT CITIZEN", { fontSize: "22px", color: hex, fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 4 }).setOrigin(0.5);
         const sub = this.add.text(0, 18, data.username, { fontSize: "13px", color: "#94a3b8", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
         c.add([bg, title, sub]);
         this.tweens.add({ targets: c, alpha: 1, duration: 400, ease: "Back.easeOut" });
         this.time.delayedCall(6000, () => this.tweens.add({ targets: c, alpha: 0, duration: 400, onComplete: () => c.destroy() }));
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Phase Transition
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showPhaseTransition(phase: string) {
         const colorMap: Record<string, string> = {
             NIGHT: "#818cf8", DAY: "#fcd34d", VOTING: "#fbbf24", NIGHT_REVIEW: "#c084fc"
@@ -1618,12 +1620,12 @@ export default class GameScene extends Phaser.Scene {
             targets: ov, alpha: 0.92, scaleX: 1.08, scaleY: 1.08, duration: 550, ease: "Back.easeOut",
             onComplete: () => this.tweens.add({ targets: ov, alpha: 0, scaleX: 1.4, scaleY: 1.4, duration: 650, delay: 1100, onComplete: () => ov.destroy() })
         });
-        this.phaseText?.setText(`◉  ${phase}`).setColor(color);
+        this.phaseText?.setText(`â—‰  ${phase}`).setColor(color);
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Win Overlay
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showWinOverlay(data: any) {
         this.winOverlay?.destroy();
         this.cameras.main.flash(500, data.winner === "MAFIA" ? 100 : 0, data.winner === "MAFIA" ? 0 : 60, 0);
@@ -1644,8 +1646,8 @@ export default class GameScene extends Phaser.Scene {
         vid.id = "win-bg-video";
         vid.src = src;
         vid.autoplay = true;
-        vid.loop = false;   // لا يلف - يشتغل مرة وحدة
-        vid.muted = false;   // مع الصوت
+        vid.loop = false;   // Ù„Ø§ ÙŠÙ„Ù - ÙŠØ´ØªØºÙ„ Ù…Ø±Ø© ÙˆØ­Ø¯Ø©
+        vid.muted = false;   // Ù…Ø¹ Ø§Ù„ØµÙˆØª
         vid.volume = 0.9;
         (vid as any).playsInline = true;
         Object.assign(vid.style, {
@@ -1659,12 +1661,12 @@ export default class GameScene extends Phaser.Scene {
             pointerEvents: "none",
         });
 
-        // لما يبدأ - يطلع
+        // Ù„Ù…Ø§ ÙŠØ¨Ø¯Ø£ - ÙŠØ·Ù„Ø¹
         vid.addEventListener("canplay", () => {
             vid.style.opacity = "1";
         });
 
-        // لما يخلص - يختفي وتطلع النتائج
+        // Ù„Ù…Ø§ ÙŠØ®Ù„Øµ - ÙŠØ®ØªÙÙŠ ÙˆØªØ·Ù„Ø¹ Ø§Ù„Ù†ØªØ§Ø¦Ø¬
         vid.addEventListener("ended", () => {
             vid.style.transition = "opacity 0.6s ease";
             vid.style.opacity = "0";
@@ -1674,7 +1676,7 @@ export default class GameScene extends Phaser.Scene {
             }, 650);
         });
 
-        // لو الفيديو قصير جداً أو خطأ - اطلع النتائج بعد 8 ثواني على الأكثر
+        // Ù„Ùˆ Ø§Ù„ÙÙŠØ¯ÙŠÙˆ Ù‚ØµÙŠØ± Ø¬Ø¯Ø§Ù‹ Ø£Ùˆ Ø®Ø·Ø£ - Ø§Ø·Ù„Ø¹ Ø§Ù„Ù†ØªØ§Ø¦Ø¬ Ø¨Ø¹Ø¯ 8 Ø«ÙˆØ§Ù†ÙŠ Ø¹Ù„Ù‰ Ø§Ù„Ø£ÙƒØ«Ø±
         const fallback = setTimeout(() => {
             vid.remove();
             onFinished();
@@ -1684,7 +1686,7 @@ export default class GameScene extends Phaser.Scene {
 
         document.body.appendChild(vid);
         vid.play().catch(() => {
-            // لو بلوك - اطلع النتائج مباشرة
+            // Ù„Ùˆ Ø¨Ù„ÙˆÙƒ - Ø§Ø·Ù„Ø¹ Ø§Ù„Ù†ØªØ§Ø¦Ø¬ Ù…Ø¨Ø§Ø´Ø±Ø©
             vid.remove();
             onFinished();
         });
@@ -1696,7 +1698,7 @@ export default class GameScene extends Phaser.Scene {
         const accent = isMafia ? "#ef4444" : "#22c55e";
 
         const overlay = document.createElement("div");
-        overlay.id = "mobile-win-overlay"; // نفس الـ ID عشان الـ cleanup يشتغل
+        overlay.id = "mobile-win-overlay"; // Ù†ÙØ³ Ø§Ù„Ù€ ID Ø¹Ø´Ø§Ù† Ø§Ù„Ù€ cleanup ÙŠØ´ØªØºÙ„
         Object.assign(overlay.style, {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
             zIndex: "9999", backgroundColor: "rgba(0,0,0,0.65)",
@@ -1704,7 +1706,7 @@ export default class GameScene extends Phaser.Scene {
             fontFamily: "'Courier New', monospace",
         });
 
-        // ─── Main Card ───
+        // â”€â”€â”€ Main Card â”€â”€â”€
         const card = document.createElement("div");
         Object.assign(card.style, {
             width: "820px", maxWidth: "95vw",
@@ -1714,7 +1716,7 @@ export default class GameScene extends Phaser.Scene {
             boxShadow: `0 0 60px ${accent}55`,
         });
 
-        // ─── Header (كامل العرض) ───
+        // â”€â”€â”€ Header (ÙƒØ§Ù…Ù„ Ø§Ù„Ø¹Ø±Ø¶) â”€â”€â”€
         const header = document.createElement("div");
         Object.assign(header.style, {
             display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -1722,7 +1724,7 @@ export default class GameScene extends Phaser.Scene {
         });
         const leftH = document.createElement("div");
         const iconEl = document.createElement("div");
-        iconEl.textContent = isMafia ? "🔪" : "👑";
+        iconEl.textContent = isMafia ? "ðŸ”ª" : "ðŸ‘‘";
         iconEl.style.cssText = "font-size:36px;margin-bottom:4px";
         const titleEl = document.createElement("div");
         titleEl.textContent = isMafia ? "MAFIA WINS" : "CITIZENS WIN";
@@ -1746,7 +1748,7 @@ export default class GameScene extends Phaser.Scene {
         header.appendChild(leftH);
         header.appendChild(rightH);
 
-        // ─── Body: 3 columns ───
+        // â”€â”€â”€ Body: 3 columns â”€â”€â”€
         const body = document.createElement("div");
         Object.assign(body.style, {
             display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
@@ -1768,7 +1770,7 @@ export default class GameScene extends Phaser.Scene {
             return el;
         };
 
-        // ─── Column 1: Players ───
+        // â”€â”€â”€ Column 1: Players â”€â”€â”€
         const col1 = document.createElement("div");
         col1.style.cssText = `border-right:1px solid ${accent}22;overflow-y:auto;max-height:340px`;
         col1.appendChild(makePanelHeader("PLAYERS"));
@@ -1791,7 +1793,7 @@ export default class GameScene extends Phaser.Scene {
                 fontSize: "16px", flexShrink: "0",
                 border: `2px solid ${roleColors[r.role] || "#94a3b8"}`,
             });
-            av.textContent = r.avatar || "😎";
+            av.textContent = r.avatar || "ðŸ˜Ž";
             const nameEl = document.createElement("span");
             nameEl.textContent = r.username;
             nameEl.style.cssText = "color:#e2e8f0;font-size:12px;font-weight:bold;flex:1";
@@ -1803,7 +1805,7 @@ export default class GameScene extends Phaser.Scene {
         });
         col1.appendChild(col1content);
 
-        // ─── Column 2: Stats ───
+        // â”€â”€â”€ Column 2: Stats â”€â”€â”€
         const col2 = document.createElement("div");
         col2.style.cssText = `border-right:1px solid ${accent}22`;
         col2.appendChild(makePanelHeader("STATS"));
@@ -1829,16 +1831,16 @@ export default class GameScene extends Phaser.Scene {
             row.appendChild(l); row.appendChild(v);
             return row;
         };
-        col2content.appendChild(makeStatDesktop("WINNER", isMafia ? "🔪 MAFIA" : "👑 CITIZENS", accent));
+        col2content.appendChild(makeStatDesktop("WINNER", isMafia ? "ðŸ”ª MAFIA" : "ðŸ‘‘ CITIZENS", accent));
         col2content.appendChild(makeStatDesktop("ROUNDS", `${data.rounds || 1}`, "#e2e8f0"));
-        col2content.appendChild(makeStatDesktop("DURATION", data.duration || "—", "#e2e8f0"));
+        col2content.appendChild(makeStatDesktop("DURATION", data.duration || "â€”", "#e2e8f0"));
         col2content.appendChild(makeStatDesktop("NIGHT KILLS", `${kills}`, "#ef4444"));
         col2content.appendChild(makeStatDesktop("DOCTOR SAVES", `${saves}`, "#22c55e"));
         col2content.appendChild(makeStatDesktop("VOTED OUT", `${eliminated}`, "#f59e0b"));
         col2content.appendChild(makeStatDesktop("VOTE TIES", `${ties}`, "#64748b"));
         col2.appendChild(col2content);
 
-        // ─── Column 3: Timeline ───
+        // â”€â”€â”€ Column 3: Timeline â”€â”€â”€
         const col3 = document.createElement("div");
         col3.style.cssText = "overflow-y:auto;max-height:340px";
         col3.appendChild(makePanelHeader("TIMELINE"));
@@ -1855,7 +1857,7 @@ export default class GameScene extends Phaser.Scene {
                 borderLeft: `2px solid ${typeColors[entry.type] || "#1e3a5f"}`,
             });
             const iconEl = document.createElement("span");
-            iconEl.textContent = entry.icon || "•";
+            iconEl.textContent = entry.icon || "â€¢";
             iconEl.style.cssText = "font-size:12px;flex-shrink:0";
             const textEl = document.createElement("div");
             const roundEl = document.createElement("div");
@@ -1874,7 +1876,7 @@ export default class GameScene extends Phaser.Scene {
         body.appendChild(col2);
         body.appendChild(col3);
 
-        // ─── Footer ───
+        // â”€â”€â”€ Footer â”€â”€â”€
         const footer = document.createElement("div");
         footer.textContent = "Waiting for admin to start new game...";
         Object.assign(footer.style, {
@@ -1907,7 +1909,7 @@ export default class GameScene extends Phaser.Scene {
             padding: "16px",
         });
 
-        // ─── Card ───
+        // â”€â”€â”€ Card â”€â”€â”€
         const card = document.createElement("div");
         Object.assign(card.style, {
             width: "100%", maxWidth: "420px",
@@ -1919,14 +1921,14 @@ export default class GameScene extends Phaser.Scene {
             marginTop: "8px",
         });
 
-        // ─── Header ───
+        // â”€â”€â”€ Header â”€â”€â”€
         const header = document.createElement("div");
         Object.assign(header.style, {
             textAlign: "center", padding: "20px 16px 12px",
             borderBottom: `1px solid ${accent}33`,
         });
         const icon = document.createElement("div");
-        icon.textContent = isMafia ? "🔪" : "👑";
+        icon.textContent = isMafia ? "ðŸ”ª" : "ðŸ‘‘";
         icon.style.cssText = "font-size:44px;margin-bottom:8px";
         const title = document.createElement("div");
         title.textContent = isMafia ? "MAFIA WINS" : "CITIZENS WIN";
@@ -1935,13 +1937,13 @@ export default class GameScene extends Phaser.Scene {
             fontFamily: "'Georgia', serif", letterSpacing: "4px",
         });
         const sub = document.createElement("div");
-        sub.textContent = `${data.rounds || 1} round${(data.rounds || 1) > 1 ? "s" : ""} · ${data.duration || ""}`;
+        sub.textContent = `${data.rounds || 1} round${(data.rounds || 1) > 1 ? "s" : ""} Â· ${data.duration || ""}`;
         sub.style.cssText = `color:#475569;font-size:11px;margin-top:4px;letter-spacing:1px`;
         header.appendChild(icon);
         header.appendChild(title);
         header.appendChild(sub);
 
-        // ─── Tabs ───
+        // â”€â”€â”€ Tabs â”€â”€â”€
         const tabBar = document.createElement("div");
         Object.assign(tabBar.style, {
             display: "flex", borderBottom: `1px solid ${accent}33`,
@@ -1980,11 +1982,11 @@ export default class GameScene extends Phaser.Scene {
             return btn;
         };
 
-        const rolesBtn = createTab("roles", "PLAYERS");
-        const statsBtn = createTab("stats", "STATS");
-        const timelineBtn = createTab("timeline", "TIMELINE");
+        const rolesBtn = createTab("roles", ar.game.players);
+        const statsBtn = createTab("stats", ar.game.stats);
+        const timelineBtn = createTab("timeline", ar.game.timeline);
 
-        // ─── Tab: PLAYERS ───
+        // â”€â”€â”€ Tab: PLAYERS â”€â”€â”€
         const roleColors: Record<string, string> = {
             MAFIA: "#ef4444", DOCTOR: "#22c55e",
             DETECTIVE: "#3b82f6", CITIZEN: "#94a3b8", ADMIN: "#f59e0b",
@@ -2010,7 +2012,7 @@ export default class GameScene extends Phaser.Scene {
                     fontSize: "18px", flexShrink: "0",
                     border: `2px solid ${roleColors[r.role] || "#94a3b8"}`,
                 });
-                avatarEl.textContent = r.avatar || "😎";
+                avatarEl.textContent = r.avatar || "🙂";
 
                 const nameEl = document.createElement("span");
                 nameEl.textContent = r.username;
@@ -2021,7 +2023,7 @@ export default class GameScene extends Phaser.Scene {
                 roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:10px;letter-spacing:2px`;
 
                 const deadEl = document.createElement("span");
-                deadEl.textContent = r.alive === false ? "☠" : "";
+                deadEl.textContent = r.alive === false ? "✖" : "";
                 deadEl.style.cssText = "color:#374151;font-size:14px";
 
                 row.appendChild(avatarEl);
@@ -2032,7 +2034,7 @@ export default class GameScene extends Phaser.Scene {
             });
         }
 
-        // ─── Tab: STATS ───
+        // â”€â”€â”€ Tab: STATS â”€â”€â”€
         const makeStatRow = (label: string, value: string, color = "#94a3b8") => {
             const row = document.createElement("div");
             Object.assign(row.style, {
@@ -2056,15 +2058,15 @@ export default class GameScene extends Phaser.Scene {
         const eliminated = (data.votingEliminations || []).filter((v: any) => !v.tie).length;
         const ties = (data.votingEliminations || []).filter((v: any) => v.tie).length;
 
-        tabContents["stats"].appendChild(makeStatRow("WINNER", isMafia ? "🔪 MAFIA" : "👑 CITIZENS", accent));
-        tabContents["stats"].appendChild(makeStatRow("ROUNDS PLAYED", `${data.rounds || 1}`, "#e2e8f0"));
-        tabContents["stats"].appendChild(makeStatRow("GAME DURATION", data.duration || "—", "#e2e8f0"));
-        tabContents["stats"].appendChild(makeStatRow("NIGHT KILLS", `${kills}`, "#ef4444"));
-        tabContents["stats"].appendChild(makeStatRow("DOCTOR SAVES", `${saves}`, "#22c55e"));
-        tabContents["stats"].appendChild(makeStatRow("VOTED OUT", `${eliminated}`, "#f59e0b"));
-        tabContents["stats"].appendChild(makeStatRow("VOTE TIES", `${ties}`, "#64748b"));
+        tabContents["stats"].appendChild(makeStatRow(ar.game.winner, isMafia ? ar.game.roleResultWinnerMafia : ar.game.roleResultWinnerCitizens, accent));
+        tabContents["stats"].appendChild(makeStatRow(ar.game.roundsPlayed, `${data.rounds || 1}`, "#e2e8f0"));
+        tabContents["stats"].appendChild(makeStatRow(ar.game.gameDuration, data.duration || ar.game.noValue, "#e2e8f0"));
+        tabContents["stats"].appendChild(makeStatRow(ar.game.nightKills, `${kills}`, "#ef4444"));
+        tabContents["stats"].appendChild(makeStatRow(ar.game.doctorSaves, `${saves}`, "#22c55e"));
+        tabContents["stats"].appendChild(makeStatRow(ar.game.votedOut, `${eliminated}`, "#f59e0b"));
+        tabContents["stats"].appendChild(makeStatRow(ar.game.voteTies, `${ties}`, "#64748b"));
 
-        // ─── Tab: TIMELINE ───
+        // â”€â”€â”€ Tab: TIMELINE â”€â”€â”€
         if (data.gameLog?.length) {
             data.gameLog.forEach((entry: any) => {
                 const row = document.createElement("div");
@@ -2086,7 +2088,7 @@ export default class GameScene extends Phaser.Scene {
 
                 const textEl = document.createElement("div");
                 const roundLabel = document.createElement("div");
-                roundLabel.textContent = `ROUND ${entry.round}`;
+                roundLabel.textContent = ar.game.roundLabel(entry.round);
                 roundLabel.style.cssText = "color:#374151;font-size:9px;letter-spacing:1px;margin-bottom:2px";
                 const msgEl = document.createElement("div");
                 msgEl.textContent = entry.text;
@@ -2100,23 +2102,23 @@ export default class GameScene extends Phaser.Scene {
             });
         } else {
             const empty = document.createElement("div");
-            empty.textContent = "No events recorded";
+            empty.textContent = ar.game.noEventsRecorded;
             empty.style.cssText = "color:#374151;font-size:12px;text-align:center;padding:20px";
             tabContents["timeline"].appendChild(empty);
         }
 
-        // ─── Footer ───
+        // â”€â”€â”€ Footer â”€â”€â”€
         const footer = document.createElement("div");
         Object.assign(footer.style, {
             textAlign: "center", padding: "12px",
             borderTop: `1px solid ${accent}22`,
         });
         const waitEl = document.createElement("div");
-        waitEl.textContent = "Waiting for admin to start new game...";
+        waitEl.textContent = ar.game.waitingForAdmin;
         waitEl.style.cssText = "color:#374151;font-size:10px;letter-spacing:1px";
         footer.appendChild(waitEl);
 
-        // ─── Assemble ───
+        // â”€â”€â”€ Assemble â”€â”€â”€
         card.appendChild(header);
         card.appendChild(tabBar);
         Object.values(tabContents).forEach(tc => card.appendChild(tc));
@@ -2124,17 +2126,17 @@ export default class GameScene extends Phaser.Scene {
         overlay.appendChild(card);
         document.body.appendChild(overlay);
 
-        // فعّل PLAYERS tab افتراضياً
+        // ÙØ¹Ù‘Ù„ PLAYERS tab Ø§ÙØªØ±Ø§Ø¶ÙŠØ§Ù‹
         rolesBtn.click();
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Admin Controls (Desktop)
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private createAdminToggleBtn() {
         this.adminToggleBtn = document.createElement("button");
         this.adminToggleBtn.id = "admin-toggle-btn";
-        this.adminToggleBtn.innerHTML = "⚙  CONTROL PANEL";
+        this.adminToggleBtn.innerHTML = ar.game.adminPanel;
         Object.assign(this.adminToggleBtn.style, {
             position: "absolute", right: "16px", top: "10px",
             padding: "8px 20px", fontSize: "12px",
@@ -2146,10 +2148,10 @@ export default class GameScene extends Phaser.Scene {
         this.adminToggleBtn.addEventListener("click", () => this.toggleAdminDrawer());
         document.body.appendChild(this.adminToggleBtn);
 
-        // ─── زر REJOIN منفصل ───
+        // â”€â”€â”€ Ø²Ø± REJOIN Ù…Ù†ÙØµÙ„ â”€â”€â”€
         const rejoinBtn = document.createElement("button");
         rejoinBtn.id = "admin-rejoin-btn";
-        rejoinBtn.innerHTML = "➕ REJOIN";
+        rejoinBtn.innerHTML = ar.game.rejoin;
         Object.assign(rejoinBtn.style, {
             position: "absolute", right: "16px", top: "48px",
             padding: "6px 16px", fontSize: "11px",
@@ -2177,27 +2179,27 @@ export default class GameScene extends Phaser.Scene {
         });
 
         const roles = [
-            { key: "MAFIA", label: "🔪 مافيا", color: "#ef4444" },
-            { key: "DOCTOR", label: "✚ طبيب", color: "#4ade80" },
-            { key: "DETECTIVE", label: "🔍 محقق", color: "#60a5fa" },
-            { key: "CITIZEN", label: "◎ مواطن", color: "#94a3b8" },
+            { key: "MAFIA", label: ar.roles.MAFIA, color: "#ef4444" },
+            { key: "DOCTOR", label: ar.roles.DOCTOR, color: "#4ade80" },
+            { key: "DETECTIVE", label: ar.roles.DETECTIVE, color: "#60a5fa" },
+            { key: "CITIZEN", label: ar.roles.CITIZEN, color: "#94a3b8" },
         ];
 
         popup.innerHTML = `
-            <div style="color:#22c55e;font-size:10px;letter-spacing:3px;font-weight:bold;margin-bottom:8px">➕ REJOIN CODE</div>
-            <div style="color:#4a5568;font-size:9px;margin-bottom:12px;direction:rtl;text-align:right;line-height:1.5">اختر دور اللاعب البديل ثم ولّد الكود</div>
+            <div style="color:#22c55e;font-size:10px;letter-spacing:3px;font-weight:bold;margin-bottom:8px">${ar.game.rejoinCode}</div>
+            <div style="color:#4a5568;font-size:9px;margin-bottom:12px;direction:rtl;text-align:right;line-height:1.5">${ar.game.selectReplacementRole}</div>
             <div id="arj-roles" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
                 ${roles.map(r => `
                     <button data-role="${r.key}" style="padding:10px 6px;border:1px solid #21262d;border-radius:6px;background:transparent;color:#4a5568;font-size:11px;cursor:pointer;font-family:'Courier New',monospace;direction:rtl">${r.label}</button>
                 `).join("")}
             </div>
-            <button id="arj-gen-btn" style="width:100%;padding:11px;border:1px solid #374151;border-radius:6px;background:transparent;color:#374151;font-size:11px;letter-spacing:2px;cursor:not-allowed;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:10px" disabled>🔑 GENERATE CODE</button>
+            <button id="arj-gen-btn" style="width:100%;padding:11px;border:1px solid #374151;border-radius:6px;background:transparent;color:#374151;font-size:11px;letter-spacing:2px;cursor:not-allowed;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:10px" disabled>${ar.game.generateCode}</button>
             <div id="arj-result" style="display:none;background:#060e06;border:1px solid #22c55e;border-radius:8px;padding:14px;text-align:center;margin-bottom:10px">
                 <div id="arj-role-label" style="color:#94a3b8;font-size:9px;letter-spacing:2px;margin-bottom:6px"></div>
                 <div id="arj-code" style="color:#22c55e;font-size:40px;font-weight:bold;letter-spacing:10px"></div>
-                <div style="color:#374151;font-size:9px;margin-top:6px">valid 15 min</div>
+                <div style="color:#374151;font-size:9px;margin-top:6px">${ar.game.validFor15Minutes}</div>
             </div>
-            <button id="arj-close" style="width:100%;padding:7px;background:none;border:1px solid #21262d;border-radius:5px;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">CLOSE</button>
+            <button id="arj-close" style="width:100%;padding:7px;background:none;border:1px solid #21262d;border-radius:5px;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">${ar.game.close}</button>
         `;
 
         document.body.appendChild(popup);
@@ -2210,22 +2212,22 @@ export default class GameScene extends Phaser.Scene {
 
         let selectedRole = "";
 
-        // أزرار الأدوار
+        // Ø£Ø²Ø±Ø§Ø± Ø§Ù„Ø£Ø¯ÙˆØ§Ø±
         popup.querySelectorAll<HTMLButtonElement>("[data-role]").forEach(btn => {
             const r = roles.find(x => x.key === btn.dataset.role)!;
             btn.addEventListener("click", () => {
-                // reset كل الأزرار
+                // reset ÙƒÙ„ Ø§Ù„Ø£Ø²Ø±Ø§Ø±
                 popup.querySelectorAll<HTMLButtonElement>("[data-role]").forEach(b => {
                     b.style.borderColor = "#21262d";
                     b.style.color = "#4a5568";
                     b.style.background = "transparent";
                 });
-                // highlight المختار
+                // highlight Ø§Ù„Ù…Ø®ØªØ§Ø±
                 btn.style.borderColor = r.color;
                 btn.style.color = r.color;
                 btn.style.background = `${r.color}18`;
                 selectedRole = r.key;
-                // فعّل زر Generate
+                // ÙØ¹Ù‘Ù„ Ø²Ø± Generate
                 genBtn.disabled = false;
                 genBtn.style.borderColor = "#22c55e";
                 genBtn.style.color = "#22c55e";
@@ -2237,7 +2239,7 @@ export default class GameScene extends Phaser.Scene {
         genBtn.addEventListener("click", () => {
             if (!selectedRole) return;
             socketService.socket.emit("admin_generate_room_code", { role: selectedRole });
-            genBtn.textContent = "Generating...";
+            genBtn.textContent = ar.game.generating;
             genBtn.style.opacity = "0.6";
             socketService.socket.once("room_code_generated", (data: any) => {
                 const r = roles.find(x => x.key === data.role);
@@ -2245,7 +2247,7 @@ export default class GameScene extends Phaser.Scene {
                 roleLabel.textContent = r?.label || data.role;
                 roleLabel.style.color = r?.color || "#94a3b8";
                 codeEl.textContent = data.code;
-                genBtn.textContent = "🔄 NEW CODE";
+                genBtn.textContent = ar.game.newCode;
                 genBtn.style.opacity = "1";
             });
         });
@@ -2295,37 +2297,37 @@ export default class GameScene extends Phaser.Scene {
             .ns-label{color:#64748b;letter-spacing:1px}
         </style>
         <div class="adr-header">
-            <div class="adr-title">👑  ADMIN  CONTROL  PANEL</div>
-            <button class="adr-close" id="adr-close-btn">✕</button>
+            <div class="adr-title">ðŸ‘‘  ADMIN  CONTROL  PANEL</div>
+            <button class="adr-close" id="adr-close-btn">âœ•</button>
         </div>
         <div class="adr-section">
             <div class="adr-section-title">Phase Controls</div>
             <div class="adr-btn-grid">
-                <button class="adr-btn adr-btn-night"    data-event="admin_start_night">🌙 START NIGHT</button>
-                <button class="adr-btn adr-btn-day"      data-event="admin_end_night">☀ END NIGHT</button>
-                <button class="adr-btn adr-btn-vote"     data-event="admin_start_voting">🗳 START VOTING</button>
-                <button class="adr-btn adr-btn-stopvote" data-event="admin_end_voting">⏹ END VOTING</button>
-                <button class="adr-btn adr-btn-danger"   data-event="admin_end_game">⚡ FORCE END</button>
-                <button class="adr-btn adr-btn-restart"  data-event="restart_game">🔄 RESTART</button>
-                <button class="adr-btn adr-btn-reset"    id="adr-reset-server-btn">🗑 RESET SERVER</button>
+                <button class="adr-btn adr-btn-night"    data-event="admin_start_night">ðŸŒ™ START NIGHT</button>
+                <button class="adr-btn adr-btn-day"      data-event="admin_end_night">â˜€ END NIGHT</button>
+                <button class="adr-btn adr-btn-vote"     data-event="admin_start_voting">ðŸ—³ START VOTING</button>
+                <button class="adr-btn adr-btn-stopvote" data-event="admin_end_voting">â¹ END VOTING</button>
+                <button class="adr-btn adr-btn-danger"   data-event="admin_end_game">âš¡ FORCE END</button>
+                <button class="adr-btn adr-btn-restart"  data-event="restart_game">ðŸ”„ RESTART</button>
+                <button class="adr-btn adr-btn-reset"    id="adr-reset-server-btn">ðŸ—‘ RESET SERVER</button>
             </div>
         </div>
         <div class="adr-section" id="adr-status-section" style="display:none">
-            <div class="adr-section-title" style="color:#60a5fa">🌙 Night Actions</div>
+            <div class="adr-section-title" style="color:#60a5fa">ðŸŒ™ Night Actions</div>
             <div style="background:#0a0e14;border:1px solid #1e2d45;border-radius:6px;overflow:hidden" id="adr-night-status">
-                <div class="ns-row"><span class="ns-label">🔪 Mafia</span><span style="color:#374151">⏳ Waiting...</span></div>
-                <div class="ns-row"><span class="ns-label">✚ Doctor</span><span style="color:#374151">⏳ Waiting...</span></div>
-                <div class="ns-row"><span class="ns-label">🔍 Detective</span><span style="color:#374151">⏳ Waiting...</span></div>
+                <div class="ns-row"><span class="ns-label">ðŸ”ª Mafia</span><span style="color:#374151">â³ Waiting...</span></div>
+                <div class="ns-row"><span class="ns-label">âœš Doctor</span><span style="color:#374151">â³ Waiting...</span></div>
+                <div class="ns-row"><span class="ns-label">ðŸ” Detective</span><span style="color:#374151">â³ Waiting...</span></div>
             </div>
         </div>
         <div class="adr-section" id="adr-night-section" style="display:none">
-            <div class="adr-section-title" style="color:#a855f7">🌙 Night Results</div>
+            <div class="adr-section-title" style="color:#a855f7">ðŸŒ™ Night Results</div>
             <div class="nr-grid" id="adr-night-grid"></div>
         </div>
         <div class="adr-section" id="adr-story-section" style="display:none">
-            <div class="adr-section-title" style="color:#a855f7">📖 Tonight's Story</div>
+            <div class="adr-section-title" style="color:#a855f7">ðŸ“– Tonight's Story</div>
             <textarea class="adr-story-textarea" id="adr-story-input" placeholder="Write what happened tonight..."></textarea>
-            <button class="adr-reveal-btn" id="adr-reveal-btn">📢 REVEAL STORY TO ALL</button>
+            <button class="adr-reveal-btn" id="adr-reveal-btn">ðŸ“¢ REVEAL STORY TO ALL</button>
         </div>`;
 
         document.body.appendChild(drawer);
@@ -2342,9 +2344,9 @@ export default class GameScene extends Phaser.Scene {
             (drawer.querySelector("#adr-night-section") as HTMLElement).style.display = "none";
             (drawer.querySelector("#adr-story-section") as HTMLElement).style.display = "none";
         });
-        // ─── زر RESET SERVER ───
+        // â”€â”€â”€ Ø²Ø± RESET SERVER â”€â”€â”€
         drawer.querySelector("#adr-reset-server-btn")?.addEventListener("click", () => {
-            if (confirm("⚠️ هذا سيطرد كل اللاعبين ويمسح الجلسة كاملة. متأكد؟")) {
+            if (confirm("âš ï¸ Ù‡Ø°Ø§ Ø³ÙŠØ·Ø±Ø¯ ÙƒÙ„ Ø§Ù„Ù„Ø§Ø¹Ø¨ÙŠÙ† ÙˆÙŠÙ…Ø³Ø­ Ø§Ù„Ø¬Ù„Ø³Ø© ÙƒØ§Ù…Ù„Ø©. Ù…ØªØ£ÙƒØ¯ØŸ")) {
                 socketService.socket.emit("admin_reset_server");
                 this.closeAdminDrawer();
             }
@@ -2358,9 +2360,9 @@ export default class GameScene extends Phaser.Scene {
         document.addEventListener("click", this.outsideClickHandler);
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Mobile Admin Buttons
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private createMobileAdminButtons() {
         const adminBar = document.createElement("div");
         adminBar.id = "mobile-admin-bar";
@@ -2371,7 +2373,7 @@ export default class GameScene extends Phaser.Scene {
             fontFamily: "'Courier New', monospace",
         });
 
-        // ─── Night Actions Status (مخفي بالبداية، يظهر بالليل) ───
+        // â”€â”€â”€ Night Actions Status (Ù…Ø®ÙÙŠ Ø¨Ø§Ù„Ø¨Ø¯Ø§ÙŠØ©ØŒ ÙŠØ¸Ù‡Ø± Ø¨Ø§Ù„Ù„ÙŠÙ„) â”€â”€â”€
         const nightStatus = document.createElement("div");
         nightStatus.id = "mobile-night-status";
         Object.assign(nightStatus.style, {
@@ -2382,37 +2384,37 @@ export default class GameScene extends Phaser.Scene {
             gap: "0",
         });
         nightStatus.innerHTML = `
-            <div style="font-size:8px;color:#f59e0b;letter-spacing:2px;margin-bottom:6px">🌙 NIGHT ACTIONS</div>
+            <div style="font-size:8px;color:#f59e0b;letter-spacing:2px;margin-bottom:6px">${ar.game.nightActions}</div>
             <div id="mns-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
                 <div class="mns-cell" id="mns-mafia"  style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:5px;padding:6px 8px;text-align:center">
-                    <div style="font-size:9px;color:#64748b;margin-bottom:2px">🔪 MAFIA</div>
-                    <div id="mns-mafia-val" style="font-size:10px;color:#374151">⏳</div>
+                    <div style="font-size:9px;color:#64748b;margin-bottom:2px">${ar.roles.MAFIA}</div>
+                    <div id="mns-mafia-val" style="font-size:10px;color:#374151">${ar.game.waiting}</div>
                 </div>
                 <div class="mns-cell" id="mns-doctor" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:5px;padding:6px 8px;text-align:center">
-                    <div style="font-size:9px;color:#64748b;margin-bottom:2px">✚ DOCTOR</div>
-                    <div id="mns-doctor-val" style="font-size:10px;color:#374151">⏳</div>
+                    <div style="font-size:9px;color:#64748b;margin-bottom:2px">${ar.roles.DOCTOR}</div>
+                    <div id="mns-doctor-val" style="font-size:10px;color:#374151">${ar.game.waiting}</div>
                 </div>
                 <div class="mns-cell" id="mns-detective" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:5px;padding:6px 8px;text-align:center">
-                    <div style="font-size:9px;color:#64748b;margin-bottom:2px">🔍 DET.</div>
-                    <div id="mns-detective-val" style="font-size:10px;color:#374151">⏳</div>
+                    <div style="font-size:9px;color:#64748b;margin-bottom:2px">${ar.roles.DETECTIVE}</div>
+                    <div id="mns-detective-val" style="font-size:10px;color:#374151">${ar.game.waiting}</div>
                 </div>
             </div>
         `;
         adminBar.appendChild(nightStatus);
 
-        // ─── أزرار التحكم ───
+        // â”€â”€â”€ Ø£Ø²Ø±Ø§Ø± Ø§Ù„ØªØ­ÙƒÙ… â”€â”€â”€
         const btnRow = document.createElement("div");
         Object.assign(btnRow.style, {
             display: "flex", flexWrap: "wrap", gap: "6px", padding: "8px",
         });
 
         const adminBtns = [
-            { label: "🌙 NIGHT", event: "admin_start_night" },
-            { label: "☀ END NIGHT", event: "admin_end_night" },
-            { label: "🗳 VOTE", event: "admin_start_voting" },
-            { label: "⏹ STOP", event: "admin_end_voting" },
-            { label: "⚡ END", event: "admin_end_game" },
-            { label: "🔄 RESTART", event: "restart_game" },
+            { label: ar.game.startNight, event: "admin_start_night" },
+            { label: ar.game.endNight, event: "admin_end_night" },
+            { label: ar.game.startVoting, event: "admin_start_voting" },
+            { label: ar.game.stopVoting, event: "admin_end_voting" },
+            { label: ar.game.forceEnd, event: "admin_end_game" },
+            { label: ar.game.restart, event: "restart_game" },
         ];
 
         adminBtns.forEach(b => {
@@ -2429,9 +2431,9 @@ export default class GameScene extends Phaser.Scene {
             btnRow.appendChild(btn);
         });
 
-        // ─── زر REJOIN للموبايل ───
+        // â”€â”€â”€ Ø²Ø± REJOIN Ù„Ù„Ù…ÙˆØ¨Ø§ÙŠÙ„ â”€â”€â”€
         const rejoinMobileBtn = document.createElement("button");
-        rejoinMobileBtn.textContent = "➕ REJOIN";
+        rejoinMobileBtn.textContent = ar.game.rejoin;
         Object.assign(rejoinMobileBtn.style, {
             padding: "8px 10px", fontSize: "10px", fontWeight: "bold",
             fontFamily: "'Courier New', monospace", letterSpacing: "1px",
@@ -2466,27 +2468,27 @@ export default class GameScene extends Phaser.Scene {
         });
 
         const roles = [
-            { key: "MAFIA", label: "🔪 مافيا", color: "#ef4444" },
-            { key: "DOCTOR", label: "✚ طبيب", color: "#4ade80" },
-            { key: "DETECTIVE", label: "🔍 محقق", color: "#60a5fa" },
-            { key: "CITIZEN", label: "◎ مواطن", color: "#94a3b8" },
+            { key: "MAFIA", label: ar.roles.MAFIA, color: "#ef4444" },
+            { key: "DOCTOR", label: ar.roles.DOCTOR, color: "#4ade80" },
+            { key: "DETECTIVE", label: ar.roles.DETECTIVE, color: "#60a5fa" },
+            { key: "CITIZEN", label: ar.roles.CITIZEN, color: "#94a3b8" },
         ];
 
         box.innerHTML = `
-            <div style="color:#22c55e;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:8px">➕ REJOIN CODE</div>
-            <div style="color:#4a5568;font-size:10px;margin-bottom:14px;direction:rtl;text-align:right;line-height:1.5">اختر دور اللاعب البديل</div>
+            <div style="color:#22c55e;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:8px">${ar.game.rejoinCode}</div>
+            <div style="color:#4a5568;font-size:10px;margin-bottom:14px;direction:rtl;text-align:right;line-height:1.5">${ar.game.selectReplacementRole}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
                 ${roles.map(r => `
                     <button data-role="${r.key}" style="padding:12px 6px;border:1px solid #21262d;border-radius:6px;background:transparent;color:#4a5568;font-size:12px;cursor:pointer;font-family:'Courier New',monospace;direction:rtl;touch-action:manipulation">${r.label}</button>
                 `).join("")}
             </div>
-            <button id="mrj-gen-btn" style="width:100%;padding:12px;border:1px solid #374151;border-radius:6px;background:transparent;color:#374151;font-size:12px;letter-spacing:2px;cursor:not-allowed;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:12px;touch-action:manipulation" disabled>🔑 GENERATE CODE</button>
+            <button id="mrj-gen-btn" style="width:100%;padding:12px;border:1px solid #374151;border-radius:6px;background:transparent;color:#374151;font-size:12px;letter-spacing:2px;cursor:not-allowed;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:12px;touch-action:manipulation" disabled>${ar.game.generateCode}</button>
             <div id="mrj-result" style="display:none;background:#060e06;border:1px solid #22c55e;border-radius:8px;padding:16px;text-align:center;margin-bottom:12px">
                 <div id="mrj-role-label" style="color:#94a3b8;font-size:9px;letter-spacing:2px;margin-bottom:8px"></div>
                 <div id="mrj-code" style="color:#22c55e;font-size:44px;font-weight:bold;letter-spacing:12px"></div>
-                <div style="color:#374151;font-size:9px;margin-top:8px">valid 15 min</div>
+                <div style="color:#374151;font-size:9px;margin-top:8px">${ar.game.validFor15Minutes}</div>
             </div>
-            <button id="mrj-close" style="width:100%;padding:10px;background:none;border:1px solid #21262d;border-radius:6px;color:#4a5568;font-size:11px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;touch-action:manipulation">CLOSE</button>
+            <button id="mrj-close" style="width:100%;padding:10px;background:none;border:1px solid #21262d;border-radius:6px;color:#4a5568;font-size:11px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;touch-action:manipulation">${ar.game.close}</button>
         `;
 
         popup.appendChild(box);
@@ -2523,7 +2525,7 @@ export default class GameScene extends Phaser.Scene {
         genBtn.addEventListener("click", () => {
             if (!selectedRole) return;
             socketService.socket.emit("admin_generate_room_code", { role: selectedRole });
-            genBtn.textContent = "Generating...";
+            genBtn.textContent = ar.game.generating;
             genBtn.style.opacity = "0.6";
             socketService.socket.once("room_code_generated", (data: any) => {
                 const r = roles.find(x => x.key === data.role);
@@ -2531,7 +2533,7 @@ export default class GameScene extends Phaser.Scene {
                 roleLabel.textContent = r?.label || data.role;
                 roleLabel.style.color = r?.color || "#94a3b8";
                 codeEl.textContent = data.code;
-                genBtn.textContent = "🔄 NEW CODE";
+                genBtn.textContent = ar.game.newCode;
                 genBtn.style.opacity = "1";
             });
         });
@@ -2547,7 +2549,7 @@ export default class GameScene extends Phaser.Scene {
         this.adminDrawerOpen = !this.adminDrawerOpen;
         if (this.adminDrawer) this.adminDrawer.style.right = this.adminDrawerOpen ? "0" : "-520px";
         if (this.adminToggleBtn) {
-            this.adminToggleBtn.innerHTML = this.adminDrawerOpen ? "✕  CLOSE" : "⚙  CONTROL PANEL";
+            this.adminToggleBtn.innerHTML = this.adminDrawerOpen ? ar.game.close : ar.game.adminPanel;
             this.adminToggleBtn.style.color = this.adminDrawerOpen ? "#ef4444" : "#f59e0b";
             this.adminToggleBtn.style.borderColor = this.adminDrawerOpen ? "#ef4444" : "#f59e0b";
         }
@@ -2556,7 +2558,7 @@ export default class GameScene extends Phaser.Scene {
     private closeAdminDrawer() {
         this.adminDrawerOpen = false;
         if (this.adminDrawer) this.adminDrawer.style.right = "-520px";
-        if (this.adminToggleBtn) { this.adminToggleBtn.innerHTML = "⚙  CONTROL PANEL"; this.adminToggleBtn.style.color = "#f59e0b"; this.adminToggleBtn.style.borderColor = "#f59e0b"; }
+        if (this.adminToggleBtn) { this.adminToggleBtn.innerHTML = ar.game.adminPanel; this.adminToggleBtn.style.color = "#f59e0b"; this.adminToggleBtn.style.borderColor = "#f59e0b"; }
     }
 
     private updateAdminDrawerPhase(phase: string) {
@@ -2567,29 +2569,29 @@ export default class GameScene extends Phaser.Scene {
     private updateNightActionStatus(status: any) {
         const render = (done: boolean, username: string | null) =>
             done
-                ? `<span style="color:#4ade80">✓ ${username}</span>`
-                : `<span style="color:#374151">⏳</span>`;
+                ? `<span style="color:#4ade80">${ar.game.completedBy(username || "")}</span>`
+                : `<span style="color:#374151">${ar.game.waiting}</span>`;
 
-        // ─── ديسكتوب: admin drawer ───
+        // â”€â”€â”€ Ø¯ÙŠØ³ÙƒØªÙˆØ¨: admin drawer â”€â”€â”€
         if (this.adminDrawer) {
             const statusEl = this.adminDrawer.querySelector<HTMLElement>("#adr-night-status");
             if (statusEl) {
                 statusEl.innerHTML = `
-                    <div class="ns-row"><span class="ns-label">🔪 Mafia</span>${render(status.mafia.done, status.mafia.username)}</div>
-                    <div class="ns-row"><span class="ns-label">✚ Doctor</span>${render(status.doctor.done, status.doctor.username)}</div>
-                    <div class="ns-row"><span class="ns-label">🔍 Detective</span>${render(status.detective.done, status.detective.username)}</div>
+                    <div class="ns-row"><span class="ns-label">${ar.roles.MAFIA}</span>${render(status.mafia.done, status.mafia.username)}</div>
+                    <div class="ns-row"><span class="ns-label">${ar.roles.DOCTOR}</span>${render(status.doctor.done, status.doctor.username)}</div>
+                    <div class="ns-row"><span class="ns-label">${ar.roles.DETECTIVE}</span>${render(status.detective.done, status.detective.username)}</div>
                 `;
                 const section = this.adminDrawer.querySelector<HTMLElement>("#adr-status-section");
                 if (section) section.style.display = "block";
             }
         }
 
-        // ─── موبايل: mobile-night-status ───
+        // â”€â”€â”€ Ù…ÙˆØ¨Ø§ÙŠÙ„: mobile-night-status â”€â”€â”€
         const mobileStatus = document.getElementById("mobile-night-status");
         if (mobileStatus) {
             mobileStatus.style.display = "block";
             const mRender = (done: boolean, username: string | null) =>
-                done ? `<span style="color:#4ade80;font-size:11px">✓</span>` : `<span style="color:#374151;font-size:11px">⏳</span>`;
+                done ? `<span style="color:#4ade80;font-size:11px">${ar.game.live}</span>` : `<span style="color:#374151;font-size:11px">${ar.game.waiting}</span>`;
 
             const mafiaVal = document.getElementById("mns-mafia-val");
             const doctorVal = document.getElementById("mns-doctor-val");
@@ -2609,9 +2611,9 @@ export default class GameScene extends Phaser.Scene {
         const grid = this.adminDrawer.querySelector<HTMLElement>("#adr-night-grid");
         if (grid) {
             grid.innerHTML = `
-                <span class="nr-cell nr-label">🔪 Mafia Target</span><span class="nr-cell nr-value" style="color:#f87171">${mafiaTarget?.username || "—"}</span>
-                <span class="nr-cell nr-label">✚ Doctor Saved</span><span class="nr-cell nr-value" style="color:#4ade80">${doctorSave?.username || "—"}</span>
-                <span class="nr-cell nr-label">☠ Final Victim</span><span class="nr-cell nr-value" style="color:${victim ? "#f87171" : "#4ade80"}">${victim ? victim.username : "Protected ✓"}</span>`;
+                <span class="nr-cell nr-label">${ar.game.mafiaTarget}</span><span class="nr-cell nr-value" style="color:#f87171">${mafiaTarget?.username || ar.game.noValue}</span>
+                <span class="nr-cell nr-label">${ar.game.doctorSaved}</span><span class="nr-cell nr-value" style="color:#4ade80">${doctorSave?.username || ar.game.noValue}</span>
+                <span class="nr-cell nr-label">${ar.game.finalVictim}</span><span class="nr-cell nr-value" style="color:${victim ? "#f87171" : "#4ade80"}">${victim ? victim.username : ar.game.protected}</span>`;
         }
         (this.adminDrawer.querySelector("#adr-night-section") as HTMLElement).style.display = "block";
         (this.adminDrawer.querySelector("#adr-story-section") as HTMLElement).style.display = "block";
@@ -2620,9 +2622,9 @@ export default class GameScene extends Phaser.Scene {
         if (!this.adminDrawerOpen) this.toggleAdminDrawer();
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Socket Listeners
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private setupSocketListeners() {
         const evts = [
             "room_state", "phase_changed", "game_over", "game_started",
@@ -2639,7 +2641,7 @@ export default class GameScene extends Phaser.Scene {
                 NIGHT: "#818cf8", DAY: "#fcd34d", VOTING: "#fbbf24",
                 NIGHT_REVIEW: "#c084fc", WAITING: "#64748b"
             };
-            this.phaseText?.setText(`◉  ${getPhaseLabel(data.phase)}`).setColor(colorMap[data.phase] || "#64748b");
+            this.phaseText?.setText(`â—‰  ${getPhaseLabel(data.phase)}`).setColor(colorMap[data.phase] || "#64748b");
             this.drawPlayers(data.players, data.phase);
             this.updateChatUI(data.phase);
 
@@ -2664,10 +2666,10 @@ export default class GameScene extends Phaser.Scene {
             if (data.phase === "NIGHT" && !this.isAdmin) {
                 const targetScene = nightSceneMap[this.role];
                 if (targetScene) {
-                    // لو اللاعب ميت — ما يروح لـ NightScene، يضل مشاهد
+                    // Ù„Ùˆ Ø§Ù„Ù„Ø§Ø¹Ø¨ Ù…ÙŠØª â€” Ù…Ø§ ÙŠØ±ÙˆØ­ Ù„Ù€ NightSceneØŒ ÙŠØ¶Ù„ Ù…Ø´Ø§Ù‡Ø¯
                     const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
                     if (!myPlayer?.alive) {
-                        // يضل في GameScene بس الشات مسكر
+                        // ÙŠØ¶Ù„ ÙÙŠ GameScene Ø¨Ø³ Ø§Ù„Ø´Ø§Øª Ù…Ø³ÙƒØ±
                         return;
                     }
                     if (this.isNightSceneActive) return;
@@ -2677,33 +2679,33 @@ export default class GameScene extends Phaser.Scene {
                     return;
                 }
             }
-            // reset حالة الـ night actions للأدمن عند بداية الليل
+            // reset Ø­Ø§Ù„Ø© Ø§Ù„Ù€ night actions Ù„Ù„Ø£Ø¯Ù…Ù† Ø¹Ù†Ø¯ Ø¨Ø¯Ø§ÙŠØ© Ø§Ù„Ù„ÙŠÙ„
             if (data.phase === "NIGHT" && this.isAdmin) {
-                // ديسكتوب
+                // Ø¯ÙŠØ³ÙƒØªÙˆØ¨
                 if (this.adminDrawer) {
                     const statusEl = this.adminDrawer.querySelector<HTMLElement>("#adr-night-status");
                     if (statusEl) {
                         statusEl.innerHTML = `
-                            <div class="ns-row"><span class="ns-label">🔪 Mafia</span><span style="color:#374151">⏳ Waiting...</span></div>
-                            <div class="ns-row"><span class="ns-label">✚ Doctor</span><span style="color:#374151">⏳ Waiting...</span></div>
-                            <div class="ns-row"><span class="ns-label">🔍 Detective</span><span style="color:#374151">⏳ Waiting...</span></div>
+                            <div class="ns-row"><span class="ns-label">ðŸ”ª Mafia</span><span style="color:#374151">â³ Waiting...</span></div>
+                            <div class="ns-row"><span class="ns-label">âœš Doctor</span><span style="color:#374151">â³ Waiting...</span></div>
+                            <div class="ns-row"><span class="ns-label">ðŸ” Detective</span><span style="color:#374151">â³ Waiting...</span></div>
                         `;
                     }
                     const section = this.adminDrawer.querySelector<HTMLElement>("#adr-status-section");
                     if (section) section.style.display = "block";
                 }
-                // موبايل
+                // Ù…ÙˆØ¨Ø§ÙŠÙ„
                 const mobileStatus = document.getElementById("mobile-night-status");
                 if (mobileStatus) {
                     mobileStatus.style.display = "block";
                     const ids = ["mns-mafia-val", "mns-doctor-val", "mns-detective-val"];
                     ids.forEach(id => {
                         const el = document.getElementById(id);
-                        if (el) el.innerHTML = `<span style="color:#374151;font-size:11px">⏳</span>`;
+                        if (el) el.innerHTML = `<span style="color:#374151;font-size:11px">â³</span>`;
                     });
                 }
             }
-            // إخفاء mobile night status لما ما نكون في NIGHT
+            // Ø¥Ø®ÙØ§Ø¡ mobile night status Ù„Ù…Ø§ Ù…Ø§ Ù†ÙƒÙˆÙ† ÙÙŠ NIGHT
             if (data.phase !== "NIGHT" && data.phase !== "NIGHT_REVIEW") {
                 const mobileStatus = document.getElementById("mobile-night-status");
                 if (mobileStatus) mobileStatus.style.display = "none";
@@ -2712,7 +2714,7 @@ export default class GameScene extends Phaser.Scene {
             this.showPhaseTransition(data.phase);
             this.roundText?.setText(ar.game.round(data.round));
             this.updateChatUI(data.phase);
-            // ─── تحديث قواعد الصوت ───
+            // â”€â”€â”€ ØªØ­Ø¯ÙŠØ« Ù‚ÙˆØ§Ø¹Ø¯ Ø§Ù„ØµÙˆØª â”€â”€â”€
             const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
             voiceManager.setPhase(data.phase, this.role, myPlayer?.alive ?? true);
             socketService.socket.emit("request_room_state");
@@ -2729,14 +2731,14 @@ export default class GameScene extends Phaser.Scene {
                     else this.showVotingOverlay();
                 });
             }
-            // شات التصويت — ديسكتوب فقط، الموبايل chat مدمج في الـ overlay
+            // Ø´Ø§Øª Ø§Ù„ØªØµÙˆÙŠØª â€” Ø¯ÙŠØ³ÙƒØªÙˆØ¨ ÙÙ‚Ø·ØŒ Ø§Ù„Ù…ÙˆØ¨Ø§ÙŠÙ„ chat Ù…Ø¯Ù…Ø¬ ÙÙŠ Ø§Ù„Ù€ overlay
             if (!this.isMobile) {
                 this.time.delayedCall(400, () => this.showVotingChat());
             }
         });
 
         socketService.socket.on("vote_update", (v: any) => {
-            // v ممكن يكون { votes, remaining } أو object قديم مباشرة
+            // v Ù…Ù…ÙƒÙ† ÙŠÙƒÙˆÙ† { votes, remaining } Ø£Ùˆ object Ù‚Ø¯ÙŠÙ… Ù…Ø¨Ø§Ø´Ø±Ø©
             const votes = v?.votes ?? v;
             const remaining = v?.remaining ?? null;
             this.updateVotes(votes, remaining);
@@ -2747,7 +2749,7 @@ export default class GameScene extends Phaser.Scene {
             this.addEventLog(msg, data.tie ? "#fbbf24" : "#f87171");
             this.cameras.main.shake(data.tie ? 150 : 350, 0.006);
             this.closeVotingOverlay(true, { eliminated: data.eliminated, tie: data.tie });
-            // امسح شات التصويت
+            // Ø§Ù…Ø³Ø­ Ø´Ø§Øª Ø§Ù„ØªØµÙˆÙŠØª
             document.getElementById("voting-chat-panel")?.remove();
             document.getElementById("voting-chat-toggle")?.remove();
         });
@@ -2769,11 +2771,11 @@ export default class GameScene extends Phaser.Scene {
 
         socketService.socket.on("receive_message", (data: any) => {
             this.addChatMessage(data.username, data.message, data.alive);
-            // لو في voting chat مفتوح — نضيف الرسالة فيه أيضاً
+            // Ù„Ùˆ ÙÙŠ voting chat Ù…ÙØªÙˆØ­ â€” Ù†Ø¶ÙŠÙ Ø§Ù„Ø±Ø³Ø§Ù„Ø© ÙÙŠÙ‡ Ø£ÙŠØ¶Ø§Ù‹
             const votingMessages = document.getElementById("voting-chat-messages");
             if (votingMessages) {
                 const isMe = data.username === this.currentPlayers.find(p => p.id === socketService.socket.id)?.username
-                    || (this.isAdmin && data.username === "ADMIN 👑");
+                    || (this.isAdmin && data.username === "ADMIN ðŸ‘‘");
                 const msg = document.createElement("div");
                 Object.assign(msg.style, {
                     padding: "4px 8px", borderRadius: "5px", maxWidth: "90%",
@@ -2789,7 +2791,7 @@ export default class GameScene extends Phaser.Scene {
         });
 
         socketService.socket.on("night_review", (data: any) => {
-            // night_review بوصل للأدمن بس — الـ clients ما يشوفوا النتائج
+            // night_review Ø¨ÙˆØµÙ„ Ù„Ù„Ø£Ø¯Ù…Ù† Ø¨Ø³ â€” Ø§Ù„Ù€ clients Ù…Ø§ ÙŠØ´ÙˆÙÙˆØ§ Ø§Ù„Ù†ØªØ§Ø¦Ø¬
             if (this.isAdmin) {
                 this.showNightReviewInDrawer(data);
             }
@@ -2819,7 +2821,7 @@ export default class GameScene extends Phaser.Scene {
             this.scene.start("GameScene", { role: data.role, roomId: data.roomId, userType: newUserType });
         });
 
-        // ─── Server Reset — كل الكل يرجع للـ lobby ───
+        // â”€â”€â”€ Server Reset â€” ÙƒÙ„ Ø§Ù„ÙƒÙ„ ÙŠØ±Ø¬Ø¹ Ù„Ù„Ù€ lobby â”€â”€â”€
         socketService.socket.on("server_reset", () => {
             socketService.reset();
             this.cleanupAllHTML();
@@ -2830,9 +2832,9 @@ export default class GameScene extends Phaser.Scene {
         });
     }
 
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Cleanup
-    // ══════════════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private cleanupAllHTML() {
         document.getElementById("mobile-game-ui")?.remove();
         document.getElementById("mobile-voting-overlay")?.remove();
@@ -2866,8 +2868,8 @@ export default class GameScene extends Phaser.Scene {
             "voice_peers", "voice_peer_joined", "voice_reconnect_request",
         ];
         evts.forEach(e => socketService.socket.off(e));
-        // ─── تنظيف الصوت ───
-        voiceManager.disconnectAll();
+        // â”€â”€â”€ ØªÙ†Ø¸ÙŠÙ Ø§Ù„ØµÙˆØª â”€â”€â”€
         this.tweens.killAll();
     }
 }
+

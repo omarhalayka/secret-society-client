@@ -1,6 +1,6 @@
 ﻿import Phaser from "phaser";
 import { socketService } from "../../socket";
-import { ar } from "../../i18n";
+import { ar, ARABIC_FONT_FAMILY } from "../../i18n";
 
 export default class DoctorNightScene extends Phaser.Scene {
 
@@ -95,30 +95,30 @@ export default class DoctorNightScene extends Phaser.Scene {
         const line = this.add.graphics().setDepth(3);
         line.lineStyle(2, this.C.accent, 0.8);
         line.moveTo(0, 56); line.lineTo(W, 56); line.strokePath();
-        this.add.text(20, 28, "âœš  DOCTOR", {
+        this.add.text(20, 28, ar.night.doctorRoleLabel, {
             fontSize: "14px", color: "#22c55e",
-            fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3
+            fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", align: "right"
         }).setOrigin(0, 0.5).setDepth(3);
-        this.add.text(W / 2, 28, `ROOM  ${this.roomId?.substring(0, 8).toUpperCase()}`, {
+        this.add.text(W / 2, 28, ar.night.room(this.roomId?.substring(0, 8).toUpperCase()), {
             fontSize: "11px", color: "#2d6640",
-            fontFamily: "'Courier New', monospace", letterSpacing: 2
+            fontFamily: ARABIC_FONT_FAMILY, align: "center"
         }).setOrigin(0.5, 0.5).setDepth(3);
-        this.add.text(W - 20, 28, "â—‰  NIGHT PHASE", {
+        this.add.text(W - 20, 28, ar.night.nightPhase, {
             fontSize: "11px", color: "#2d6640",
-            fontFamily: "'Courier New', monospace", letterSpacing: 2
+            fontFamily: ARABIC_FONT_FAMILY, align: "right"
         }).setOrigin(1, 0.5).setDepth(3);
     }
 
     private drawTitle(W: number) {
         const titleY = 110;
-        const title = this.add.text(W / 2, titleY, "CHOOSE WHO TO SAVE", {
+        const title = this.add.text(W / 2, titleY, ar.night.doctorTitle, {
             fontSize: "32px", color: "#e8f1e8",
-            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 6,
+            fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", align: "center",
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: title, alpha: 1, y: titleY - 5, duration: 700, ease: "Cubic.easeOut", delay: 300 });
-        const sub = this.add.text(W / 2, titleY + 38, "Protect one player from the Mafia tonight", {
+        const sub = this.add.text(W / 2, titleY + 38, ar.night.doctorSubtitle, {
             fontSize: "13px", color: "#2d6640",
-            fontFamily: "'Courier New', monospace", letterSpacing: 2
+            fontFamily: ARABIC_FONT_FAMILY, align: "center"
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: sub, alpha: 1, duration: 600, delay: 500 });
         const divider = this.add.graphics().setDepth(2).setAlpha(0);
@@ -179,15 +179,15 @@ export default class DoctorNightScene extends Phaser.Scene {
             topAccent.strokePath();
 
             const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x051a05); avatarBg.setStrokeStyle(1, this.C.borderDim);
-            const avatarIcon = this.add.text(0, -cardH * 0.23, isMe ? "ðŸ§‘" : "ðŸ‘¤", { fontSize: `${Math.floor(cardW * 0.2)}px` }).setOrigin(0.5);
+            const avatarIcon = this.add.text(0, -cardH * 0.23, isMe ? "أنت" : "لاعب", { fontSize: `${Math.floor(cardW * 0.11)}px`, fontFamily: ARABIC_FONT_FAMILY }).setOrigin(0.5);
             const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
             this.tweens.add({ targets: pulse, alpha: 0.15, scaleX: 1.3, scaleY: 1.3, duration: 1200, yoyo: true, repeat: -1, delay: i * 200 });
             const name = this.add.text(0, cardH * 0.07, player.username.toUpperCase(), {
                 fontSize: `${Math.max(10, Math.floor(cardW * 0.086))}px`,
                 color: isMe ? "#a3e6b4" : "#b8c8b8",
-                fontFamily: "'Courier New', monospace", fontStyle: isMe ? "bold" : "normal", letterSpacing: 1
+                fontFamily: ARABIC_FONT_FAMILY, fontStyle: isMe ? "bold" : "normal", letterSpacing: 1
             }).setOrigin(0.5);
-            const meLabel = isMe ? this.add.text(0, cardH * 0.16, "[ YOU ]", { fontSize: "9px", color: "#2d6640", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5) : null;
+            const meLabel = isMe ? this.add.text(0, cardH * 0.16, ar.night.you, { fontSize: "9px", color: "#2d6640", fontFamily: ARABIC_FONT_FAMILY, align: "center" }).setOrigin(0.5) : null;
 
             const btnBg = this.add.graphics();
             const drawBtnBg = (hover: boolean) => {
@@ -199,7 +199,7 @@ export default class DoctorNightScene extends Phaser.Scene {
             };
             drawBtnBg(false);
 
-            const btnLabel = this.add.text(0, cardH * 0.38, "PROTECT", { fontSize: "10px", color: "#22c55e", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
+            const btnLabel = this.add.text(0, cardH * 0.38, ar.night.doctorProtect, { fontSize: "10px", color: "#22c55e", fontFamily: ARABIC_FONT_FAMILY, align: "center" }).setOrigin(0.5);
             const items: Phaser.GameObjects.GameObject[] = [shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel];
             if (meLabel) items.push(meLabel);
             container.add(items);
@@ -222,8 +222,8 @@ export default class DoctorNightScene extends Phaser.Scene {
         });
         this.tweens.add({ targets: selected, scaleX: 1.1, scaleY: 1.1, duration: 250, ease: "Back.easeOut" });
         drawBg(false, true);
-        btnLabel.setText("SAVED âœ“").setColor("#4ade80");
-        const mark = this.add.text(selected.x, selected.y - 20, "âœš", { fontSize: "52px", color: "#22c55e", fontStyle: "bold", fontFamily: "'Georgia', serif" }).setOrigin(0.5).setAlpha(0).setDepth(10);
+        btnLabel.setText(ar.night.doctorProtected).setColor("#4ade80");
+        const mark = this.add.text(selected.x, selected.y - 20, "✓", { fontSize: "52px", color: "#22c55e", fontStyle: "bold", fontFamily: ARABIC_FONT_FAMILY }).setOrigin(0.5).setAlpha(0).setDepth(10);
         this.tweens.add({ targets: mark, alpha: 1, scaleX: 1.2, scaleY: 1.2, duration: 200, yoyo: true, repeat: 1, onComplete: () => this.tweens.add({ targets: mark, alpha: 0, duration: 400, onComplete: () => mark.destroy() }) });
         socketService.socket.emit("doctor_save", player.id);
         this.showToast(ar.night.doctorProtecting(player.username), "success");
@@ -239,7 +239,7 @@ export default class DoctorNightScene extends Phaser.Scene {
             position: "fixed", top: "56px", left: "0", right: "0", bottom: "0",
             zIndex: "100", backgroundColor: "rgba(8,16,10,0.97)",
             display: "flex", flexDirection: "column",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
         });
 
         const header = document.createElement("div");
@@ -248,9 +248,9 @@ export default class DoctorNightScene extends Phaser.Scene {
             backgroundColor: "rgba(0,0,0,0.4)",
         });
         header.innerHTML = `
-            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">âœš DOCTOR</div>
-            <div style="color:#e8f1e8;font-size:18px;font-weight:bold;letter-spacing:2px">CHOOSE WHO TO SAVE</div>
-            <div style="color:#2d6640;font-size:11px;margin-top:4px">Protect one player from the Mafia tonight</div>
+            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">${ar.night.doctorRoleLabel}</div>
+            <div style="color:#e8f1e8;font-size:18px;font-weight:bold">${ar.night.doctorTitle}</div>
+            <div style="color:#2d6640;font-size:11px;margin-top:4px">${ar.night.doctorSubtitle}</div>
         `;
         ui.appendChild(header);
 
@@ -263,7 +263,7 @@ export default class DoctorNightScene extends Phaser.Scene {
         const targets = this.players.filter(p => p.alive);
         if (targets.length === 0) {
             const empty = document.createElement("div");
-            empty.textContent = "No players available";
+            empty.textContent = ar.night.noPlayers;
             Object.assign(empty.style, { color: "#2d6640", textAlign: "center", marginTop: "40px", fontSize: "14px" });
             list.appendChild(empty);
         } else {
@@ -281,24 +281,24 @@ export default class DoctorNightScene extends Phaser.Scene {
                 });
 
                 const avatar = document.createElement("div");
-                avatar.textContent = isMe ? "ðŸ§‘" : "ðŸ‘¤";
+                avatar.textContent = isMe ? ar.night.you : "لاعب";
                 avatar.style.fontSize = "28px";
 
                 const nameEl = document.createElement("div");
-                nameEl.textContent = player.username + (isMe ? " (YOU)" : "");
+                nameEl.textContent = player.username + (isMe ? ` (${ar.night.you})` : "");
                 Object.assign(nameEl.style, {
                     flex: "1", color: isMe ? "#a3e6b4" : "#b8c8b8",
                     fontSize: "15px", fontWeight: isMe ? "bold" : "normal",
                 });
 
                 const btn = document.createElement("button");
-                btn.textContent = "PROTECT";
+                btn.textContent = ar.night.doctorProtect;
                 Object.assign(btn.style, {
                     padding: "10px 16px", fontSize: "11px", fontWeight: "bold",
                     letterSpacing: "2px", border: "1px solid rgba(34,197,94,0.5)",
                     borderRadius: "6px", background: "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)",
                     color: "#22c55e", cursor: "pointer",
-                    fontFamily: "'Courier New', monospace",
+                    fontFamily: ARABIC_FONT_FAMILY,
                     touchAction: "manipulation",
                     transition: "all 0.2s",
                     boxShadow: "0 2px 4px rgba(0,0,0,0.5)"
@@ -308,7 +308,7 @@ export default class DoctorNightScene extends Phaser.Scene {
                     if (this.actionUsed) return;
                     this.actionUsed = true;
                     this.savedPlayerId = player.id;
-                    btn.textContent = "âœ“ SAVING";
+                    btn.textContent = ar.night.doctorSaving;
                     btn.style.background = "linear-gradient(180deg, #22c55e, #16a34a)";
                     btn.style.color = "#000";
                     btn.style.borderColor = "#4ade80";
@@ -347,7 +347,7 @@ export default class DoctorNightScene extends Phaser.Scene {
         const toast = this.add.container(W / 2, H - 40).setDepth(20);
         const msgW = Math.min(message.length * 9 + 48, Math.min(420, W - 20));
         const bg = this.add.rectangle(0, 0, msgW, 40, c.bg); bg.setStrokeStyle(1, c.border);
-        const text = this.add.text(0, 0, message, { fontSize: "13px", color: c.text, fontFamily: "'Courier New', monospace" }).setOrigin(0.5);
+        const text = this.add.text(0, 0, message, { fontSize: "13px", color: c.text, fontFamily: ARABIC_FONT_FAMILY }).setOrigin(0.5);
         toast.add([bg, text]);
         toast.setAlpha(0).setY(H - 10);
         this.tweens.add({ targets: toast, alpha: 1, y: H - 60, duration: 300, ease: "Cubic.easeOut" });
@@ -393,7 +393,7 @@ export default class DoctorNightScene extends Phaser.Scene {
         const card = document.createElement("div");
         card.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid #ef444444;border-left:3px solid ${color};animation:eventSlideIn 0.3s ease-out`;
         card.innerHTML = `
-            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">ðŸ”ª</div>
+            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">!</div>
             <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;margin-bottom:3px">
                     <span style="font-size:9px;font-weight:bold;letter-spacing:2px;color:${color};font-family:'Courier New',monospace">ELIMINATED</span>

@@ -1,3 +1,6 @@
+﻿export const ARABIC_FONT_FAMILY = "Tajawal";
+export const UI_FONT_FAMILY = ARABIC_FONT_FAMILY;
+
 export const ar = {
     appTitle: "المنظمة السرية",
     phases: {
@@ -33,6 +36,20 @@ export const ar = {
         noPassword: "لا توجد كلمة سر للجلسة",
         serverReset: "تمت إعادة ضبط الخادم من الأدمن",
         sessionReset: "تم تغيير كلمة السر، أدخل الكلمة الجديدة للمتابعة",
+        usernameLabel: "اسم المستخدم",
+        joinAsLabel: "طريقة الدخول",
+        cardTag: "المنظمة السرية",
+        subtitle: "لعبة جماعية في الخداع والاستنتاج",
+        tagline: "اخدع. استنتج. وابقَ حياً.",
+        featureHiddenRoles: "أدوار مخفية",
+        featureStrategicVoting: "تصويت استراتيجي",
+        featureNightElimination: "إقصاء ليلي",
+        rolePlayer: "لاعب",
+        roleSpectator: "مشاهد",
+        roleAdmin: "أدمن",
+        roleUnlocked: "تم فتح اللعب، اختر لاعب",
+        resetServerButton: "إعادة ضبط الخادم",
+        resetServerConfirm: "سيتم طرد جميع اللاعبين ومسح الجلسة بالكامل. هل أنت متأكد؟",
     },
     roles: {
         ADMIN: "الأدمن",
@@ -45,6 +62,9 @@ export const ar = {
     night: {
         room: (roomId: string) => `الغرفة ${roomId}`,
         nightPhase: "مرحلة الليل",
+        mafiaRoleLabel: "المافيا",
+        doctorRoleLabel: "الطبيب",
+        detectiveRoleLabel: "المحقق",
         mafiaTitle: "اختر هدفك",
         mafiaDeadTitle: "لقد خرجت من اللعبة",
         mafiaSubtitle: "نسّق مع فريقك ثم ثبّت الهدف",
@@ -73,6 +93,8 @@ export const ar = {
     },
     game: {
         players: "اللاعبون",
+        stats: "الإحصاءات",
+        timeline: "التسلسل",
         events: "الأحداث",
         chat: "الدردشة",
         live: "مباشر",
@@ -84,8 +106,57 @@ export const ar = {
         nightStory: (story: string) => `القصة: ${story}`,
         doctorSelectionError: "اختيار الطبيب غير صالح",
         mafiaSelectionError: "اختيار المافيا غير صالح",
+        voiceMicDenied: "تم رفض إذن الميكروفون",
+        voiceFailed: "تعذر تشغيل الصوت",
+        voiceClickToUnmute: "اضغط لإلغاء الكتم",
+        voiceClickToMute: "اضغط لكتم الميكروفون",
+        winner: "الفائز",
+        roundsPlayed: "الجولات",
+        gameDuration: "مدة اللعبة",
+        nightKills: "قتلى الليل",
+        doctorSaves: "إنقاذات الطبيب",
+        votedOut: "المقصيون بالتصويت",
+        voteTies: "تعادلات التصويت",
+        noEventsRecorded: "لا توجد أحداث مسجلة",
+        waitingForAdmin: "بانتظار الأدمن لبدء لعبة جديدة...",
+        adminPanel: "لوحة الأدمن",
+        close: "إغلاق",
+        rejoin: "إعادة الانضمام",
+        rejoinCode: "رمز إعادة الانضمام",
+        selectReplacementRole: "اختر دور اللاعب البديل ثم ولّد الرمز",
+        generateCode: "توليد الرمز",
+        generating: "جارٍ التوليد...",
+        newCode: "رمز جديد",
+        validFor15Minutes: "صالح لمدة 15 دقيقة",
+        phaseControls: "التحكم بالمراحل",
+        startNight: "ابدأ الليل",
+        endNight: "إنهاء الليل",
+        startVoting: "ابدأ التصويت",
+        stopVoting: "إيقاف التصويت",
+        forceEnd: "إنهاء فوري",
+        restart: "إعادة التشغيل",
+        nightActions: "إجراءات الليل",
+        waiting: "بانتظار التنفيذ",
+        completedBy: (username: string) => `تم بواسطة ${username}`,
+        nightResults: "نتائج الليل",
+        tonightStory: "قصة الليلة",
+        writeTonightStory: "اكتب ما حدث هذه الليلة...",
+        revealStory: "اعرض القصة للجميع",
+        mafiaTarget: "هدف المافيا",
+        doctorSaved: "إنقاذ الطبيب",
+        finalVictim: "الضحية النهائية",
+        protected: "تمت الحماية",
+        noValue: "—",
+        roleResultWinnerMafia: "المافيا",
+        roleResultWinnerCitizens: "المواطنون",
+        roundLabel: (round: number) => `الجولة ${round}`,
     },
 };
+
+export function t(path: string) {
+    const value = path.split(".").reduce<any>((acc, key) => acc?.[key], ar);
+    return typeof value === "string" ? value : path;
+}
 
 export function getPhaseLabel(phase: string) {
     return ar.phases[phase as keyof typeof ar.phases] || phase;
@@ -97,4 +168,21 @@ export function applyArabicDocumentLayout() {
     document.body.dir = "rtl";
     document.body.style.direction = "rtl";
     document.body.style.textAlign = "right";
+    document.documentElement.style.setProperty("--ss-font-ar", ARABIC_FONT_FAMILY);
+
+    if (!document.getElementById("ss-arabic-layout")) {
+        const style = document.createElement("style");
+        style.id = "ss-arabic-layout";
+        style.textContent = `
+            html, body, button, input, textarea, select {
+                font-family: var(--ss-font-ar), Cairo, 'Segoe UI', Tahoma, sans-serif;
+            }
+            body {
+                direction: rtl;
+                text-align: right;
+                unicode-bidi: plaintext;
+            }
+        `;
+        document.head.appendChild(style);
+    }
 }

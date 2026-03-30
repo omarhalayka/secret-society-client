@@ -1,7 +1,8 @@
 ﻿import Phaser from "phaser";
 import { socketService } from "../../socket";
 import { audioManager } from "../../AudioManager";
-import { ar } from "../../i18n";
+import { ar, ARABIC_FONT_FAMILY } from "../../i18n";
+import { voiceManager } from "../../VoiceManager";
 
 // â”€â”€â”€ ÙƒÙ„Ù…Ø© Ø³Ø± Ø§Ù„Ø£Ø¯Ù…Ù† â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // ØºÙŠÙ‘Ø±Ù‡Ø§ Ù„Ø£ÙŠ ÙƒÙ„Ù…Ø© ØªØ¨ØºØ§Ù‡Ø§
@@ -43,7 +44,9 @@ export default class LobbyScene extends Phaser.Scene {
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  CREATE
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     create() {
+        voiceManager.destroy();
         // â”€â”€â”€ ØªØ­Ù‚Ù‚ Ù…Ù† Ø¬Ù„Ø³Ø© Ù…Ø­ÙÙˆØ¸Ø© Ø£ÙˆÙ„Ø§Ù‹ â”€â”€â”€
         const saved = socketService.getSavedSession();
         if (saved) {
@@ -86,7 +89,7 @@ export default class LobbyScene extends Phaser.Scene {
                 playerBtn.setAlpha(0.4);
                 playerBtn.disableInteractive();
                 const icon = playerBtn.getData("icon") as Phaser.GameObjects.Text;
-                if (icon) icon.setText("ðŸ”’");
+                if (icon) icon.setText("🔒");
             }
             const roles = [
                 { key: "player", colHex: 0x22c55e, hex: "#22c55e" },
@@ -102,20 +105,20 @@ export default class LobbyScene extends Phaser.Scene {
                     Phaser.Geom.Rectangle.Contains
                 );
             }
-            this.showToast(data.message || "ØªÙ… ØªØºÙŠÙŠØ± ÙƒÙ„Ù…Ø© Ø§Ù„Ø³Ø± â€” Ø£Ø¯Ø®Ù„ Ø§Ù„ÙƒÙ„Ù…Ø© Ø§Ù„Ø¬Ø¯ÙŠØ¯Ø©", "error");
+            this.showToast(data.message || ar.lobby.sessionReset, "error");
         });
 
         socketService.socket.on("server_reset", () => {
             socketService.reset();
             (this as any)._pendingPlayerPassword = null;
-            this.showToast("ðŸ”„ Server reset by admin", "info");
+            this.showToast(ar.lobby.serverReset, "info");
             this.time.delayedCall(800, () => { this.scene.restart(); });
         });
 
         socketService.socket.on("player_count_updated", (data: any) => {
             (this as any)._requiredPlayers = data.required || 6;
             if (this.queueStatusText?.active) {
-                this.queueStatusText.setText(`â—  0 / ${data.required} in queue`).setColor("#3b4a5c");
+                this.queueStatusText.setText(ar.lobby.queueCount(0, data.required)).setColor("#3b4a5c");
             }
         });
     }
@@ -229,7 +232,7 @@ export default class LobbyScene extends Phaser.Scene {
         // â”€â”€â”€ Ø²Ø± HTML Ø¹Ø´Ø§Ù† Ø§Ù„Ù†Øµ Ø§Ù„Ø¹Ø±Ø¨ÙŠ ÙŠØ·Ù„Ø¹ ØµØ­ (RTL) â”€â”€â”€
         const btn = document.createElement("button");
         btn.id = "splash-btn";
-        btn.textContent = "Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø¥Ù„Ù‰ Ø§Ù„Ù…Ù†Ø¸Ù…Ø© Ø§Ù„Ø³ÙˆØ¯Ø§Ø¡";
+        btn.textContent = ar.lobby.enterSociety;
         Object.assign(btn.style, {
             position: "fixed",
             bottom: "60px",
@@ -238,7 +241,7 @@ export default class LobbyScene extends Phaser.Scene {
             zIndex: "2000",
             padding: "14px 36px",
             fontSize: "20px",
-            fontFamily: "'Georgia', serif",
+            fontFamily: ARABIC_FONT_FAMILY,
             fontWeight: "bold",
             color: "#ffffff",
             background: "#3b82f6",
@@ -382,7 +385,7 @@ export default class LobbyScene extends Phaser.Scene {
         // Ø¹Ù†ÙˆØ§Ù† ØµØºÙŠØ± Ø£Ø¹Ù„Ù‰ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© - HTML Ø¹Ø´Ø§Ù† RTL
         const cardTagEl = document.createElement("div");
         cardTagEl.id = "lobby-card-tag";
-        cardTagEl.textContent = "Ø§Ù„Ù…Ù†Ø¸Ù…Ø© Ø§Ù„Ø³ÙˆØ¯Ø§Ø¡";
+        cardTagEl.textContent = ar.lobby.cardTag;
         Object.assign(cardTagEl.style, {
             position: "fixed",
             top: `${posY}px`,
@@ -399,13 +402,13 @@ export default class LobbyScene extends Phaser.Scene {
         posY += 28;
 
         // USERNAME
-        this.addFieldLabel(fL, posY, "USERNAME");
+        this.addFieldLabel(fL, posY, ar.lobby.usernameLabel);
         posY += 18;
         this.createUsernameInput(fL, posY, cardW - pad * 2);
         posY += 56; // Ø§Ø±ØªÙØ§Ø¹ Ø§Ù„Ù€ input (44px) + gap (12px)
 
         // JOIN AS
-        this.addFieldLabel(fL, posY, "JOIN  AS");
+        this.addFieldLabel(fL, posY, ar.lobby.joinAsLabel);
         posY += 18;
         this.createRoleButtons(formCx, posY + 32, cardW - pad * 2);
         posY += 90; // Ø§Ø±ØªÙØ§Ø¹ Ø§Ù„Ø£Ø²Ø±Ø§Ø± (64px) + gap (26px)
@@ -416,7 +419,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         // Queue status
         this.queueStatusText = this.add.text(formCx, cardTop + cardH - 32,
-            "â—  0 / 6 in queue", {
+            ar.lobby.queueCount(0, 6), {
             fontSize: "11px", color: "#3b4a5c",
             fontFamily: "'Courier New', monospace", letterSpacing: 1
         }).setOrigin(0.5).setDepth(3);
@@ -448,7 +451,7 @@ export default class LobbyScene extends Phaser.Scene {
         const titleSize = Math.min(Math.floor(heroW * 0.055), 28);
         const titleEl = document.createElement("div");
         titleEl.id = "lobby-hero-title";
-        titleEl.textContent = "Ø§Ù„Ù…Ù†Ø¸Ù…Ø© Ø§Ù„Ø³ÙˆØ¯Ø§Ø¡";
+        titleEl.textContent = ar.appTitle;
         Object.assign(titleEl.style, {
             position: "fixed",
             top: `${cy - 10 - titleSize}px`,
@@ -472,7 +475,7 @@ export default class LobbyScene extends Phaser.Scene {
         const t1 = this.add.rectangle(cx, cy - 10, 10, titleSize * 2.4, 0x000000, 0).setDepth(2);
 
         // subtitle
-        const t2 = this.add.text(cx, cy + titleSize + 22, "MULTIPLAYER  Â·  SOCIAL DEDUCTION", {
+        const t2 = this.add.text(cx, cy + titleSize + 22, ar.lobby.subtitle, {
             fontSize: "10px", color: "#3b82f6",
             fontFamily: "'Courier New', monospace", letterSpacing: 3
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
@@ -484,7 +487,7 @@ export default class LobbyScene extends Phaser.Scene {
         g2.moveTo(cx - lineW / 2, cy + titleSize + 50); g2.lineTo(cx + lineW / 2, cy + titleSize + 50); g2.strokePath();
 
         // Ø¬Ù…Ù„Ø© italics
-        const t3 = this.add.text(cx, cy + titleSize + 68, "Deceive.  Deduce.  Survive.", {
+        const t3 = this.add.text(cx, cy + titleSize + 68, ar.lobby.tagline, {
             fontSize: "13px", color: "#2d3748",
             fontFamily: "'Georgia', serif", fontStyle: "italic"
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
@@ -493,9 +496,9 @@ export default class LobbyScene extends Phaser.Scene {
         // â”€â”€â”€ Features â”€â”€â”€
         const baseY = cy + titleSize + 108;
         [
-            { ico: "ðŸ”ª", text: "Hidden Roles" },
-            { ico: "ðŸ—³ï¸", text: "Strategic Voting" },
-            { ico: "ðŸŒ™", text: "Night Elimination" },
+            { ico: "🔪", text: ar.lobby.featureHiddenRoles },
+            { ico: "🗳", text: ar.lobby.featureStrategicVoting },
+            { ico: "🌙", text: ar.lobby.featureNightElimination },
         ].forEach((item, i) => {
             const f = this.add.text(cx, baseY + i * 32, `${item.ico}  ${item.text}`, {
                 fontSize: "12px", color: "#1a2535",
@@ -633,9 +636,9 @@ export default class LobbyScene extends Phaser.Scene {
 
     private createRoleButtons(cx: number, cy: number, totalW: number) {
         const roles = [
-            { key: "player", label: "PLAYER", icon: "âš”", colHex: 0x22c55e, hex: "#22c55e" },
-            { key: "spectator", label: "SPECTATOR", icon: "ðŸ‘", colHex: 0x8b5cf6, hex: "#8b5cf6" },
-            { key: "admin", label: "ADMIN", icon: "ðŸ”’", colHex: 0xf59e0b, hex: "#f59e0b" },
+            { key: "player", label: ar.lobby.rolePlayer, icon: "⚔", colHex: 0x22c55e, hex: "#22c55e" },
+            { key: "spectator", label: ar.lobby.roleSpectator, icon: "👁", colHex: 0x8b5cf6, hex: "#8b5cf6" },
+            { key: "admin", label: ar.lobby.roleAdmin, icon: "🔒", colHex: 0xf59e0b, hex: "#f59e0b" },
         ];
         const gap = 8;
         const btnW = (totalW - gap * 2) / 3;
@@ -659,7 +662,7 @@ export default class LobbyScene extends Phaser.Scene {
                 isActive ? role.colHex : this.C.cardBorder);
 
             // Ø£ÙŠÙ‚ÙˆÙ†Ø© â€” PLAYER Ø§Ù„Ù…Ù‚ÙÙ„ ÙŠØ´ÙˆÙ ðŸ”’
-            const displayIcon = isPlayerLocked ? "ðŸ”’" : role.icon;
+            const displayIcon = isPlayerLocked ? "🔒" : role.icon;
             const iconTxt = this.add.text(0, -12, displayIcon, { fontSize: "20px" }).setOrigin(0.5);
             const lbl = this.add.text(0, 14, role.label, {
                 fontSize: "9px", color: isActive ? role.hex : "#4a5568",
@@ -722,7 +725,7 @@ export default class LobbyScene extends Phaser.Scene {
         if (!c) return;
         c.setAlpha(1);
         const iconTxt = c.getData("icon") as Phaser.GameObjects.Text;
-        if (iconTxt) iconTxt.setText("âš”");
+        if (iconTxt) iconTxt.setText("⚔");
         c.setInteractive(
             new Phaser.Geom.Rectangle(
                 -this.roleBtnW / 2,
@@ -734,7 +737,7 @@ export default class LobbyScene extends Phaser.Scene {
         );
         // Ù…Ø§ Ù†Ø·Ù„Ø¹ toast Ù„Ùˆ Ø§Ù„Ø²Ø± Ø§ØªÙØªØ­ ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ Ø¹Ù†Ø¯ Ø§Ù„Ø¯Ø®ÙˆÙ„
         if (!this.roleButtons["player"]?.getData("autoUnlocked")) {
-            this.showToast("ðŸ”“ Ø§Ù„Ù„Ø¹Ø¨Ø© ÙØªØ­Øª â€” Ø§Ø®ØªØ± PLAYER", "success");
+            this.showToast(ar.lobby.roleUnlocked, "success");
         }
     }
 
@@ -764,7 +767,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         const btn = document.createElement("button");
         btn.id = "admin-reset-btn";
-        btn.textContent = "ðŸ—‘ RESET SERVER";
+        btn.textContent = ar.lobby.resetServerButton;
         Object.assign(btn.style, {
             position: "fixed",
             bottom: "18px",
@@ -792,7 +795,7 @@ export default class LobbyScene extends Phaser.Scene {
         });
 
         btn.addEventListener("click", () => {
-            if (confirm("âš ï¸ Ù‡Ø°Ø§ Ø³ÙŠØ·Ø±Ø¯ ÙƒÙ„ Ø§Ù„Ù„Ø§Ø¹Ø¨ÙŠÙ† ÙˆÙŠÙ…Ø³Ø­ Ø§Ù„Ø¬Ù„Ø³Ø© ÙƒØ§Ù…Ù„Ø©. Ù…ØªØ£ÙƒØ¯ØŸ")) {
+            if (confirm(ar.lobby.resetServerConfirm)) {
                 socketService.socket.emit("admin_reset_server");
                 btn.remove();
             }
@@ -1627,5 +1630,6 @@ export default class LobbyScene extends Phaser.Scene {
             .forEach(ev => socketService.socket.off(ev));
     }
 }
+
 
 
