@@ -43,6 +43,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         socketService.socket.off("back_to_lobby");
         socketService.socket.off("mafia_suggestion");
         socketService.socket.off("mafia_chat_message");
+        socketService.socket.off("mafia_action_registered");
         socketService.socket.off("server_reset");
     }
 
@@ -332,39 +333,56 @@ export default class MafiaNightScene extends Phaser.Scene {
             container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
             container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
             container.on("pointerout", () => { drawBg(false, false); topAccent.setAlpha(0); drawBtnBg(false); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 }); });
-            container.on("pointerdown", () => { if (this.actionUsed) return; drawBg(false, true); this.handleTarget(player, container, bg, drawBg, drawBtnBg); });
+            container.on("pointerdown", () => { if (this.actionUsed) return; this.handleTarget(player); });
             this.playerCards.push(container);
             this.tweens.add({ targets: container, alpha: 1, y: cardY, duration: 500, delay: 200 + i * 120, ease: "Back.easeOut", onStart: () => container.setY(cardY + 40) });
         });
     }
 
-    private handleTarget(player: any, selected: Phaser.GameObjects.Container, bg: Phaser.GameObjects.Graphics, drawBg: any, drawBtnBg: any) {
+    private handleTarget(player: any) {
         this.killedPlayerId = player.id;
         this.cameras.main.flash(300, 120, 0, 0);
+        socketService.socket.emit("mafia_kill", player.id);
+    }
 
-        // reset ÙƒÙ„ Ø§Ù„ÙƒØ±ÙˆØª
+    private applyAcceptedMafiaTarget(targetId: string) {
+        this.actionUsed = true;
+        this.killedPlayerId = targetId;
+
         this.playerCards.forEach(card => {
-            if (card !== selected) {
-                const drawBgFn = card.getData("drawBg");
-                const drawBtnBgFn = card.getData("drawBtnBg");
-                if (drawBgFn) drawBgFn(false, false);
-                if (drawBtnBgFn) drawBtnBgFn(false);
+            const isSelected = this.players.find((p) => p.id === targetId)?.username?.toUpperCase()
+                === (card.list[6] as Phaser.GameObjects.Text | undefined)?.text;
+            const drawBg = card.getData("drawBg");
+            const drawBtnBg = card.getData("drawBtnBg");
+            if (drawBg) drawBg(false, isSelected);
+            if (drawBtnBg) drawBtnBg(false);
+
+            const cardLabel = card.list[8] as Phaser.GameObjects.Text;
+            if (cardLabel) {
+                cardLabel.setText(isSelected ? ar.night.mafiaSuggested : ar.night.mafiaSuggest);
+                cardLabel.setColor(isSelected ? "#ff4444" : "#cc2222");
             }
 
-            const cardBtn = card.list[7] as Phaser.GameObjects.Graphics;
-            const cardLabel = card.list[8] as Phaser.GameObjects.Text;
-            if (cardLabel) { cardLabel.setText(ar.night.mafiaSuggest); cardLabel.setColor("#cc2222"); }
-            card.setInteractive(new Phaser.Geom.Rectangle(-100, -90, 200, 180), Phaser.Geom.Rectangle.Contains);
-            this.tweens.add({ targets: card, scaleX: 1, scaleY: 1, alpha: 1, duration: 200 });
+            if (isSelected) {
+                this.tweens.add({ targets: card, scaleX: 1.08, scaleY: 1.08, duration: 200, ease: "Back.easeOut" });
+            } else {
+                this.tweens.add({ targets: card, scaleX: 1, scaleY: 1, alpha: 0.35, duration: 200 });
+                card.disableInteractive();
+            }
         });
 
-        // highlight Ø§Ù„Ù…Ø®ØªØ§Ø±
-        drawBg(false, true);
-        this.tweens.add({ targets: selected, scaleX: 1.08, scaleY: 1.08, duration: 200, ease: "Back.easeOut" });
-        const btnLabel = selected.list[8] as Phaser.GameObjects.Text;
-        if (btnLabel) { btnLabel.setText(ar.night.mafiaSuggested); btnLabel.setColor("#ff4444"); }
-
-        socketService.socket.emit("mafia_kill", player.id);
+        const mobileButtons = document.querySelectorAll<HTMLButtonElement>("#mafia-target-section button[id^='kill-btn-']");
+        mobileButtons.forEach((btn) => {
+            const isSelected = btn.id === `kill-btn-${targetId}`;
+            btn.textContent = isSelected ? ar.night.mafiaSuggested : ar.night.mafiaSuggest;
+            btn.style.background = isSelected
+                ? "linear-gradient(180deg, #cc2222, #991111)"
+                : "linear-gradient(180deg, rgba(204,34,34,0.1), transparent)";
+            btn.style.color = isSelected ? "#fff" : "#cc2222";
+            btn.style.borderColor = isSelected ? "#ff4444" : "rgba(204,34,34,0.5)";
+            btn.style.opacity = isSelected ? "1" : "0.3";
+            btn.style.pointerEvents = isSelected ? "auto" : "none";
+        });
     }
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -481,22 +499,7 @@ export default class MafiaNightScene extends Phaser.Scene {
 
                     const btn = row.querySelector<HTMLButtonElement>(`#kill-btn-${player.id}`)!;
                     btn.addEventListener("click", () => {
-                        // ØªØ­Ø¯ÙŠØ« Ø¨ØµØ±ÙŠ Ù„ÙƒÙ„ Ø§Ù„Ø£Ø²Ø±Ø§Ø±
-                        targetSection.querySelectorAll<HTMLButtonElement>("button[id^='kill-btn-']").forEach(b => {
-                            b.textContent = ar.night.mafiaSuggest;
-                            b.style.background = "linear-gradient(180deg, rgba(204,34,34,0.1), transparent)";
-                            b.style.color = "#cc2222";
-                            b.style.borderColor = "rgba(204,34,34,0.5)";
-                            b.style.transform = "scale(1)";
-                        });
-                        // Ù‡Ø§Ø¯ Ø§Ù„Ø²Ø± = locked
-                        btn.textContent = ar.night.mafiaSuggested;
-                        btn.style.background = "linear-gradient(180deg, #cc2222, #991111)";
-                        btn.style.color = "#fff";
-                        btn.style.borderColor = "#ff4444";
-                        btn.style.transform = "scale(0.96)";
-                        setTimeout(() => btn.style.transform = "scale(1)", 150);
-
+                        if (this.actionUsed) return;
                         socketService.socket.emit("mafia_kill", player.id);
                         this.killedPlayerId = player.id;
                         this.cameras.main.flash(300, 120, 0, 0);
@@ -631,7 +634,13 @@ export default class MafiaNightScene extends Phaser.Scene {
             }
         });
         socketService.socket.on("mafia_error", (data: any) => {
+            this.actionUsed = false;
             this.showToast(data.message, "danger");
+        });
+        socketService.socket.on("mafia_action_registered", (data: any) => {
+            if (!data?.targetId) return;
+            this.applyAcceptedMafiaTarget(data.targetId);
+            this.showToast(ar.night.mafiaSystemSuggested(ar.night.you, data.targetUsername), "success");
         });
         socketService.socket.on("player_killed", (data: any) => {
             const msg = ar.night.eliminatedNight(data.username);
@@ -677,6 +686,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         socketService.socket.off("mafia_chat_message");
         socketService.socket.off("mafia_suggestion");
         socketService.socket.off("mafia_error");
+        socketService.socket.off("mafia_action_registered");
     }
 }
 

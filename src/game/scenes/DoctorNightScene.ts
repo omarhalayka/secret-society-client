@@ -29,6 +29,7 @@ export default class DoctorNightScene extends Phaser.Scene {
         socketService.socket.off("phase_changed");
         socketService.socket.off("player_killed");
         socketService.socket.off("back_to_lobby");
+        socketService.socket.off("doctor_action_registered");
     }
 
     create() {
@@ -203,30 +204,80 @@ export default class DoctorNightScene extends Phaser.Scene {
             const items: Phaser.GameObjects.GameObject[] = [shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel];
             if (meLabel) items.push(meLabel);
             container.add(items);
+            container.setData("drawBg", drawBg);
+            container.setData("drawBtnBg", drawBtnBg);
             container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
             container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
             container.on("pointerout", () => { drawBg(false, false); topAccent.setAlpha(0); drawBtnBg(false); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 }); });
-            container.on("pointerdown", () => { if (this.actionUsed) return; drawBg(false, true); this.handleSave(player, container, bg, btnLabel, drawBg, drawBtnBg); });
+            container.on("pointerdown", () => { if (this.actionUsed) return; this.handleSave(player); });
             this.playerCards.push(container);
             this.tweens.add({ targets: container, alpha: 1, y: cardY, duration: 500, delay: 200 + i * 120, ease: "Back.easeOut", onStart: () => container.setY(cardY + 40) });
         });
     }
 
-    private handleSave(player: any, selected: Phaser.GameObjects.Container, bg: Phaser.GameObjects.Graphics, btnLabel: Phaser.GameObjects.Text, drawBg: any, drawBtnBg: any) {
-        this.actionUsed = true;
+    private handleSave(player: any) {
         this.savedPlayerId = player.id;
         this.cameras.main.flash(400, 0, 100, 0);
-        this.cameras.main.shake(200, 0.005);
-        this.playerCards.forEach(card => {
-            if (card !== selected) { card.disableInteractive(); this.tweens.add({ targets: card, alpha: 0.2, scaleX: 0.92, scaleY: 0.92, duration: 300 }); }
-        });
-        this.tweens.add({ targets: selected, scaleX: 1.1, scaleY: 1.1, duration: 250, ease: "Back.easeOut" });
-        drawBg(false, true);
-        btnLabel.setText(ar.night.doctorProtected).setColor("#4ade80");
-        const mark = this.add.text(selected.x, selected.y - 20, "✓", { fontSize: "52px", color: "#22c55e", fontStyle: "bold", fontFamily: ARABIC_FONT_FAMILY }).setOrigin(0.5).setAlpha(0).setDepth(10);
-        this.tweens.add({ targets: mark, alpha: 1, scaleX: 1.2, scaleY: 1.2, duration: 200, yoyo: true, repeat: 1, onComplete: () => this.tweens.add({ targets: mark, alpha: 0, duration: 400, onComplete: () => mark.destroy() }) });
         socketService.socket.emit("doctor_save", player.id);
-        this.showToast(ar.night.doctorProtecting(player.username), "success");
+    }
+
+    private applyAcceptedDoctorSave(targetId: string, targetUsername: string) {
+        this.actionUsed = true;
+        this.savedPlayerId = targetId;
+        this.cameras.main.shake(200, 0.005);
+
+        this.playerCards.forEach((card) => {
+            const nameText = card.list[6] as Phaser.GameObjects.Text | undefined;
+            const isSelected = nameText?.text === this.players.find((p) => p.id === targetId)?.username?.toUpperCase();
+            const drawBg = card.getData("drawBg");
+            const drawBtnBg = card.getData("drawBtnBg");
+            if (drawBg) drawBg(false, isSelected);
+            if (drawBtnBg) drawBtnBg(false);
+
+            const btnLabel = card.list[8] as Phaser.GameObjects.Text | undefined;
+            if (btnLabel) {
+                btnLabel.setText(isSelected ? ar.night.doctorProtected : ar.night.doctorProtect);
+                btnLabel.setColor(isSelected ? "#4ade80" : "#22c55e");
+            }
+
+            if (isSelected) {
+                this.tweens.add({ targets: card, scaleX: 1.1, scaleY: 1.1, duration: 250, ease: "Back.easeOut" });
+                const mark = this.add.text(card.x, card.y - 20, "✓", {
+                    fontSize: "52px",
+                    color: "#22c55e",
+                    fontStyle: "bold",
+                    fontFamily: ARABIC_FONT_FAMILY,
+                }).setOrigin(0.5).setAlpha(0).setDepth(10);
+                this.tweens.add({
+                    targets: mark,
+                    alpha: 1,
+                    scaleX: 1.2,
+                    scaleY: 1.2,
+                    duration: 200,
+                    yoyo: true,
+                    repeat: 1,
+                    onComplete: () => this.tweens.add({ targets: mark, alpha: 0, duration: 400, onComplete: () => mark.destroy() }),
+                });
+            } else {
+                card.disableInteractive();
+                this.tweens.add({ targets: card, alpha: 0.2, scaleX: 0.92, scaleY: 0.92, duration: 300 });
+            }
+        });
+
+        document.querySelectorAll<HTMLButtonElement>("#mobile-night-ui button").forEach((btn) => {
+            const isSelected = btn.id === `doctor-btn-${targetId}`;
+            if (!btn.id.startsWith("doctor-btn-")) return;
+            btn.textContent = isSelected ? ar.night.doctorProtected : ar.night.doctorProtect;
+            btn.style.background = isSelected
+                ? "linear-gradient(180deg, #22c55e, #16a34a)"
+                : "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)";
+            btn.style.color = isSelected ? "#000" : "#22c55e";
+            btn.style.borderColor = isSelected ? "#4ade80" : "rgba(34,197,94,0.5)";
+            btn.style.opacity = isSelected ? "1" : "0.3";
+            btn.style.pointerEvents = isSelected ? "auto" : "none";
+        });
+
+        this.showToast(ar.night.doctorProtecting(targetUsername), "success");
     }
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -292,6 +343,7 @@ export default class DoctorNightScene extends Phaser.Scene {
                 });
 
                 const btn = document.createElement("button");
+                btn.id = `doctor-btn-${player.id}`;
                 btn.textContent = ar.night.doctorProtect;
                 Object.assign(btn.style, {
                     padding: "10px 16px", fontSize: "11px", fontWeight: "bold",
@@ -306,22 +358,9 @@ export default class DoctorNightScene extends Phaser.Scene {
 
                 btn.addEventListener("click", () => {
                     if (this.actionUsed) return;
-                    this.actionUsed = true;
                     this.savedPlayerId = player.id;
-                    btn.textContent = ar.night.doctorSaving;
-                    btn.style.background = "linear-gradient(180deg, #22c55e, #16a34a)";
-                    btn.style.color = "#000";
-                    btn.style.borderColor = "#4ade80";
-                    btn.style.transform = "scale(0.96)";
-                    setTimeout(() => btn.style.transform = "scale(1)", 150);
-                    row.style.borderColor = "#4ade80";
-                    row.style.boxShadow = "0 0 15px rgba(34,197,94,0.2)";
-                    list.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
-                        if (b !== btn) { b.style.opacity = "0.3"; b.style.pointerEvents = "none"; }
-                    });
                     this.cameras.main.flash(400, 0, 100, 0);
                     socketService.socket.emit("doctor_save", player.id);
-                    this.showToast(ar.night.doctorProtecting(player.username), "success");
                 });
 
                 row.appendChild(avatar);
@@ -375,6 +414,10 @@ export default class DoctorNightScene extends Phaser.Scene {
             this.savedPlayerId = null;
             this.showToast(data.message, "danger");
         });
+        socketService.socket.on("doctor_action_registered", (data: any) => {
+            if (!data?.targetId) return;
+            this.applyAcceptedDoctorSave(data.targetId, data.targetUsername);
+        });
         socketService.socket.on("player_killed", (data: any) => {
             const msg = ar.night.eliminatedNight(data.username);
             if (data.id === this.savedPlayerId) this.showToast(ar.night.failedSave(data.username), "danger");
@@ -414,6 +457,7 @@ export default class DoctorNightScene extends Phaser.Scene {
         socketService.socket.off("back_to_lobby");
         socketService.socket.off("server_reset");
         socketService.socket.off("doctor_error");
+        socketService.socket.off("doctor_action_registered");
     }
 }
 
