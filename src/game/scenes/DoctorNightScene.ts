@@ -9,8 +9,13 @@ export default class DoctorNightScene extends Phaser.Scene {
     private actionUsed: boolean = false;
     private playerCards: Phaser.GameObjects.Container[] = [];
     private savedPlayerId: string | null = null;
-    private healParticles: Array<{ gfx: Phaser.GameObjects.Graphics; x: number; y: number; vy: number; alpha: number; size: number }> = [];
+    private healParticles: Array<{
+        gfx: Phaser.GameObjects.Graphics;
+        x: number; y: number; vy: number; alpha: number; size: number;
+    }> = [];
     private isMobile: boolean = false;
+    // ✅ منع الـ double-submit
+    private _submitLock: boolean = false;
 
     private readonly C = {
         bg: 0x08100a, surface: 0x0d1a0f, card: 0x0a1a0c,
@@ -21,15 +26,18 @@ export default class DoctorNightScene extends Phaser.Scene {
     constructor() { super("DoctorNightScene"); }
 
     init(data: any) {
-        this.roomId = data.roomId;
-        this.players = data.players || [];
-        this.actionUsed = false;
+        this.roomId       = data.roomId;
+        this.players      = data.players || [];
+        this.actionUsed   = false;
+        this._submitLock  = false;
         this.savedPlayerId = null;
         this.healParticles = [];
         socketService.socket.off("phase_changed");
         socketService.socket.off("player_killed");
         socketService.socket.off("back_to_lobby");
         socketService.socket.off("doctor_action_registered");
+        socketService.socket.off("doctor_error");
+        socketService.socket.off("server_reset");
     }
 
     create() {
@@ -57,20 +65,22 @@ export default class DoctorNightScene extends Phaser.Scene {
         this.setupSocketListeners();
     }
 
-    update(_time: number, delta: number) {
+    update(_time: number, _delta: number) {
         const W = this.scale.width;
         const H = this.scale.height;
         if (Math.random() < 0.12) {
             this.healParticles.push({
-                gfx: this.add.graphics().setDepth(0),
-                x: Math.random() * W, y: H + 10,
-                vy: -(0.4 + Math.random() * 0.9),
+                gfx:   this.add.graphics().setDepth(0),
+                x:     Math.random() * W,
+                y:     H + 10,
+                vy:    -(0.4 + Math.random() * 0.9),
                 alpha: 0.6 + Math.random() * 0.4,
-                size: 1 + Math.random() * 2,
+                size:  1 + Math.random() * 2,
             });
         }
         this.healParticles = this.healParticles.filter(p => {
-            p.y += p.vy; p.alpha -= 0.003;
+            p.y     += p.vy;
+            p.alpha -= 0.003;
             if (p.alpha <= 0) { p.gfx.destroy(); return false; }
             p.gfx.clear();
             p.gfx.fillStyle(0x22c55e, p.alpha * 0.7);
@@ -79,6 +89,7 @@ export default class DoctorNightScene extends Phaser.Scene {
         });
     }
 
+    // ─── Background ───────────────────────────────────────────────────────────
     private drawBackground(W: number, H: number) {
         this.add.rectangle(0, 0, W, H, this.C.bg).setOrigin(0).setDepth(0);
         const grid = this.add.graphics().setDepth(0);
@@ -98,15 +109,15 @@ export default class DoctorNightScene extends Phaser.Scene {
         line.moveTo(0, 56); line.lineTo(W, 56); line.strokePath();
         this.add.text(20, 28, ar.night.doctorRoleLabel, {
             fontSize: "14px", color: "#22c55e",
-            fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", align: "right"
+            fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold",
         }).setOrigin(0, 0.5).setDepth(3);
         this.add.text(W / 2, 28, ar.night.room(this.roomId?.substring(0, 8).toUpperCase()), {
             fontSize: "11px", color: "#2d6640",
-            fontFamily: ARABIC_FONT_FAMILY, align: "center"
+            fontFamily: ARABIC_FONT_FAMILY,
         }).setOrigin(0.5, 0.5).setDepth(3);
         this.add.text(W - 20, 28, ar.night.nightPhase, {
             fontSize: "11px", color: "#2d6640",
-            fontFamily: ARABIC_FONT_FAMILY, align: "right"
+            fontFamily: ARABIC_FONT_FAMILY,
         }).setOrigin(1, 0.5).setDepth(3);
     }
 
@@ -117,17 +128,22 @@ export default class DoctorNightScene extends Phaser.Scene {
             fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", align: "center",
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: title, alpha: 1, y: titleY - 5, duration: 700, ease: "Cubic.easeOut", delay: 300 });
+
         const sub = this.add.text(W / 2, titleY + 38, ar.night.doctorSubtitle, {
             fontSize: "13px", color: "#2d6640",
-            fontFamily: ARABIC_FONT_FAMILY, align: "center"
+            fontFamily: ARABIC_FONT_FAMILY, align: "center",
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: sub, alpha: 1, duration: 600, delay: 500 });
+
         const divider = this.add.graphics().setDepth(2).setAlpha(0);
         divider.lineStyle(1, this.C.accent, 0.4);
-        divider.moveTo(W / 2 - 120, titleY + 58); divider.lineTo(W / 2 + 120, titleY + 58); divider.strokePath();
+        divider.moveTo(W / 2 - 120, titleY + 58);
+        divider.lineTo(W / 2 + 120, titleY + 58);
+        divider.strokePath();
         this.tweens.add({ targets: divider, alpha: 1, duration: 500, delay: 600 });
     }
 
+    // ─── Desktop: Player Cards ────────────────────────────────────────────────
     private drawPlayerCards(W: number, H: number) {
         const targets = this.players.filter(p => p.alive);
         if (!targets.length) return;
@@ -138,22 +154,24 @@ export default class DoctorNightScene extends Phaser.Scene {
             const s = (W - 40) / naturalW;
             cardW = Math.floor(cardW * s);
             cardH = Math.floor(cardH * s);
-            gap = Math.floor(gap * s);
+            gap   = Math.floor(gap * s);
         }
         const totalW = targets.length * cardW + (targets.length - 1) * gap;
         const startX = W / 2 - totalW / 2 + cardW / 2;
-        const cardY = H / 2 + 30;
+        const cardY  = H / 2 + 30;
 
         targets.forEach((player, i) => {
             const isMe = player.id === socketService.socket.id;
-            const x = startX + i * (cardW + gap);
+            const x    = startX + i * (cardW + gap);
             const container = this.add.container(x, cardY).setDepth(5).setAlpha(0);
+
             const shadow = this.add.graphics();
             shadow.fillStyle(0x000000, 0.6);
             shadow.fillRoundedRect(-cardW / 2 + 4, -cardH / 2 + 6, cardW, cardH, 12);
 
             const bg = this.add.graphics();
-            const drawBg = (hover: boolean, selected: boolean) => {
+            let isSelected = false;
+            const drawCardBg = (hover: boolean, selected: boolean) => {
                 bg.clear();
                 if (selected) {
                     bg.fillGradientStyle(0x0a2a0a, 0x0a2a0a, 0x051a05, 0x051a05, 1);
@@ -162,144 +180,128 @@ export default class DoctorNightScene extends Phaser.Scene {
                 } else if (hover) {
                     bg.fillGradientStyle(0x0f2a14, 0x0f2a14, 0x0a1a0c, 0x0a1a0c, 1);
                     bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
-                    bg.lineStyle(1.5, this.C.accent, 1);
+                    bg.lineStyle(1, this.C.borderBright, 0.6);
                 } else {
-                    bg.fillGradientStyle(0x0a1a0c, 0x0a1a0c, 0x051006, 0x051006, 1);
+                    bg.fillGradientStyle(0x0a1a0c, 0x0a1a0c, 0x060e07, 0x060e07, 1);
                     bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
-                    bg.lineStyle(1.5, this.C.borderDim, 1);
+                    bg.lineStyle(1, this.C.borderDim, 0.5);
                 }
                 bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
             };
-            drawBg(false, false);
+            drawCardBg(false, false);
 
-            const topAccent = this.add.graphics().setAlpha(0);
-            topAccent.lineStyle(1.5, this.C.accent, 0.4);
-            topAccent.beginPath();
-            topAccent.arc(-cardW / 2 + 12, -cardH / 2 + 12, 12, Math.PI, Math.PI * 1.5);
-            topAccent.lineTo(cardW / 2 - 12, -cardH / 2);
-            topAccent.strokePath();
+            const nameText = this.add.text(0, cardH / 2 - 30, player.username, {
+                fontSize:   `${Math.max(10, Math.floor(cardW / 9))}px`,
+                color:      isMe ? "#a3e6b4" : "#c8dac8",
+                fontFamily: ARABIC_FONT_FAMILY,
+                fontStyle:  isMe ? "bold" : "normal",
+                align:      "center",
+                wordWrap:   { width: cardW - 10 },
+            }).setOrigin(0.5, 0.5);
 
-            const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x051a05); avatarBg.setStrokeStyle(1, this.C.borderDim);
-            const avatarIcon = this.add.text(0, -cardH * 0.23, isMe ? "أنت" : "لاعب", { fontSize: `${Math.floor(cardW * 0.11)}px`, fontFamily: ARABIC_FONT_FAMILY }).setOrigin(0.5);
-            const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
-            this.tweens.add({ targets: pulse, alpha: 0.15, scaleX: 1.3, scaleY: 1.3, duration: 1200, yoyo: true, repeat: -1, delay: i * 200 });
-            const name = this.add.text(0, cardH * 0.07, player.username.toUpperCase(), {
-                fontSize: `${Math.max(10, Math.floor(cardW * 0.086))}px`,
-                color: isMe ? "#a3e6b4" : "#b8c8b8",
-                fontFamily: ARABIC_FONT_FAMILY, fontStyle: isMe ? "bold" : "normal", letterSpacing: 1
-            }).setOrigin(0.5);
-            const meLabel = isMe ? this.add.text(0, cardH * 0.16, ar.night.you, { fontSize: "9px", color: "#2d6640", fontFamily: ARABIC_FONT_FAMILY, align: "center" }).setOrigin(0.5) : null;
+            const meLabel = isMe
+                ? this.add.text(0, cardH / 2 - 12, `(${ar.night.you})`, {
+                    fontSize: "9px", color: "#4ade80",
+                    fontFamily: ARABIC_FONT_FAMILY,
+                }).setOrigin(0.5)
+                : null;
 
-            const btnBg = this.add.graphics();
-            const drawBtnBg = (hover: boolean) => {
+            const btnBg  = this.add.graphics();
+            const btnH   = Math.max(28, Math.floor(cardH * 0.16));
+            const btnW2  = cardW - 20;
+            const btnY   = cardH / 2 - btnH / 2 - 6;
+            const drawBtn = (active: boolean) => {
                 btnBg.clear();
-                btnBg.fillStyle(this.C.accent, hover ? 0.15 : 0);
-                btnBg.fillRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
-                btnBg.lineStyle(1, this.C.accent, 1);
-                btnBg.strokeRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
+                btnBg.fillStyle(active ? 0x22c55e : 0x1a3d20, 1);
+                btnBg.fillRoundedRect(-btnW2 / 2, btnY - btnH / 2, btnW2, btnH, 6);
             };
-            drawBtnBg(false);
+            drawBtn(false);
 
-            const btnLabel = this.add.text(0, cardH * 0.38, ar.night.doctorProtect, { fontSize: "10px", color: "#22c55e", fontFamily: ARABIC_FONT_FAMILY, align: "center" }).setOrigin(0.5);
-            const items: Phaser.GameObjects.GameObject[] = [shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel];
+            const btnLabel = this.add.text(0, btnY, ar.night.doctorProtect, {
+                fontSize:   `${Math.max(9, Math.floor(cardH * 0.075))}px`,
+                color:      "#22c55e",
+                fontFamily: ARABIC_FONT_FAMILY,
+                fontStyle:  "bold",
+            }).setOrigin(0.5);
+
+            const items: Phaser.GameObjects.GameObject[] = [shadow, bg, nameText, btnBg, btnLabel];
             if (meLabel) items.push(meLabel);
             container.add(items);
-            container.setData("drawBg", drawBg);
-            container.setData("drawBtnBg", drawBtnBg);
-            container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
-            container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
-            container.on("pointerout", () => { drawBg(false, false); topAccent.setAlpha(0); drawBtnBg(false); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 }); });
-            container.on("pointerdown", () => { if (this.actionUsed) return; this.handleSave(player); });
+
+            // ✅ Interactive zone للكامل
+            container.setSize(cardW, cardH);
+            container.setInteractive();
+            container.on("pointerover", () => {
+                if (this.actionUsed || isSelected) return;
+                drawCardBg(true, false);
+                drawBtn(true);
+                btnLabel.setColor("#000000");
+            });
+            container.on("pointerout", () => {
+                if (isSelected) return;
+                drawCardBg(false, false);
+                drawBtn(false);
+                btnLabel.setColor("#22c55e");
+            });
+            container.on("pointerdown", () => {
+                // ✅ منع double-submit بـ lock
+                if (this.actionUsed || this._submitLock) return;
+                this._submitLock = true;
+                this.actionUsed  = true;
+                isSelected = true;
+
+                // تحديث كل الكروت
+                this.playerCards.forEach(c => c.disableInteractive());
+
+                drawCardBg(false, true);
+                drawBtn(true);
+                btnLabel.setColor("#000000").setText(ar.night.doctorSaving);
+
+                this.savedPlayerId = player.id;
+                this.cameras.main.flash(400, 0, 100, 0);
+                socketService.socket.emit("doctor_save", player.id);
+            });
+
             this.playerCards.push(container);
-            this.tweens.add({ targets: container, alpha: 1, y: cardY, duration: 500, delay: 200 + i * 120, ease: "Back.easeOut", onStart: () => container.setY(cardY + 40) });
+            this.tweens.add({
+                targets:  container,
+                alpha:    1,
+                y:        cardY - 8,
+                duration: 400,
+                ease:     "Cubic.easeOut",
+                delay:    200 + i * 80,
+            });
         });
     }
 
-    private handleSave(player: any) {
-        this.savedPlayerId = player.id;
-        this.cameras.main.flash(400, 0, 100, 0);
-        socketService.socket.emit("doctor_save", player.id);
-    }
-
-    private applyAcceptedDoctorSave(targetId: string, targetUsername: string) {
-        this.actionUsed = true;
-        this.savedPlayerId = targetId;
-        this.cameras.main.shake(200, 0.005);
-
-        this.playerCards.forEach((card) => {
-            const nameText = card.list[6] as Phaser.GameObjects.Text | undefined;
-            const isSelected = nameText?.text === this.players.find((p) => p.id === targetId)?.username?.toUpperCase();
-            const drawBg = card.getData("drawBg");
-            const drawBtnBg = card.getData("drawBtnBg");
-            if (drawBg) drawBg(false, isSelected);
-            if (drawBtnBg) drawBtnBg(false);
-
-            const btnLabel = card.list[8] as Phaser.GameObjects.Text | undefined;
-            if (btnLabel) {
-                btnLabel.setText(isSelected ? ar.night.doctorProtected : ar.night.doctorProtect);
-                btnLabel.setColor(isSelected ? "#4ade80" : "#22c55e");
-            }
-
-            if (isSelected) {
-                this.tweens.add({ targets: card, scaleX: 1.1, scaleY: 1.1, duration: 250, ease: "Back.easeOut" });
-                const mark = this.add.text(card.x, card.y - 20, "✓", {
-                    fontSize: "52px",
-                    color: "#22c55e",
-                    fontStyle: "bold",
-                    fontFamily: ARABIC_FONT_FAMILY,
-                }).setOrigin(0.5).setAlpha(0).setDepth(10);
-                this.tweens.add({
-                    targets: mark,
-                    alpha: 1,
-                    scaleX: 1.2,
-                    scaleY: 1.2,
-                    duration: 200,
-                    yoyo: true,
-                    repeat: 1,
-                    onComplete: () => this.tweens.add({ targets: mark, alpha: 0, duration: 400, onComplete: () => mark.destroy() }),
-                });
-            } else {
-                card.disableInteractive();
-                this.tweens.add({ targets: card, alpha: 0.2, scaleX: 0.92, scaleY: 0.92, duration: 300 });
-            }
-        });
-
-        document.querySelectorAll<HTMLButtonElement>("#mobile-night-ui button").forEach((btn) => {
-            const isSelected = btn.id === `doctor-btn-${targetId}`;
-            if (!btn.id.startsWith("doctor-btn-")) return;
-            btn.textContent = isSelected ? ar.night.doctorProtected : ar.night.doctorProtect;
-            btn.style.background = isSelected
-                ? "linear-gradient(180deg, #22c55e, #16a34a)"
-                : "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)";
-            btn.style.color = isSelected ? "#000" : "#22c55e";
-            btn.style.borderColor = isSelected ? "#4ade80" : "rgba(34,197,94,0.5)";
-            btn.style.opacity = isSelected ? "1" : "0.3";
-            btn.style.pointerEvents = isSelected ? "auto" : "none";
-        });
-
-        this.showToast(ar.night.doctorProtecting(targetUsername), "success");
-    }
-
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    //  Mobile UI
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ─── Mobile UI ────────────────────────────────────────────────────────────
     private createMobileUI(W: number, H: number) {
         const ui = document.createElement("div");
         ui.id = "mobile-night-ui";
         Object.assign(ui.style, {
-            position: "fixed", top: "56px", left: "0", right: "0", bottom: "0",
-            zIndex: "100", backgroundColor: "rgba(8,16,10,0.97)",
-            display: "flex", flexDirection: "column",
-            fontFamily: ARABIC_FONT_FAMILY,
+            position:        "fixed",
+            top:             "56px",
+            left:            "0",
+            right:           "0",
+            bottom:          "0",
+            background:      "linear-gradient(180deg, #08100a 0%, #040a05 100%)",
+            display:         "flex",
+            flexDirection:   "column",
+            zIndex:          "100",
+            fontFamily:      ARABIC_FONT_FAMILY,
+            direction:       "rtl",
         });
 
         const header = document.createElement("div");
         Object.assign(header.style, {
-            padding: "16px 20px", borderBottom: "1px solid #1a3d20",
-            backgroundColor: "rgba(0,0,0,0.4)",
+            padding:     "16px",
+            borderBottom:"1px solid rgba(34,197,94,0.15)",
+            textAlign:   "center",
         });
         header.innerHTML = `
-            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">${ar.night.doctorRoleLabel}</div>
+            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">
+                ${ar.night.doctorRoleLabel}
+            </div>
             <div style="color:#e8f1e8;font-size:18px;font-weight:bold">${ar.night.doctorTitle}</div>
             <div style="color:#2d6640;font-size:11px;margin-top:4px">${ar.night.doctorSubtitle}</div>
         `;
@@ -307,63 +309,104 @@ export default class DoctorNightScene extends Phaser.Scene {
 
         const list = document.createElement("div");
         Object.assign(list.style, {
-            flex: "1", overflowY: "auto", padding: "12px",
-            display: "flex", flexDirection: "column", gap: "10px",
+            flex:          "1",
+            overflowY:     "auto",
+            padding:       "12px",
+            display:       "flex",
+            flexDirection: "column",
+            gap:           "10px",
         });
 
         const targets = this.players.filter(p => p.alive);
+
         if (targets.length === 0) {
             const empty = document.createElement("div");
             empty.textContent = ar.night.noPlayers;
-            Object.assign(empty.style, { color: "#2d6640", textAlign: "center", marginTop: "40px", fontSize: "14px" });
+            Object.assign(empty.style, {
+                color:      "#2d6640",
+                textAlign:  "center",
+                marginTop:  "40px",
+                fontSize:   "14px",
+            });
             list.appendChild(empty);
         } else {
             targets.forEach(player => {
                 const isMe = player.id === socketService.socket.id;
+
                 const row = document.createElement("div");
                 Object.assign(row.style, {
-                    display: "flex", alignItems: "center", gap: "14px",
-                    padding: "12px 16px", borderRadius: "10px",
-                    background: isMe ? "linear-gradient(145deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))" : "linear-gradient(145deg, rgba(10,26,12,0.9), rgba(5,13,6,0.95))",
-                    border: `1px solid ${isMe ? "rgba(34,197,94,0.4)" : "rgba(34,197,94,0.1)"}`,
-                    boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
-                    marginBottom: "8px",
-                    transition: "all 0.2s"
+                    display:        "flex",
+                    alignItems:     "center",
+                    gap:            "14px",
+                    padding:        "12px 16px",
+                    borderRadius:   "10px",
+                    background:     isMe
+                        ? "linear-gradient(145deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))"
+                        : "linear-gradient(145deg, rgba(10,26,12,0.9), rgba(5,13,6,0.95))",
+                    border:         `1px solid ${isMe ? "rgba(34,197,94,0.4)" : "rgba(34,197,94,0.1)"}`,
+                    boxShadow:      "0 4px 6px rgba(0,0,0,0.3)",
+                    transition:     "all 0.2s",
                 });
-
-                const avatar = document.createElement("div");
-                avatar.textContent = isMe ? ar.night.you : "لاعب";
-                avatar.style.fontSize = "28px";
 
                 const nameEl = document.createElement("div");
                 nameEl.textContent = player.username + (isMe ? ` (${ar.night.you})` : "");
                 Object.assign(nameEl.style, {
-                    flex: "1", color: isMe ? "#a3e6b4" : "#b8c8b8",
-                    fontSize: "15px", fontWeight: isMe ? "bold" : "normal",
+                    flex:       "1",
+                    color:      isMe ? "#a3e6b4" : "#b8c8b8",
+                    fontSize:   "15px",
+                    fontWeight: isMe ? "bold" : "normal",
+                    direction:  "rtl",
                 });
 
                 const btn = document.createElement("button");
-                btn.id = `doctor-btn-${player.id}`;
+                btn.id          = `doctor-btn-${player.id}`;
                 btn.textContent = ar.night.doctorProtect;
                 Object.assign(btn.style, {
-                    padding: "10px 16px", fontSize: "11px", fontWeight: "bold",
-                    letterSpacing: "2px", border: "1px solid rgba(34,197,94,0.5)",
-                    borderRadius: "6px", background: "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)",
-                    color: "#22c55e", cursor: "pointer",
-                    fontFamily: ARABIC_FONT_FAMILY,
-                    touchAction: "manipulation",
-                    transition: "all 0.2s",
-                    boxShadow: "0 2px 4px rgba(0,0,0,0.5)"
+                    padding:       "10px 16px",
+                    fontSize:      "11px",
+                    fontWeight:    "bold",
+                    letterSpacing: "2px",
+                    border:        "1px solid rgba(34,197,94,0.5)",
+                    borderRadius:  "6px",
+                    background:    "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)",
+                    color:         "#22c55e",
+                    cursor:        "pointer",
+                    fontFamily:    ARABIC_FONT_FAMILY,
+                    touchAction:   "manipulation",
+                    transition:    "all 0.2s",
+                    boxShadow:     "0 2px 4px rgba(0,0,0,0.5)",
+                    minWidth:      "80px",
                 });
 
-                btn.addEventListener("click", () => {
-                    if (this.actionUsed) return;
+                // ✅ منع double-submit بـ lock + disabled مباشرة
+                const handleAction = (e: Event) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (this.actionUsed || this._submitLock) return;
+
+                    this._submitLock = true;
+                    this.actionUsed  = true;
+
+                    // تعطيل كل الأزرار فوراً
+                    list.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
+                        b.disabled         = true;
+                        b.style.opacity    = "0.4";
+                        b.style.cursor     = "not-allowed";
+                        b.style.pointerEvents = "none";
+                    });
+
+                    btn.textContent       = ar.night.doctorSaving;
+                    btn.style.background  = "linear-gradient(180deg, #22c55e, #16a34a)";
+                    btn.style.color       = "#000";
+
                     this.savedPlayerId = player.id;
                     this.cameras.main.flash(400, 0, 100, 0);
                     socketService.socket.emit("doctor_save", player.id);
-                });
+                };
 
-                row.appendChild(avatar);
+                btn.addEventListener("click",    handleAction);
+                btn.addEventListener("touchend", handleAction, { passive: false });
+
                 row.appendChild(nameEl);
                 row.appendChild(btn);
                 list.appendChild(row);
@@ -374,80 +417,162 @@ export default class DoctorNightScene extends Phaser.Scene {
         document.body.appendChild(ui);
     }
 
+    // ─── Apply accepted save (desktop) ───────────────────────────────────────
+    private applyAcceptedDoctorSave(targetId: string, targetUsername: string) {
+        this.showToast(ar.night.doctorProtecting(targetUsername), "success");
+
+        // تحديث بطاقة اللاعب المحمي (desktop)
+        const idx = this.players.findIndex(p => p.alive)
+            !== -1 ? this.players.filter(p => p.alive).findIndex(p => p.id === targetId) : -1;
+        if (idx >= 0 && this.playerCards[idx]) {
+            this.tweens.add({
+                targets:  this.playerCards[idx],
+                scaleX:   1.05,
+                scaleY:   1.05,
+                duration: 200,
+                yoyo:     true,
+            });
+        }
+
+        // تحديث زر الموبايل
+        const mobileBtn = document.getElementById(`doctor-btn-${targetId}`) as HTMLButtonElement;
+        if (mobileBtn) {
+            mobileBtn.textContent    = ar.night.doctorProtected;
+            mobileBtn.style.background  = "linear-gradient(180deg, #22c55e, #16a34a)";
+            mobileBtn.style.color       = "#000";
+        }
+    }
+
+    // ─── Toast ────────────────────────────────────────────────────────────────
     private showToast(message: string, type: "danger" | "success" | "info") {
         const colorMap = {
-            danger: { bg: 0x1a0505, border: 0xcc2222, text: "#ff4444" },
+            danger:  { bg: 0x1a0505, border: 0xcc2222, text: "#ff4444" },
             success: { bg: 0x051a05, border: 0x22cc22, text: "#44ff44" },
-            info: { bg: 0x05051a, border: 0x2244cc, text: "#4488ff" },
+            info:    { bg: 0x05051a, border: 0x2244cc, text: "#4488ff" },
         };
-        const c = colorMap[type];
-        const W = this.scale.width;
-        const H = this.scale.height;
+        const c    = colorMap[type];
+        const W    = this.scale.width;
+        const H    = this.scale.height;
         const toast = this.add.container(W / 2, H - 40).setDepth(20);
-        const msgW = Math.min(message.length * 9 + 48, Math.min(420, W - 20));
-        const bg = this.add.rectangle(0, 0, msgW, 40, c.bg); bg.setStrokeStyle(1, c.border);
-        const text = this.add.text(0, 0, message, { fontSize: "13px", color: c.text, fontFamily: ARABIC_FONT_FAMILY }).setOrigin(0.5);
+        const msgW  = Math.min(message.length * 9 + 48, Math.min(420, W - 20));
+        const bg    = this.add.rectangle(0, 0, msgW, 40, c.bg);
+        bg.setStrokeStyle(1, c.border);
+        const text = this.add.text(0, 0, message, {
+            fontSize:   "13px",
+            color:      c.text,
+            fontFamily: ARABIC_FONT_FAMILY,
+        }).setOrigin(0.5);
         toast.add([bg, text]);
         toast.setAlpha(0).setY(H - 10);
         this.tweens.add({ targets: toast, alpha: 1, y: H - 60, duration: 300, ease: "Cubic.easeOut" });
-        this.time.delayedCall(2800, () => this.tweens.add({ targets: toast, alpha: 0, y: H - 40, duration: 300, onComplete: () => toast.destroy() }));
+        this.time.delayedCall(2800, () =>
+            this.tweens.add({
+                targets:    toast,
+                alpha:      0,
+                y:          H - 40,
+                duration:   300,
+                onComplete: () => toast.destroy(),
+            })
+        );
     }
 
+    // ─── Socket Listeners ─────────────────────────────────────────────────────
     private setupSocketListeners() {
         socketService.socket.on("phase_changed", (data: any) => {
             if (data.phase === "NIGHT" || data.phase === "NIGHT_REVIEW") return;
             this.cameras.main.fadeOut(400, 8, 16, 10);
-            this.time.delayedCall(400, () => this.scene.start("GameScene", { role: "DOCTOR", roomId: this.roomId, userType: "PLAYER" }));
+            this.time.delayedCall(400, () =>
+                this.scene.start("GameScene", { role: "DOCTOR", roomId: this.roomId, userType: "PLAYER" })
+            );
         });
+
         socketService.socket.on("back_to_lobby", () => {
             this.cameras.main.fadeOut(300, 8, 16, 10);
-            this.time.delayedCall(300, () => this.scene.start("GameScene", { role: "DOCTOR", roomId: this.roomId, userType: "PLAYER" }));
+            this.time.delayedCall(300, () =>
+                this.scene.start("GameScene", { role: "DOCTOR", roomId: this.roomId, userType: "PLAYER" })
+            );
         });
+
         socketService.socket.on("server_reset", () => {
             socketService.reset();
             document.getElementById("mobile-night-ui")?.remove();
             this.cameras.main.fadeOut(400, 6, 8, 16);
-            this.time.delayedCall(400, () => { this.scene.start("LobbyScene"); });
+            this.time.delayedCall(400, () => this.scene.start("LobbyScene"));
         });
+
         socketService.socket.on("doctor_error", (data: any) => {
-            this.actionUsed = false;
+            // ✅ أطلق القفل عند الخطأ حتى يقدر يحاول مرة ثانية
+            this.actionUsed  = false;
+            this._submitLock = false;
             this.savedPlayerId = null;
-            this.showToast(data.message, "danger");
+
+            // إعادة تفعيل الأزرار
+            const list = document.getElementById("mobile-night-ui");
+            if (list) {
+                list.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
+                    b.disabled             = false;
+                    b.style.opacity        = "1";
+                    b.style.cursor         = "pointer";
+                    b.style.pointerEvents  = "auto";
+                    b.textContent          = ar.night.doctorProtect;
+                    b.style.background     = "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)";
+                    b.style.color          = "#22c55e";
+                });
+            }
+            this.playerCards.forEach(c => c.setInteractive());
+            this.showToast(data.message || ar.game.doctorSelectionError, "danger");
         });
+
         socketService.socket.on("doctor_action_registered", (data: any) => {
             if (!data?.targetId) return;
+            this._submitLock = false; // تحرير القفل بعد التأكيد
             this.applyAcceptedDoctorSave(data.targetId, data.targetUsername);
         });
+
         socketService.socket.on("player_killed", (data: any) => {
             const msg = ar.night.eliminatedNight(data.username);
-            if (data.id === this.savedPlayerId) this.showToast(ar.night.failedSave(data.username), "danger");
-            else this.showToast(msg, "danger");
+            if (data.id === this.savedPlayerId) {
+                this.showToast(ar.night.failedSave(data.username), "danger");
+            } else {
+                this.showToast(msg, "danger");
+            }
             this.addNightEventToMobilePanel(msg, "#f87171");
         });
     }
 
-    // â”€â”€â”€ helper: Ù†Ø­ÙØ¸ Ø§Ù„Ù€ event Ø¹Ø´Ø§Ù† GameScene ØªØ¹Ø±Ø¶Ù‡ Ù„Ù…Ø§ ØªØ±Ø¬Ø¹ â”€â”€â”€
+    // ─── Pending events ───────────────────────────────────────────────────────
     private addNightEventToMobilePanel(msg: string, color: string) {
         socketService.pendingEvents.push({ msg, color });
         const panel = document.getElementById("tab-panel-events");
         if (!panel) return;
-        const now = new Date();
+        const now  = new Date();
         const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
         const card = document.createElement("div");
-        card.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid #ef444444;border-left:3px solid ${color};animation:eventSlideIn 0.3s ease-out`;
+        card.style.cssText = `
+            display:flex;align-items:flex-start;gap:10px;
+            padding:10px 12px;border-radius:8px;
+            background:rgba(239,68,68,0.1);
+            border:1px solid #ef444444;
+            border-right:3px solid ${color};
+            animation:eventSlideIn 0.3s ease-out;
+            direction:rtl;
+        `;
         card.innerHTML = `
             <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">!</div>
             <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                    <span style="font-size:9px;font-weight:bold;letter-spacing:2px;color:${color};font-family:'Courier New',monospace">ELIMINATED</span>
+                    <span style="font-size:9px;font-weight:bold;letter-spacing:2px;color:${color};
+                        font-family:'Courier New',monospace">تم القضاء عليه</span>
                     <span style="font-size:9px;color:#374151;font-family:'Courier New',monospace">${time}</span>
                 </div>
-                <div style="font-size:13px;color:#e2e8f0;font-family:'Courier New',monospace">${msg}</div>
-            </div>`;
+                <div style="font-size:13px;color:#e2e8f0;font-family:${ARABIC_FONT_FAMILY}">${msg}</div>
+            </div>
+        `;
         panel.appendChild(card);
         panel.scrollTop = panel.scrollHeight;
     }
 
+    // ─── Shutdown ─────────────────────────────────────────────────────────────
     shutdown() {
         document.getElementById("mobile-night-ui")?.remove();
         this.healParticles.forEach(p => p.gfx.destroy());
@@ -460,4 +585,3 @@ export default class DoctorNightScene extends Phaser.Scene {
         socketService.socket.off("doctor_action_registered");
     }
 }
-
