@@ -1,5 +1,6 @@
-import Phaser from "phaser";
+﻿import Phaser from "phaser";
 import { socketService } from "../../socket";
+import { ar } from "../../i18n";
 
 export default class DoctorNightScene extends Phaser.Scene {
 
@@ -94,7 +95,7 @@ export default class DoctorNightScene extends Phaser.Scene {
         const line = this.add.graphics().setDepth(3);
         line.lineStyle(2, this.C.accent, 0.8);
         line.moveTo(0, 56); line.lineTo(W, 56); line.strokePath();
-        this.add.text(20, 28, "✚  DOCTOR", {
+        this.add.text(20, 28, "âœš  DOCTOR", {
             fontSize: "14px", color: "#22c55e",
             fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3
         }).setOrigin(0, 0.5).setDepth(3);
@@ -102,7 +103,7 @@ export default class DoctorNightScene extends Phaser.Scene {
             fontSize: "11px", color: "#2d6640",
             fontFamily: "'Courier New', monospace", letterSpacing: 2
         }).setOrigin(0.5, 0.5).setDepth(3);
-        this.add.text(W - 20, 28, "◉  NIGHT PHASE", {
+        this.add.text(W - 20, 28, "â—‰  NIGHT PHASE", {
             fontSize: "11px", color: "#2d6640",
             fontFamily: "'Courier New', monospace", letterSpacing: 2
         }).setOrigin(1, 0.5).setDepth(3);
@@ -149,7 +150,7 @@ export default class DoctorNightScene extends Phaser.Scene {
             const shadow = this.add.graphics();
             shadow.fillStyle(0x000000, 0.6);
             shadow.fillRoundedRect(-cardW / 2 + 4, -cardH / 2 + 6, cardW, cardH, 12);
-            
+
             const bg = this.add.graphics();
             const drawBg = (hover: boolean, selected: boolean) => {
                 bg.clear();
@@ -169,7 +170,7 @@ export default class DoctorNightScene extends Phaser.Scene {
                 bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
             };
             drawBg(false, false);
-            
+
             const topAccent = this.add.graphics().setAlpha(0);
             topAccent.lineStyle(1.5, this.C.accent, 0.4);
             topAccent.beginPath();
@@ -178,7 +179,7 @@ export default class DoctorNightScene extends Phaser.Scene {
             topAccent.strokePath();
 
             const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x051a05); avatarBg.setStrokeStyle(1, this.C.borderDim);
-            const avatarIcon = this.add.text(0, -cardH * 0.23, isMe ? "🧑" : "👤", { fontSize: `${Math.floor(cardW * 0.2)}px` }).setOrigin(0.5);
+            const avatarIcon = this.add.text(0, -cardH * 0.23, isMe ? "ðŸ§‘" : "ðŸ‘¤", { fontSize: `${Math.floor(cardW * 0.2)}px` }).setOrigin(0.5);
             const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
             this.tweens.add({ targets: pulse, alpha: 0.15, scaleX: 1.3, scaleY: 1.3, duration: 1200, yoyo: true, repeat: -1, delay: i * 200 });
             const name = this.add.text(0, cardH * 0.07, player.username.toUpperCase(), {
@@ -187,7 +188,7 @@ export default class DoctorNightScene extends Phaser.Scene {
                 fontFamily: "'Courier New', monospace", fontStyle: isMe ? "bold" : "normal", letterSpacing: 1
             }).setOrigin(0.5);
             const meLabel = isMe ? this.add.text(0, cardH * 0.16, "[ YOU ]", { fontSize: "9px", color: "#2d6640", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5) : null;
-            
+
             const btnBg = this.add.graphics();
             const drawBtnBg = (hover: boolean) => {
                 btnBg.clear();
@@ -197,7 +198,7 @@ export default class DoctorNightScene extends Phaser.Scene {
                 btnBg.strokeRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
             };
             drawBtnBg(false);
-            
+
             const btnLabel = this.add.text(0, cardH * 0.38, "PROTECT", { fontSize: "10px", color: "#22c55e", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
             const items: Phaser.GameObjects.GameObject[] = [shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel];
             if (meLabel) items.push(meLabel);
@@ -221,16 +222,16 @@ export default class DoctorNightScene extends Phaser.Scene {
         });
         this.tweens.add({ targets: selected, scaleX: 1.1, scaleY: 1.1, duration: 250, ease: "Back.easeOut" });
         drawBg(false, true);
-        btnLabel.setText("SAVED ✓").setColor("#4ade80");
-        const mark = this.add.text(selected.x, selected.y - 20, "✚", { fontSize: "52px", color: "#22c55e", fontStyle: "bold", fontFamily: "'Georgia', serif" }).setOrigin(0.5).setAlpha(0).setDepth(10);
+        btnLabel.setText("SAVED âœ“").setColor("#4ade80");
+        const mark = this.add.text(selected.x, selected.y - 20, "âœš", { fontSize: "52px", color: "#22c55e", fontStyle: "bold", fontFamily: "'Georgia', serif" }).setOrigin(0.5).setAlpha(0).setDepth(10);
         this.tweens.add({ targets: mark, alpha: 1, scaleX: 1.2, scaleY: 1.2, duration: 200, yoyo: true, repeat: 1, onComplete: () => this.tweens.add({ targets: mark, alpha: 0, duration: 400, onComplete: () => mark.destroy() }) });
         socketService.socket.emit("doctor_save", player.id);
-        this.showToast(`Protecting: ${player.username}`, "success");
+        this.showToast(ar.night.doctorProtecting(player.username), "success");
     }
 
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Mobile UI
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private createMobileUI(W: number, H: number) {
         const ui = document.createElement("div");
         ui.id = "mobile-night-ui";
@@ -247,7 +248,7 @@ export default class DoctorNightScene extends Phaser.Scene {
             backgroundColor: "rgba(0,0,0,0.4)",
         });
         header.innerHTML = `
-            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">✚ DOCTOR</div>
+            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">âœš DOCTOR</div>
             <div style="color:#e8f1e8;font-size:18px;font-weight:bold;letter-spacing:2px">CHOOSE WHO TO SAVE</div>
             <div style="color:#2d6640;font-size:11px;margin-top:4px">Protect one player from the Mafia tonight</div>
         `;
@@ -280,7 +281,7 @@ export default class DoctorNightScene extends Phaser.Scene {
                 });
 
                 const avatar = document.createElement("div");
-                avatar.textContent = isMe ? "🧑" : "👤";
+                avatar.textContent = isMe ? "ðŸ§‘" : "ðŸ‘¤";
                 avatar.style.fontSize = "28px";
 
                 const nameEl = document.createElement("div");
@@ -307,7 +308,7 @@ export default class DoctorNightScene extends Phaser.Scene {
                     if (this.actionUsed) return;
                     this.actionUsed = true;
                     this.savedPlayerId = player.id;
-                    btn.textContent = "✓ SAVING";
+                    btn.textContent = "âœ“ SAVING";
                     btn.style.background = "linear-gradient(180deg, #22c55e, #16a34a)";
                     btn.style.color = "#000";
                     btn.style.borderColor = "#4ade80";
@@ -320,7 +321,7 @@ export default class DoctorNightScene extends Phaser.Scene {
                     });
                     this.cameras.main.flash(400, 0, 100, 0);
                     socketService.socket.emit("doctor_save", player.id);
-                    this.showToast(`Protecting: ${player.username}`, "success");
+                    this.showToast(ar.night.doctorProtecting(player.username), "success");
                 });
 
                 row.appendChild(avatar);
@@ -336,9 +337,9 @@ export default class DoctorNightScene extends Phaser.Scene {
 
     private showToast(message: string, type: "danger" | "success" | "info") {
         const colorMap = {
-            danger:  { bg: 0x1a0505, border: 0xcc2222, text: "#ff4444" },
+            danger: { bg: 0x1a0505, border: 0xcc2222, text: "#ff4444" },
             success: { bg: 0x051a05, border: 0x22cc22, text: "#44ff44" },
-            info:    { bg: 0x05051a, border: 0x2244cc, text: "#4488ff" },
+            info: { bg: 0x05051a, border: 0x2244cc, text: "#4488ff" },
         };
         const c = colorMap[type];
         const W = this.scale.width;
@@ -369,25 +370,30 @@ export default class DoctorNightScene extends Phaser.Scene {
             this.cameras.main.fadeOut(400, 6, 8, 16);
             this.time.delayedCall(400, () => { this.scene.start("LobbyScene"); });
         });
+        socketService.socket.on("doctor_error", (data: any) => {
+            this.actionUsed = false;
+            this.savedPlayerId = null;
+            this.showToast(data.message, "danger");
+        });
         socketService.socket.on("player_killed", (data: any) => {
-            const msg = `${data.username} was killed in the night`;
-            if (data.id === this.savedPlayerId) this.showToast(`Failed to save ${data.username}`, "danger");
+            const msg = ar.night.eliminatedNight(data.username);
+            if (data.id === this.savedPlayerId) this.showToast(ar.night.failedSave(data.username), "danger");
             else this.showToast(msg, "danger");
             this.addNightEventToMobilePanel(msg, "#f87171");
         });
     }
 
-    // ─── helper: نحفظ الـ event عشان GameScene تعرضه لما ترجع ───
+    // â”€â”€â”€ helper: Ù†Ø­ÙØ¸ Ø§Ù„Ù€ event Ø¹Ø´Ø§Ù† GameScene ØªØ¹Ø±Ø¶Ù‡ Ù„Ù…Ø§ ØªØ±Ø¬Ø¹ â”€â”€â”€
     private addNightEventToMobilePanel(msg: string, color: string) {
         socketService.pendingEvents.push({ msg, color });
         const panel = document.getElementById("tab-panel-events");
         if (!panel) return;
-        const now  = new Date();
-        const time = `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`;
+        const now = new Date();
+        const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
         const card = document.createElement("div");
         card.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid #ef444444;border-left:3px solid ${color};animation:eventSlideIn 0.3s ease-out`;
         card.innerHTML = `
-            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">🔪</div>
+            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">ðŸ”ª</div>
             <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;margin-bottom:3px">
                     <span style="font-size:9px;font-weight:bold;letter-spacing:2px;color:${color};font-family:'Courier New',monospace">ELIMINATED</span>
@@ -407,5 +413,7 @@ export default class DoctorNightScene extends Phaser.Scene {
         socketService.socket.off("player_killed");
         socketService.socket.off("back_to_lobby");
         socketService.socket.off("server_reset");
+        socketService.socket.off("doctor_error");
     }
 }
+

@@ -1,0 +1,100 @@
+export const ar = {
+    appTitle: "المنظمة السرية",
+    phases: {
+        WAITING: "بانتظار البدء",
+        LOBBY: "الردهة",
+        DAY: "النهار",
+        NIGHT: "الليل",
+        VOTING: "التصويت",
+        NIGHT_REVIEW: "مراجعة الليل",
+        GAME_OVER: "انتهت اللعبة",
+    },
+    lobby: {
+        reconnecting: "جارٍ إعادة الاتصال...",
+        welcomeBack: (username: string) => `مرحباً بعودتك يا ${username}`,
+        startingNewSession: "جارٍ بدء جلسة جديدة...",
+        connectionTimeout: "انتهت مهلة الاتصال",
+        cannotConnect: "تعذر الاتصال بالخادم",
+        enterSociety: "الدخول إلى المنظمة السرية",
+        joinQueue: "انضم الآن",
+        connecting: "جارٍ الاتصال...",
+        searching: "جارٍ البحث...",
+        joining: "جارٍ الانضمام...",
+        waitingForPlayers: "بانتظار بقية اللاعبين...",
+        connected: "تم الاتصال بالخادم",
+        adminReady: "لوحة الأدمن جاهزة",
+        adminJoining: "جارٍ الدخول كأدمن...",
+        spectatorJoining: "جارٍ البحث عن لعبة نشطة...",
+        playerJoining: "جارٍ الانضمام إلى الطابور...",
+        usernameMin: "الاسم يجب أن يكون حرفين على الأقل",
+        playerPasswordRequired: "اختر لاعب ثم أدخل كلمة السر أولاً",
+        queueCount: (size: number, required: number) => `• في الطابور: ${size} / ${required}`,
+        passwordSet: (password: string) => `تم حفظ كلمة السر: ${password}`,
+        noPassword: "لا توجد كلمة سر للجلسة",
+        serverReset: "تمت إعادة ضبط الخادم من الأدمن",
+        sessionReset: "تم تغيير كلمة السر، أدخل الكلمة الجديدة للمتابعة",
+    },
+    roles: {
+        ADMIN: "الأدمن",
+        MAFIA: "المافيا",
+        DOCTOR: "الطبيب",
+        DETECTIVE: "المحقق",
+        CITIZEN: "المواطن",
+        SPECTATOR: "المشاهد",
+    },
+    night: {
+        room: (roomId: string) => `الغرفة ${roomId}`,
+        nightPhase: "مرحلة الليل",
+        mafiaTitle: "اختر هدفك",
+        mafiaDeadTitle: "لقد خرجت من اللعبة",
+        mafiaSubtitle: "نسّق مع فريقك ثم ثبّت الهدف",
+        mafiaDeadSubtitle: "راقب تخطيط المافيا من بعيد",
+        mafiaSuggested: "تم اقتراح الهدف",
+        mafiaSuggest: "اقترح",
+        mafiaChannel: "قناة المافيا",
+        mafiaSystemSuggested: (from: string, target: string) => `${from} اقترح استهداف ${target}`,
+        doctorTitle: "من تريد حمايته؟",
+        doctorSubtitle: "احمِ لاعباً واحداً من هجوم المافيا الليلة",
+        doctorProtect: "احمِه",
+        doctorSaving: "جارٍ الحماية",
+        doctorProtected: "تمت الحماية",
+        doctorProtecting: (username: string) => `أنت تحمي ${username}`,
+        detectiveTitle: "حقّق مع مشتبه به",
+        detectiveSubtitle: "اكشف هوية لاعب واحد هذه الليلة",
+        detectiveInspect: "حقّق",
+        detectiveScanning: "جارٍ التحقيق",
+        detectiveInvestigating: (username: string) => `جارٍ التحقيق مع ${username}`,
+        noTargets: "لا يوجد أهداف متاحة",
+        noPlayers: "لا يوجد لاعبون متاحون",
+        noSuspects: "لا يوجد مشتبه بهم حالياً",
+        you: "أنت",
+        eliminatedNight: (username: string) => `تم قتل ${username} أثناء الليل`,
+        failedSave: (username: string) => `فشلت الحماية، قُتل ${username}`,
+    },
+    game: {
+        players: "اللاعبون",
+        events: "الأحداث",
+        chat: "الدردشة",
+        live: "مباشر",
+        room: (roomId: string) => `الغرفة ${roomId}`,
+        round: (round: number) => `الجولة ${round}`,
+        voteTie: "تعادل في التصويت، لم يُقصَ أحد",
+        voteEliminated: (username: string) => `تم إقصاء ${username} بالتصويت`,
+        newGameStarting: "تبدأ لعبة جديدة...",
+        nightStory: (story: string) => `القصة: ${story}`,
+        doctorSelectionError: "اختيار الطبيب غير صالح",
+        mafiaSelectionError: "اختيار المافيا غير صالح",
+    },
+};
+
+export function getPhaseLabel(phase: string) {
+    return ar.phases[phase as keyof typeof ar.phases] || phase;
+}
+
+export function applyArabicDocumentLayout() {
+    document.documentElement.lang = "ar";
+    document.documentElement.dir = "rtl";
+    document.body.dir = "rtl";
+    document.body.style.direction = "rtl";
+    document.body.style.textAlign = "right";
+}

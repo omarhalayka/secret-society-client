@@ -1,9 +1,10 @@
-import Phaser from "phaser";
+﻿import Phaser from "phaser";
 import { socketService } from "../../socket";
+import { ar } from "../../i18n";
 
-// ════════════════════════════════════════════════════════
-//  MafiaNightScene — Desktop: Phaser cards | Mobile: HTML overlay
-// ════════════════════════════════════════════════════════
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+//  MafiaNightScene â€” Desktop: Phaser cards | Mobile: HTML overlay
+// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 export default class MafiaNightScene extends Phaser.Scene {
 
     private players: any[] = [];
@@ -15,7 +16,7 @@ export default class MafiaNightScene extends Phaser.Scene {
     private isSoloMafia: boolean = false;
     private myPlayer: any = null;
 
-    // جسيمات الجمر
+    // Ø¬Ø³ÙŠÙ…Ø§Øª Ø§Ù„Ø¬Ù…Ø±
     private embers: Array<{
         gfx: Phaser.GameObjects.Graphics;
         x: number; y: number; vx: number; vy: number;
@@ -31,9 +32,9 @@ export default class MafiaNightScene extends Phaser.Scene {
     constructor() { super("MafiaNightScene"); }
 
     init(data: any) {
-        this.roomId  = data.roomId;
+        this.roomId = data.roomId;
         this.players = data.players || [];
-        this.actionUsed    = false;
+        this.actionUsed = false;
         this.killedPlayerId = null;
         this.embers = [];
         this.myPlayer = this.players.find(p => p.id === socketService.socket.id) || null;
@@ -54,7 +55,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         const H = this.scale.height;
         this.isMobile = W < 700;
 
-        // ─── هل المافيا لحاله؟ ───
+        // â”€â”€â”€ Ù‡Ù„ Ø§Ù„Ù…Ø§ÙÙŠØ§ Ù„Ø­Ø§Ù„Ù‡ØŸ â”€â”€â”€
         const aliveMafia = this.players.filter(p => p.role === "MAFIA" && p.alive);
         this.isSoloMafia = aliveMafia.length <= 1;
 
@@ -69,7 +70,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         } else {
             this.drawTitle(W);
             this.drawPlayerCards(W, H);
-            // chat بس لو في أكثر من مافيا
+            // chat Ø¨Ø³ Ù„Ùˆ ÙÙŠ Ø£ÙƒØ«Ø± Ù…Ù† Ù…Ø§ÙÙŠØ§
             if (!this.isSoloMafia && !(this.myPlayer && !this.myPlayer.alive)) {
                 this.createDesktopChatPanel();
             }
@@ -103,9 +104,9 @@ export default class MafiaNightScene extends Phaser.Scene {
         });
     }
 
-    // ══════════════════════════════
-    //  خلفية
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  Ø®Ù„ÙÙŠØ©
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawBackground(W: number, H: number) {
         this.add.rectangle(0, 0, W, H, this.C.bg).setOrigin(0).setDepth(0);
         const grid = this.add.graphics().setDepth(0);
@@ -118,15 +119,15 @@ export default class MafiaNightScene extends Phaser.Scene {
         glow.fillRect(0, H * 0.55, W, H * 0.45);
     }
 
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Topbar
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawTopBar(W: number) {
         this.add.rectangle(0, 0, W, 56, this.C.surface).setOrigin(0).setDepth(2);
         const line = this.add.graphics().setDepth(3);
         line.lineStyle(2, this.C.accent, 0.8);
         line.moveTo(0, 56); line.lineTo(W, 56); line.strokePath();
-        this.add.text(20, 28, "🔪  MAFIA", {
+        this.add.text(20, 28, "ðŸ”ª  MAFIA", {
             fontSize: "14px", color: "#cc2222",
             fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3
         }).setOrigin(0, 0.5).setDepth(3);
@@ -134,20 +135,20 @@ export default class MafiaNightScene extends Phaser.Scene {
             fontSize: "11px", color: "#664444",
             fontFamily: "'Courier New', monospace", letterSpacing: 2
         }).setOrigin(0.5, 0.5).setDepth(3);
-        this.add.text(W - 20, 28, "◉  NIGHT PHASE", {
+        this.add.text(W - 20, 28, "â—‰  NIGHT PHASE", {
             fontSize: "11px", color: "#664444",
             fontFamily: "'Courier New', monospace", letterSpacing: 2
         }).setOrigin(1, 0.5).setDepth(3);
     }
 
-    // ══════════════════════════════
-    //  Desktop: عنوان
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  Desktop: Ø¹Ù†ÙˆØ§Ù†
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawTitle(W: number) {
         const isDead = this.myPlayer && !this.myPlayer.alive;
         const titleY = 110;
-        const titleText = isDead ? "YOU ARE ELIMINATED" : "CHOOSE YOUR TARGET";
-        const subText   = isDead ? "Watch the mafia coordinate..." : "Chat with your team then suggest a target";
+        const titleText = isDead ? ar.night.mafiaDeadTitle : ar.night.mafiaTitle;
+        const subText = isDead ? ar.night.mafiaDeadSubtitle : ar.night.mafiaSubtitle;
         const title = this.add.text(W / 2, titleY, titleText, {
             fontSize: "32px", color: isDead ? "#664444" : "#f1e8e8",
             fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 6,
@@ -162,7 +163,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         divider.lineStyle(1, this.C.accent, 0.4);
         divider.moveTo(W / 2 - 120, titleY + 58); divider.lineTo(W / 2 + 120, titleY + 58); divider.strokePath();
         this.tweens.add({ targets: divider, alpha: 1, duration: 500, delay: 600 });
-        // ملاحظة: createDesktopChatPanel تنادى من create() مباشرة
+        // Ù…Ù„Ø§Ø­Ø¸Ø©: createDesktopChatPanel ØªÙ†Ø§Ø¯Ù‰ Ù…Ù† create() Ù…Ø¨Ø§Ø´Ø±Ø©
     }
 
     private createDesktopChatPanel() {
@@ -184,15 +185,15 @@ export default class MafiaNightScene extends Phaser.Scene {
         // Header
         panel.innerHTML = `
             <div style="padding:10px 14px;border-bottom:1px solid #2a1515;background:rgba(0,0,0,0.3);border-radius:10px 10px 0 0">
-                <div style="color:#cc2222;font-size:10px;letter-spacing:3px;font-weight:bold">🔪 MAFIA CHANNEL</div>
+                <div style="color:#cc2222;font-size:10px;letter-spacing:3px;font-weight:bold">ðŸ”ª MAFIA CHANNEL</div>
             </div>
             <div id="mafia-suggestion-bar-d" style="display:none;padding:6px 12px;background:rgba(204,34,34,0.08);border-bottom:1px solid #2a1515;direction:rtl">
-                <span style="color:#664444;font-size:9px">الاقتراح: </span>
+                <span style="color:#664444;font-size:9px">Ø§Ù„Ø§Ù‚ØªØ±Ø§Ø­: </span>
                 <span id="suggestion-name-d" style="color:#ff4444;font-size:11px;font-weight:bold"></span>
                 <span id="suggestion-by-d" style="color:#664444;font-size:9px"></span>
             </div>
             <div id="mafia-chat-box-d" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:5px">
-                <div style="color:#3a1515;font-size:9px;text-align:center;letter-spacing:1px">── mafia channel ──</div>
+                <div style="color:#3a1515;font-size:9px;text-align:center;letter-spacing:1px">â”€â”€ mafia channel â”€â”€</div>
             </div>
         `;
 
@@ -203,11 +204,11 @@ export default class MafiaNightScene extends Phaser.Scene {
             inputDiv.innerHTML = `
                 <input id="mafia-chat-input-d" type="text" placeholder="Message..."
                     style="flex:1;padding:6px 10px;background:#0a0505;color:#f1e8e8;border:1px solid #2a1515;border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
-                <button id="mafia-chat-send-d" style="padding:6px 10px;border:1px solid #cc2222;border-radius:5px;background:transparent;color:#cc2222;font-size:11px;cursor:pointer;font-family:'Courier New',monospace">▶</button>
+                <button id="mafia-chat-send-d" style="padding:6px 10px;border:1px solid #cc2222;border-radius:5px;background:transparent;color:#cc2222;font-size:11px;cursor:pointer;font-family:'Courier New',monospace">â–¶</button>
             `;
             panel.appendChild(inputDiv);
 
-            const input   = inputDiv.querySelector<HTMLInputElement>("#mafia-chat-input-d")!;
+            const input = inputDiv.querySelector<HTMLInputElement>("#mafia-chat-input-d")!;
             const sendBtn = inputDiv.querySelector<HTMLButtonElement>("#mafia-chat-send-d")!;
             const sendMsg = () => {
                 const msg = input.value.trim();
@@ -222,7 +223,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         document.body.appendChild(panel);
     }
 
-    // ─── إضافة رسالة للـ chat (desktop + mobile) ───
+    // â”€â”€â”€ Ø¥Ø¶Ø§ÙØ© Ø±Ø³Ø§Ù„Ø© Ù„Ù„Ù€ chat (desktop + mobile) â”€â”€â”€
     private addDesktopChatMessage(from: string, message: string) {
         const chatBox = document.getElementById("mafia-chat-box-d");
         if (!chatBox) return;
@@ -235,23 +236,23 @@ export default class MafiaNightScene extends Phaser.Scene {
             border: isMine ? "1px solid #cc2222" : "1px solid #2a1515",
             fontSize: "12px",
         });
-        msg.innerHTML = `<span style="color:#664444;font-size:9px">${isMine ? "أنت" : from}: </span><span style="color:#f1e8e8">${message}</span>`;
+        msg.innerHTML = `<span style="color:#664444;font-size:9px">${isMine ? "Ø£Ù†Øª" : from}: </span><span style="color:#f1e8e8">${message}</span>`;
         chatBox.appendChild(msg);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     private updateDesktopSuggestion(suggestedBy: string, targetUsername: string) {
-        const bar  = document.getElementById("mafia-suggestion-bar-d");
+        const bar = document.getElementById("mafia-suggestion-bar-d");
         const name = document.getElementById("suggestion-name-d");
-        const by   = document.getElementById("suggestion-by-d");
-        if (bar)  bar.style.display = "block";
-        if (name) name.textContent  = targetUsername;
-        if (by)   by.textContent    = ` (${suggestedBy})`;
+        const by = document.getElementById("suggestion-by-d");
+        if (bar) bar.style.display = "block";
+        if (name) name.textContent = targetUsername;
+        if (by) by.textContent = ` (${suggestedBy})`;
     }
 
-    // ══════════════════════════════
-    //  Desktop: بطاقات
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  Desktop: Ø¨Ø·Ø§Ù‚Ø§Øª
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawPlayerCards(W: number, H: number) {
         const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id && p.role !== "MAFIA");
         if (!targets.length) return;
@@ -274,7 +275,7 @@ export default class MafiaNightScene extends Phaser.Scene {
             const shadow = this.add.graphics();
             shadow.fillStyle(0x000000, 0.6);
             shadow.fillRoundedRect(-cardW / 2 + 4, -cardH / 2 + 6, cardW, cardH, 12);
-            
+
             const bg = this.add.graphics();
             const drawBg = (hover: boolean, selected: boolean) => {
                 bg.clear();
@@ -294,7 +295,7 @@ export default class MafiaNightScene extends Phaser.Scene {
                 bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
             };
             drawBg(false, false);
-            
+
             const topAccent = this.add.graphics().setAlpha(0);
             topAccent.lineStyle(1.5, this.C.accent, 0.4);
             topAccent.beginPath();
@@ -303,14 +304,14 @@ export default class MafiaNightScene extends Phaser.Scene {
             topAccent.strokePath();
 
             const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x1a0a0a); avatarBg.setStrokeStyle(1, this.C.borderDim);
-            const avatarIcon = this.add.text(0, -cardH * 0.23, "👤", { fontSize: `${Math.floor(cardW * 0.2)}px` }).setOrigin(0.5);
+            const avatarIcon = this.add.text(0, -cardH * 0.23, "ðŸ‘¤", { fontSize: `${Math.floor(cardW * 0.2)}px` }).setOrigin(0.5);
             const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
             this.tweens.add({ targets: pulse, alpha: 0.15, scaleX: 1.3, scaleY: 1.3, duration: 1200, yoyo: true, repeat: -1, delay: i * 200 });
             const name = this.add.text(0, cardH * 0.07, player.username.toUpperCase(), {
                 fontSize: `${Math.max(10, Math.floor(cardW * 0.086))}px`,
                 color: "#c8b8b8", fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 1
             }).setOrigin(0.5);
-            
+
             const btnBg = this.add.graphics();
             const drawBtnBg = (hover: boolean) => {
                 btnBg.clear();
@@ -320,14 +321,14 @@ export default class MafiaNightScene extends Phaser.Scene {
                 btnBg.strokeRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
             };
             drawBtnBg(false);
-            
-            const btnLabel = this.add.text(0, cardH * 0.38, "ELIMINATE", { fontSize: "10px", color: "#cc2222", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
+
+            const btnLabel = this.add.text(0, cardH * 0.38, ar.night.mafiaSuggest, { fontSize: "10px", color: "#cc2222", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
             container.add([shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel]);
-            
+
             // store helpers
             container.setData("drawBg", drawBg);
             container.setData("drawBtnBg", drawBtnBg);
-            
+
             container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
             container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
             container.on("pointerout", () => { drawBg(false, false); topAccent.setAlpha(0); drawBtnBg(false); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 }); });
@@ -341,7 +342,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         this.killedPlayerId = player.id;
         this.cameras.main.flash(300, 120, 0, 0);
 
-        // reset كل الكروت
+        // reset ÙƒÙ„ Ø§Ù„ÙƒØ±ÙˆØª
         this.playerCards.forEach(card => {
             if (card !== selected) {
                 const drawBgFn = card.getData("drawBg");
@@ -349,26 +350,26 @@ export default class MafiaNightScene extends Phaser.Scene {
                 if (drawBgFn) drawBgFn(false, false);
                 if (drawBtnBgFn) drawBtnBgFn(false);
             }
-            
+
             const cardBtn = card.list[7] as Phaser.GameObjects.Graphics;
             const cardLabel = card.list[8] as Phaser.GameObjects.Text;
-            if (cardLabel) { cardLabel.setText("SUGGEST"); cardLabel.setColor("#cc2222"); }
+            if (cardLabel) { cardLabel.setText(ar.night.mafiaSuggest); cardLabel.setColor("#cc2222"); }
             card.setInteractive(new Phaser.Geom.Rectangle(-100, -90, 200, 180), Phaser.Geom.Rectangle.Contains);
             this.tweens.add({ targets: card, scaleX: 1, scaleY: 1, alpha: 1, duration: 200 });
         });
 
-        // highlight المختار
+        // highlight Ø§Ù„Ù…Ø®ØªØ§Ø±
         drawBg(false, true);
         this.tweens.add({ targets: selected, scaleX: 1.08, scaleY: 1.08, duration: 200, ease: "Back.easeOut" });
         const btnLabel = selected.list[8] as Phaser.GameObjects.Text;
-        if (btnLabel) { btnLabel.setText("✓ SUGGESTED"); btnLabel.setColor("#ff4444"); }
+        if (btnLabel) { btnLabel.setText("âœ“ SUGGESTED"); btnLabel.setColor("#ff4444"); }
 
         socketService.socket.emit("mafia_kill", player.id);
     }
 
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Mobile UI
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private createMobileUI(W: number, H: number) {
         const ui = document.createElement("div");
         ui.id = "mobile-night-ui";
@@ -381,26 +382,26 @@ export default class MafiaNightScene extends Phaser.Scene {
 
         const isDead = this.myPlayer && !this.myPlayer.alive;
 
-        // ─── Header ───
+        // â”€â”€â”€ Header â”€â”€â”€
         const header = document.createElement("div");
         Object.assign(header.style, {
             padding: "12px 16px", borderBottom: "1px solid #2a1515",
             backgroundColor: "rgba(0,0,0,0.5)",
         });
         header.innerHTML = isDead
-            ? `<div style="color:#664444;font-size:11px;letter-spacing:3px;margin-bottom:4px">☠ ELIMINATED</div>
+            ? `<div style="color:#664444;font-size:11px;letter-spacing:3px;margin-bottom:4px">â˜  ELIMINATED</div>
                <div style="color:#f1e8e8;font-size:15px;font-weight:bold">You have been eliminated</div>
                <div style="color:#664444;font-size:11px;margin-top:3px">Watch the mafia plan...</div>`
             : this.isSoloMafia
-            ? `<div style="color:#cc2222;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:4px">🔪 MAFIA NIGHT</div>
+                ? `<div style="color:#cc2222;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:4px">ðŸ”ª MAFIA NIGHT</div>
                <div style="color:#f1e8e8;font-size:16px;font-weight:bold">Choose Your Target</div>
-               <div style="color:#664444;font-size:11px;margin-top:3px">You are the last mafia — choose wisely</div>`
-            : `<div style="color:#cc2222;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:4px">🔪 MAFIA NIGHT</div>
+               <div style="color:#664444;font-size:11px;margin-top:3px">You are the last mafia â€” choose wisely</div>`
+                : `<div style="color:#cc2222;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:4px">ðŸ”ª MAFIA NIGHT</div>
                <div style="color:#f1e8e8;font-size:16px;font-weight:bold">Coordinate & Eliminate</div>
                <div style="color:#664444;font-size:11px;margin-top:3px">Chat with your team then lock a target</div>`;
         ui.appendChild(header);
 
-        // ─── اقتراح الضحية الحالي ───
+        // â”€â”€â”€ Ø§Ù‚ØªØ±Ø§Ø­ Ø§Ù„Ø¶Ø­ÙŠØ© Ø§Ù„Ø­Ø§Ù„ÙŠ â”€â”€â”€
         const suggestionBar = document.createElement("div");
         suggestionBar.id = "mafia-suggestion-bar";
         Object.assign(suggestionBar.style, {
@@ -409,38 +410,38 @@ export default class MafiaNightScene extends Phaser.Scene {
             direction: "rtl",
         });
         suggestionBar.innerHTML = `
-            <span style="color:#664444;font-size:10px;letter-spacing:2px">الاقتراح الحالي: </span>
+            <span style="color:#664444;font-size:10px;letter-spacing:2px">Ø§Ù„Ø§Ù‚ØªØ±Ø§Ø­ Ø§Ù„Ø­Ø§Ù„ÙŠ: </span>
             <span id="suggestion-name" style="color:#ff4444;font-size:12px;font-weight:bold"></span>
             <span id="suggestion-by" style="color:#664444;font-size:10px"></span>
         `;
         ui.appendChild(suggestionBar);
 
-        // ─── Body: chat + قائمة الأهداف ───
+        // â”€â”€â”€ Body: chat + Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø£Ù‡Ø¯Ø§Ù â”€â”€â”€
         const body = document.createElement("div");
         Object.assign(body.style, {
             flex: "1", display: "flex", flexDirection: "column", overflow: "hidden",
         });
 
-        // Chat messages — مخفي لو مافيا لحاله
+        // Chat messages â€” Ù…Ø®ÙÙŠ Ù„Ùˆ Ù…Ø§ÙÙŠØ§ Ù„Ø­Ø§Ù„Ù‡
         const chatBox = document.createElement("div");
         chatBox.id = "mafia-chat-box";
         Object.assign(chatBox.style, {
-            flex:           this.isSoloMafia || isDead ? "0" : "1",
-            display:        this.isSoloMafia && !isDead ? "none" : "flex",
-            overflowY:      "auto",
-            padding:        "10px 14px",
-            flexDirection:  "column",
-            gap:            "6px",
-            maxHeight:      isDead ? "100%" : "140px",
+            flex: this.isSoloMafia || isDead ? "0" : "1",
+            display: this.isSoloMafia && !isDead ? "none" : "flex",
+            overflowY: "auto",
+            padding: "10px 14px",
+            flexDirection: "column",
+            gap: "6px",
+            maxHeight: isDead ? "100%" : "140px",
         });
 
         const welcomeMsg = document.createElement("div");
         welcomeMsg.style.cssText = "color:#3a1515;font-size:10px;text-align:center;letter-spacing:1px;padding:6px";
-        welcomeMsg.textContent = "── mafia channel ──";
+        welcomeMsg.textContent = "â”€â”€ mafia channel â”€â”€";
         chatBox.appendChild(welcomeMsg);
         body.appendChild(chatBox);
 
-        // ─── قائمة الأهداف (مخفية بالبداية) ───
+        // â”€â”€â”€ Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø£Ù‡Ø¯Ø§Ù (Ù…Ø®ÙÙŠØ© Ø¨Ø§Ù„Ø¨Ø¯Ø§ÙŠØ©) â”€â”€â”€
         const targetSection = document.createElement("div");
         targetSection.id = "mafia-target-section";
         Object.assign(targetSection.style, {
@@ -451,7 +452,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         if (!isDead) {
             const targetHeader = document.createElement("div");
             targetHeader.style.cssText = "padding:8px 14px;color:#664444;font-size:9px;letter-spacing:2px;background:rgba(0,0,0,0.3)";
-            targetHeader.textContent = "🎯 CHOOSE TARGET";
+            targetHeader.textContent = "ðŸŽ¯ CHOOSE TARGET";
             targetSection.appendChild(targetHeader);
 
             const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id && p.role !== "MAFIA");
@@ -477,23 +478,23 @@ export default class MafiaNightScene extends Phaser.Scene {
                     });
 
                     row.innerHTML = `
-                        <span style="font-size:22px">👤</span>
+                        <span style="font-size:22px">ðŸ‘¤</span>
                         <span style="flex:1;color:#f1e8e8;font-size:14px;font-weight:bold">${player.username}</span>
                         <button id="kill-btn-${player.id}" style="padding:10px 16px;font-size:10px;font-weight:bold;letter-spacing:2px;border:1px solid rgba(204,34,34,0.5);border-radius:6px;background:linear-gradient(180deg, rgba(204,34,34,0.1), transparent);color:#cc2222;cursor:pointer;font-family:'Courier New',monospace;transition:all 0.2s;box-shadow:0 2px 4px rgba(0,0,0,0.5);touch-action:manipulation">SUGGEST</button>
                     `;
 
                     const btn = row.querySelector<HTMLButtonElement>(`#kill-btn-${player.id}`)!;
                     btn.addEventListener("click", () => {
-                        // تحديث بصري لكل الأزرار
+                        // ØªØ­Ø¯ÙŠØ« Ø¨ØµØ±ÙŠ Ù„ÙƒÙ„ Ø§Ù„Ø£Ø²Ø±Ø§Ø±
                         targetSection.querySelectorAll<HTMLButtonElement>("button[id^='kill-btn-']").forEach(b => {
-                            b.textContent = "SUGGEST";
+                            b.textContent = ar.night.mafiaSuggest;
                             b.style.background = "linear-gradient(180deg, rgba(204,34,34,0.1), transparent)";
                             b.style.color = "#cc2222";
                             b.style.borderColor = "rgba(204,34,34,0.5)";
                             b.style.transform = "scale(1)";
                         });
-                        // هاد الزر = locked
-                        btn.textContent = "✓ SUGGESTED";
+                        // Ù‡Ø§Ø¯ Ø§Ù„Ø²Ø± = locked
+                        btn.textContent = "âœ“ SUGGESTED";
                         btn.style.background = "linear-gradient(180deg, #cc2222, #991111)";
                         btn.style.color = "#fff";
                         btn.style.borderColor = "#ff4444";
@@ -513,7 +514,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         body.appendChild(targetSection);
         ui.appendChild(body);
 
-        // ─── Chat Input ───
+        // â”€â”€â”€ Chat Input â”€â”€â”€
         if (!isDead) {
             const chatInput = document.createElement("div");
             Object.assign(chatInput.style, {
@@ -527,8 +528,8 @@ export default class MafiaNightScene extends Phaser.Scene {
             `;
             ui.appendChild(chatInput);
 
-            const input  = chatInput.querySelector<HTMLInputElement>("#mafia-chat-input")!;
-            const sendBtn= chatInput.querySelector<HTMLButtonElement>("#mafia-chat-send")!;
+            const input = chatInput.querySelector<HTMLInputElement>("#mafia-chat-input")!;
+            const sendBtn = chatInput.querySelector<HTMLButtonElement>("#mafia-chat-send")!;
 
             const sendMsg = () => {
                 const msg = input.value.trim();
@@ -543,7 +544,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         document.body.appendChild(ui);
     }
 
-    // ─── إضافة رسالة للـ chat ───
+    // â”€â”€â”€ Ø¥Ø¶Ø§ÙØ© Ø±Ø³Ø§Ù„Ø© Ù„Ù„Ù€ chat â”€â”€â”€
     private addMafiaChatMessage(from: string, message: string) {
         const chatBox = document.getElementById("mafia-chat-box");
         if (!chatBox) return;
@@ -556,32 +557,32 @@ export default class MafiaNightScene extends Phaser.Scene {
             border: isMine ? "1px solid #cc2222" : "1px solid #2a1515",
         });
         msg.innerHTML = `
-            <div style="color:#664444;font-size:9px;margin-bottom:2px;letter-spacing:1px">${isMine ? "أنت" : from}</div>
+            <div style="color:#664444;font-size:9px;margin-bottom:2px;letter-spacing:1px">${isMine ? "Ø£Ù†Øª" : from}</div>
             <div style="color:#f1e8e8;font-size:13px">${message}</div>
         `;
         chatBox.appendChild(msg);
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // ─── تحديث اقتراح الضحية ───
+    // â”€â”€â”€ ØªØ­Ø¯ÙŠØ« Ø§Ù‚ØªØ±Ø§Ø­ Ø§Ù„Ø¶Ø­ÙŠØ© â”€â”€â”€
     private updateSuggestion(suggestedBy: string, targetUsername: string) {
         const bar = document.getElementById("mafia-suggestion-bar");
         if (!bar) return;
         bar.style.display = "block";
         const nameEl = document.getElementById("suggestion-name");
-        const byEl   = document.getElementById("suggestion-by");
+        const byEl = document.getElementById("suggestion-by");
         if (nameEl) nameEl.textContent = targetUsername;
-        if (byEl)   byEl.textContent   = ` (اقترحه ${suggestedBy})`;
+        if (byEl) byEl.textContent = ` (Ø§Ù‚ØªØ±Ø­Ù‡ ${suggestedBy})`;
     }
 
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Toast
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showToast(message: string, type: "danger" | "success" | "info") {
         const colorMap = {
-            danger:  { bg: 0x1a0505, border: 0xcc2222, text: "#ff4444" },
+            danger: { bg: 0x1a0505, border: 0xcc2222, text: "#ff4444" },
             success: { bg: 0x051a05, border: 0x22cc22, text: "#44ff44" },
-            info:    { bg: 0x05051a, border: 0x2244cc, text: "#4488ff" },
+            info: { bg: 0x05051a, border: 0x2244cc, text: "#4488ff" },
         };
         const c = colorMap[type];
         const W = this.scale.width;
@@ -596,13 +597,13 @@ export default class MafiaNightScene extends Phaser.Scene {
         this.time.delayedCall(2800, () => this.tweens.add({ targets: toast, alpha: 0, y: H - 40, duration: 300, onComplete: () => toast.destroy() }));
     }
 
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Socket Listeners
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private setupSocketListeners() {
         socketService.socket.on("phase_changed", (data: any) => {
             if (data.phase === "NIGHT" || data.phase === "NIGHT_REVIEW") return;
-            // امسح الـ desktop chat لما ينتهي الليل
+            // Ø§Ù…Ø³Ø­ Ø§Ù„Ù€ desktop chat Ù„Ù…Ø§ ÙŠÙ†ØªÙ‡ÙŠ Ø§Ù„Ù„ÙŠÙ„
             document.getElementById("mafia-desktop-chat")?.remove();
             this.cameras.main.fadeOut(500, 8, 8, 16);
             this.time.delayedCall(500, () => {
@@ -627,33 +628,36 @@ export default class MafiaNightScene extends Phaser.Scene {
         });
         socketService.socket.on("mafia_suggestion", (data: any) => {
             this.updateSuggestion(data.suggestedBy, data.targetUsername);
-            this.addMafiaChatMessage("🎯 SYSTEM", `${data.suggestedBy} اقترح قتل ${data.targetUsername}`);
+            this.addMafiaChatMessage("ðŸŽ¯ SYSTEM", `${data.suggestedBy} Ø§Ù‚ØªØ±Ø­ Ù‚ØªÙ„ ${data.targetUsername}`);
             if (!this.isMobile) {
                 this.updateDesktopSuggestion(data.suggestedBy, data.targetUsername);
-                this.addDesktopChatMessage("🎯", `${data.suggestedBy} اقترح → ${data.targetUsername}`);
+                this.addDesktopChatMessage("ðŸŽ¯", `${data.suggestedBy} Ø§Ù‚ØªØ±Ø­ â†’ ${data.targetUsername}`);
             }
         });
+        socketService.socket.on("mafia_error", (data: any) => {
+            this.showToast(data.message, "danger");
+        });
         socketService.socket.on("player_killed", (data: any) => {
-            const msg = `${data.username} was killed in the night`;
+            const msg = ar.night.eliminatedNight(data.username);
             this.showToast(msg, "danger");
             this.addNightEventToMobilePanel(msg, "#f87171");
         });
     }
 
-    // ─── helper: نحفظ الـ event عشان GameScene تعرضه لما ترجع ───
+    // â”€â”€â”€ helper: Ù†Ø­ÙØ¸ Ø§Ù„Ù€ event Ø¹Ø´Ø§Ù† GameScene ØªØ¹Ø±Ø¶Ù‡ Ù„Ù…Ø§ ØªØ±Ø¬Ø¹ â”€â”€â”€
     private addNightEventToMobilePanel(msg: string, color: string) {
-        // نحفظ في socketService عشان GameScene تعرضه لما تفتح
+        // Ù†Ø­ÙØ¸ ÙÙŠ socketService Ø¹Ø´Ø§Ù† GameScene ØªØ¹Ø±Ø¶Ù‡ Ù„Ù…Ø§ ØªÙØªØ­
         socketService.pendingEvents.push({ msg, color });
 
-        // لو الـ panel موجود (موبايل) نضيفه مباشرة
+        // Ù„Ùˆ Ø§Ù„Ù€ panel Ù…ÙˆØ¬ÙˆØ¯ (Ù…ÙˆØ¨Ø§ÙŠÙ„) Ù†Ø¶ÙŠÙÙ‡ Ù…Ø¨Ø§Ø´Ø±Ø©
         const panel = document.getElementById("tab-panel-events");
         if (!panel) return;
-        const now  = new Date();
-        const time = `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`;
+        const now = new Date();
+        const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
         const card = document.createElement("div");
         card.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid #ef444444;border-left:3px solid ${color};animation:eventSlideIn 0.3s ease-out`;
         card.innerHTML = `
-            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">🔪</div>
+            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">ðŸ”ª</div>
             <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;margin-bottom:3px">
                     <span style="font-size:9px;font-weight:bold;letter-spacing:2px;color:${color};font-family:'Courier New',monospace">ELIMINATED</span>
@@ -676,5 +680,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         socketService.socket.off("server_reset");
         socketService.socket.off("mafia_chat_message");
         socketService.socket.off("mafia_suggestion");
+        socketService.socket.off("mafia_error");
     }
 }
+

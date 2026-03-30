@@ -1,5 +1,6 @@
-import Phaser from "phaser";
+﻿import Phaser from "phaser";
 import { socketService } from "../../socket";
+import { ar } from "../../i18n";
 
 export default class DetectiveNightScene extends Phaser.Scene {
 
@@ -96,7 +97,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
         const line = this.add.graphics().setDepth(3);
         line.lineStyle(2, this.C.accent, 0.8);
         line.moveTo(0, 56); line.lineTo(W, 56); line.strokePath();
-        this.add.text(20, 28, "🔍  DETECTIVE", {
+        this.add.text(20, 28, "ðŸ”  DETECTIVE", {
             fontSize: "14px", color: "#3b82f6",
             fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3
         }).setOrigin(0, 0.5).setDepth(3);
@@ -104,7 +105,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             fontSize: "11px", color: "#1e3a5f",
             fontFamily: "'Courier New', monospace", letterSpacing: 2
         }).setOrigin(0.5, 0.5).setDepth(3);
-        this.add.text(W - 20, 28, "◉  NIGHT PHASE", {
+        this.add.text(W - 20, 28, "â—‰  NIGHT PHASE", {
             fontSize: "11px", color: "#1e3a5f",
             fontFamily: "'Courier New', monospace", letterSpacing: 2
         }).setOrigin(1, 0.5).setDepth(3);
@@ -150,7 +151,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             const shadow = this.add.graphics();
             shadow.fillStyle(0x000000, 0.6);
             shadow.fillRoundedRect(-cardW / 2 + 4, -cardH / 2 + 6, cardW, cardH, 12);
-            
+
             const bg = this.add.graphics();
             const drawBg = (hover: boolean, selected: boolean) => {
                 bg.clear();
@@ -170,7 +171,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
             };
             drawBg(false, false);
-            
+
             const topAccent = this.add.graphics().setAlpha(0);
             topAccent.lineStyle(1.5, this.C.accent, 0.4);
             topAccent.beginPath();
@@ -179,7 +180,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             topAccent.strokePath();
 
             const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x040810); avatarBg.setStrokeStyle(1, this.C.borderDim);
-            const avatarIcon = this.add.text(0, -cardH * 0.23, "◎", { fontSize: `${Math.floor(cardW * 0.2)}px`, color: "#1e3a5f" }).setOrigin(0.5);
+            const avatarIcon = this.add.text(0, -cardH * 0.23, "â—Ž", { fontSize: `${Math.floor(cardW * 0.2)}px`, color: "#1e3a5f" }).setOrigin(0.5);
             const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
             this.tweens.add({ targets: pulse, alpha: 0.1, scaleX: 1.3, scaleY: 1.3, duration: 1200, yoyo: true, repeat: -1, delay: i * 200 });
             const name = this.add.text(0, cardH * 0.07, player.username.toUpperCase(), {
@@ -190,7 +191,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 fontSize: "9px", color: "#1e3a5f",
                 fontFamily: "'Courier New', monospace", letterSpacing: 2
             }).setOrigin(0.5);
-            
+
             const btnBg = this.add.graphics();
             const drawBtnBg = (hover: boolean) => {
                 btnBg.clear();
@@ -200,7 +201,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 btnBg.strokeRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
             };
             drawBtnBg(false);
-            
+
             const btnLabel = this.add.text(0, cardH * 0.38, "INSPECT", { fontSize: "10px", color: "#3b82f6", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
             container.add([shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, statusTxt, btnBg, btnLabel]);
             container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
@@ -223,7 +224,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
         statusTxt.setText("INVESTIGATING...").setColor("#3b82f6");
         this.tweens.add({ targets: iconText, alpha: 0.3, duration: 400, yoyo: true, repeat: -1 });
         socketService.socket.emit("detective_check", player.id);
-        this.showToast(`Investigating: ${player.username}`, "info");
+        this.showToast(ar.night.detectiveInvestigating(player.username), "info");
     }
 
     private showResult(data: any) {
@@ -237,14 +238,14 @@ export default class DetectiveNightScene extends Phaser.Scene {
         }
 
         const roleConfig: Record<string, { color: string; border: number; bg: number; icon: string; label: string }> = {
-            MAFIA:     { color: "#ff4444", border: 0xcc2222, bg: 0x1a0505, icon: "⚠",  label: "⚠  مافيا"    },
-            DOCTOR:    { color: "#4ade80", border: 0x22cc55, bg: 0x051a05, icon: "✚",  label: "✚  طبيب"     },
-            DETECTIVE: { color: "#60a5fa", border: 0x2255cc, bg: 0x05051a, icon: "🔍", label: "🔍  محقق"    },
-            CITIZEN:   { color: "#94a3b8", border: 0x334155, bg: 0x0a0d13, icon: "✓",  label: "✓  مواطن"   },
+            MAFIA: { color: "#ff4444", border: 0xcc2222, bg: 0x1a0505, icon: "âš ", label: "âš   Ù…Ø§ÙÙŠØ§" },
+            DOCTOR: { color: "#4ade80", border: 0x22cc55, bg: 0x051a05, icon: "âœš", label: "âœš  Ø·Ø¨ÙŠØ¨" },
+            DETECTIVE: { color: "#60a5fa", border: 0x2255cc, bg: 0x05051a, icon: "ðŸ”", label: "ðŸ”  Ù…Ø­Ù‚Ù‚" },
+            CITIZEN: { color: "#94a3b8", border: 0x334155, bg: 0x0a0d13, icon: "âœ“", label: "âœ“  Ù…ÙˆØ§Ø·Ù†" },
         };
         const cfg = roleConfig[role] ?? roleConfig["CITIZEN"];
 
-        // تحديث بطاقة اللاعع المحقق معه
+        // ØªØ­Ø¯ÙŠØ« Ø¨Ø·Ø§Ù‚Ø© Ø§Ù„Ù„Ø§Ø¹Ø¹ Ø§Ù„Ù…Ø­Ù‚Ù‚ Ù…Ø¹Ù‡
         const targetCard = this.playerCards.find(c => {
             const nameText = c.list.find((obj: any) =>
                 obj instanceof Phaser.GameObjects.Text && obj.text === (data.username || "").toUpperCase()
@@ -252,7 +253,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             return !!nameText;
         });
         if (targetCard) {
-            const iconText = targetCard.list.find((obj: any) => obj instanceof Phaser.GameObjects.Text && (obj.text === "◎" || obj.text === "?")) as Phaser.GameObjects.Text | undefined;
+            const iconText = targetCard.list.find((obj: any) => obj instanceof Phaser.GameObjects.Text && (obj.text === "â—Ž" || obj.text === "?")) as Phaser.GameObjects.Text | undefined;
             const statusTxt = targetCard.list.find((obj: any) => obj instanceof Phaser.GameObjects.Text && (obj.text === "SCANNING..." || obj.text === "INVESTIGATING...")) as Phaser.GameObjects.Text | undefined;
             if (iconText) { this.tweens.killTweensOf(iconText); iconText.setText(cfg.icon).setColor(cfg.color).setAlpha(1); }
             if (statusTxt) { statusTxt.setText(role).setColor(cfg.color); }
@@ -276,10 +277,10 @@ export default class DetectiveNightScene extends Phaser.Scene {
     private showMobileResult(username: string, role: string) {
         document.getElementById("mobile-detective-result")?.remove();
         const roleConfig: Record<string, { color: string; icon: string; label: string }> = {
-            MAFIA:     { color: "#ef4444", icon: "⚠",  label: "مافيا"  },
-            DOCTOR:    { color: "#4ade80", icon: "✚",  label: "طبيب"   },
-            DETECTIVE: { color: "#60a5fa", icon: "🔍", label: "محقق"   },
-            CITIZEN:   { color: "#94a3b8", icon: "✓",  label: "مواطن" },
+            MAFIA: { color: "#ef4444", icon: "âš ", label: "Ù…Ø§ÙÙŠØ§" },
+            DOCTOR: { color: "#4ade80", icon: "âœš", label: "Ø·Ø¨ÙŠØ¨" },
+            DETECTIVE: { color: "#60a5fa", icon: "ðŸ”", label: "Ù…Ø­Ù‚Ù‚" },
+            CITIZEN: { color: "#94a3b8", icon: "âœ“", label: "Ù…ÙˆØ§Ø·Ù†" },
         };
         const cfg = roleConfig[role] ?? roleConfig["CITIZEN"];
 
@@ -301,7 +302,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             <div style="color:#1e3a5f;font-size:10px;letter-spacing:2px">TAP TO DISMISS</div>
         `;
 
-        // تحديث كرت اللاعع في الـ mobile UI
+        // ØªØ­Ø¯ÙŠØ« ÙƒØ±Øª Ø§Ù„Ù„Ø§Ø¹Ø¹ ÙÙŠ Ø§Ù„Ù€ mobile UI
         const rows = document.querySelectorAll<HTMLElement>("#mobile-night-ui [data-player-id]");
         rows.forEach(row => {
             if (row.dataset.playerId === "pending") {
@@ -314,9 +315,9 @@ export default class DetectiveNightScene extends Phaser.Scene {
         setTimeout(() => banner?.remove(), 8000);
     }
 
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     //  Mobile UI
-    // ══════════════════════════════
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private createMobileUI(W: number, H: number) {
         const ui = document.createElement("div");
         ui.id = "mobile-night-ui";
@@ -333,7 +334,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             backgroundColor: "rgba(0,0,0,0.4)",
         });
         header.innerHTML = `
-            <div style="color:#3b82f6;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">🔍 DETECTIVE</div>
+            <div style="color:#3b82f6;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">ðŸ” DETECTIVE</div>
             <div style="color:#e8eef8;font-size:18px;font-weight:bold;letter-spacing:2px">INVESTIGATE A SUSPECT</div>
             <div style="color:#1e3a5f;font-size:11px;margin-top:4px">Reveal the true identity of one player</div>
         `;
@@ -365,7 +366,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 });
 
                 const avatar = document.createElement("div");
-                avatar.textContent = "◎";
+                avatar.textContent = "â—Ž";
                 avatar.style.cssText = "font-size:28px;color:#1e3a5f;font-family:'Courier New',monospace;min-width:36px;text-align:center";
 
                 const nameEl = document.createElement("div");
@@ -390,7 +391,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 btn.addEventListener("click", () => {
                     if (this.actionUsed) return;
                     this.actionUsed = true;
-                    btn.textContent = "⌛ SCANNING...";
+                    btn.textContent = "âŒ› SCANNING...";
                     btn.style.background = "linear-gradient(180deg, #3b82f6, #2563eb)";
                     btn.style.color = "#000";
                     btn.style.borderColor = "#60a5fa";
@@ -406,7 +407,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
                     });
                     this.cameras.main.flash(300, 0, 50, 120);
                     socketService.socket.emit("detective_check", player.id);
-                    this.showToast(`Investigating: ${player.username}`, "info");
+                    this.showToast(ar.night.detectiveInvestigating(player.username), "info");
                 });
 
                 row.appendChild(avatar);
@@ -422,9 +423,9 @@ export default class DetectiveNightScene extends Phaser.Scene {
 
     private showToast(message: string, type: "danger" | "success" | "info") {
         const colorMap = {
-            danger:  { bg: 0x1a0505, border: 0xcc2222, text: "#ff4444" },
+            danger: { bg: 0x1a0505, border: 0xcc2222, text: "#ff4444" },
             success: { bg: 0x051a05, border: 0x22cc22, text: "#44ff44" },
-            info:    { bg: 0x05051a, border: 0x2244cc, text: "#4488ff" },
+            info: { bg: 0x05051a, border: 0x2244cc, text: "#4488ff" },
         };
         const c = colorMap[type];
         const W = this.scale.width;
@@ -459,23 +460,23 @@ export default class DetectiveNightScene extends Phaser.Scene {
             this.showResult(data);
         });
         socketService.socket.on("player_killed", (data: any) => {
-            const msg = `${data.username} was killed in the night`;
+            const msg = ar.night.eliminatedNight(data.username);
             this.showToast(msg, "danger");
             this.addNightEventToMobilePanel(msg, "#f87171");
         });
     }
 
-    // ─── helper: نحفظ الـ event عشان GameScene تعرضه لما ترجع ───
+    // â”€â”€â”€ helper: Ù†Ø­ÙØ¸ Ø§Ù„Ù€ event Ø¹Ø´Ø§Ù† GameScene ØªØ¹Ø±Ø¶Ù‡ Ù„Ù…Ø§ ØªØ±Ø¬Ø¹ â”€â”€â”€
     private addNightEventToMobilePanel(msg: string, color: string) {
         socketService.pendingEvents.push({ msg, color });
         const panel = document.getElementById("tab-panel-events");
         if (!panel) return;
-        const now  = new Date();
-        const time = `${now.getHours().toString().padStart(2,"0")}:${now.getMinutes().toString().padStart(2,"0")}`;
+        const now = new Date();
+        const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
         const card = document.createElement("div");
         card.style.cssText = `display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-radius:8px;background:rgba(239,68,68,0.1);border:1px solid #ef444444;border-left:3px solid ${color};animation:eventSlideIn 0.3s ease-out`;
         card.innerHTML = `
-            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">🔪</div>
+            <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">ðŸ”ª</div>
             <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;margin-bottom:3px">
                     <span style="font-size:9px;font-weight:bold;letter-spacing:2px;color:${color};font-family:'Courier New',monospace">ELIMINATED</span>
@@ -499,3 +500,4 @@ export default class DetectiveNightScene extends Phaser.Scene {
         socketService.socket.off("server_reset");
     }
 }
+

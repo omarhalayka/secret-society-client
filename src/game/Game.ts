@@ -5,6 +5,9 @@ import GameScene from "./scenes/GameScene";
 import MafiaNightScene from "./scenes/MafiaNightScene";
 import DoctorNightScene from "./scenes/DoctorNightScene";
 import DetectiveNightScene from "./scenes/DetectiveNightScene";
+import { applyArabicDocumentLayout } from "../i18n";
+
+applyArabicDocumentLayout();
 
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
