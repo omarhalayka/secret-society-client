@@ -583,9 +583,9 @@ export default class GameScene extends Phaser.Scene {
             row.appendChild(avatarDiv);
             row.appendChild(name);
 
+            // تعديل: إخفاء الأدوار عن المشاهد - إزالة this.userType === "SPECTATOR"
             const showRole = isMe || !p.alive || this.isAdmin ||
-                (this.role === "MAFIA" && p.role === "MAFIA") ||
-                this.userType === "SPECTATOR";
+                (this.role === "MAFIA" && p.role === "MAFIA");
 
             if (showRole && p.role) {
                 const roleSpan = document.createElement("span");
@@ -616,10 +616,10 @@ export default class GameScene extends Phaser.Scene {
             this.tweens.add({ targets: dot, alpha: 0.3, duration: 900, yoyo: true, repeat: -1, delay: Math.random() * 600 });
         }
 
+        // تعديل: إخفاء الأدوار عن المشاهد - إزالة شرط this.userType === "SPECTATOR"
         let tag = "";
         if (this.isAdmin || isMe) tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
         else if (this.role === "MAFIA" && player.role === "MAFIA") tag = `  [${ar.roles.MAFIA}]`;
-        else if (this.userType === "SPECTATOR") tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
         else if (!isAlive) tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
 
         const avatarEmoji = player.avatar || "😎";
