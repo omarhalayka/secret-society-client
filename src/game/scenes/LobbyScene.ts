@@ -4,8 +4,8 @@ import { audioManager } from "../../AudioManager";
 import { ar, ARABIC_FONT_FAMILY } from "../../i18n";
 import { voiceManager } from "../../VoiceManager";
 
-// ============================================
-// ADMIN PASSWORD - Change as needed
+// â”€â”€â”€ ÙƒÙ„Ù…Ø© Ø³Ø± Ø§Ù„Ø£Ø¯Ù…Ù† â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ØºÙŠÙ‘Ø±Ù‡Ø§ Ù„Ø£ÙŠ ÙƒÙ„Ù…Ø© ØªØ¨ØºØ§Ù‡Ø§
 const ADMIN_PASSWORD = "123123321123";
 
 export default class LobbyScene extends Phaser.Scene {
@@ -13,7 +13,7 @@ export default class LobbyScene extends Phaser.Scene {
     private usernameInput!: HTMLInputElement;
     private selectedType: string = "spectator";
     private sessionPasswordReady: boolean = false;
-    private roleBtnW: number = 0;
+    private roleBtnW: number = 0; // Ø¹Ø±Ø¶ Ø²Ø± Ø§Ù„Ù€ role â€” Ù„Ù„Ø§Ø³ØªØ®Ø¯Ø§Ù… ÙÙŠ unlockPlayerButton
     private roleBtnH: number = 64;
     private queueStatusText!: Phaser.GameObjects.Text;
     private playerCountInterval?: number;
@@ -41,9 +41,13 @@ export default class LobbyScene extends Phaser.Scene {
 
     constructor() { super("LobbyScene"); }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  CREATE
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+
     create() {
         voiceManager.destroy();
-        
+        // â”€â”€â”€ ØªØ­Ù‚Ù‚ Ù…Ù† Ø¬Ù„Ø³Ø© Ù…Ø­ÙÙˆØ¸Ø© Ø£ÙˆÙ„Ø§Ù‹ â”€â”€â”€
         const saved = socketService.getSavedSession();
         if (saved) {
             this.tryRejoin(saved);
@@ -55,6 +59,7 @@ export default class LobbyScene extends Phaser.Scene {
     }
 
     private setupSessionListeners() {
+        // â”€â”€â”€ Ø³Ø¬Ù‘Ù„ ÙƒÙ„ session listeners Ù…Ø±Ø© ÙˆØ§Ø­Ø¯Ø© ÙÙ‚Ø· â”€â”€â”€
         socketService.socket.off("session_password_ready");
         socketService.socket.off("session_password_set");
         socketService.socket.off("session_reset");
@@ -118,6 +123,9 @@ export default class LobbyScene extends Phaser.Scene {
         });
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  REJOIN â€” Ù…Ø­Ø§ÙˆÙ„Ø© Ø§Ù„Ø±Ø¬ÙˆØ¹ Ù„Ø¬Ù„Ø³Ø© Ù…Ø­ÙÙˆØ¸Ø©
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private tryRejoin(saved: { roomId: string; username: string; role: string }) {
         const W = this.scale.width;
         const H = this.scale.height;
@@ -135,6 +143,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         socketService.saveUsername(saved.username);
 
+        // â”€â”€â”€ cleanup Ø£ÙŠ listeners Ù‚Ø¯ÙŠÙ…Ø© â”€â”€â”€
         socketService.socket.off("rejoin_failed");
         socketService.socket.off("game_started");
 
@@ -157,6 +166,7 @@ export default class LobbyScene extends Phaser.Scene {
                 role: saved.role,
             });
 
+            // timeout â€” Ù„Ùˆ Ù…Ø§ Ø±Ø¯ Ø§Ù„Ø³ÙŠØ±ÙØ± Ø®Ù„Ø§Ù„ 5 Ø«ÙˆØ§Ù†ÙŠ
             const timeout = this.time.delayedCall(5000, () => {
                 socketService.socket.off("rejoin_failed");
                 socketService.socket.off("game_started");
@@ -166,7 +176,7 @@ export default class LobbyScene extends Phaser.Scene {
 
             socketService.socket.once("rejoin_failed", () => {
                 timeout.remove();
-                msg.setText(ar.lobby.sessionExpired);
+                msg.setText("Session expired");
                 goToLobby();
             });
 
@@ -187,6 +197,7 @@ export default class LobbyScene extends Phaser.Scene {
             attemptRejoin();
         } else {
             socketService.socket.once("connect", attemptRejoin);
+            // Ù„Ùˆ Ù…Ø§ Ø§ØªØµÙ„ Ø®Ù„Ø§Ù„ 6 Ø«ÙˆØ§Ù†ÙŠ
             this.time.delayedCall(6000, () => {
                 if (!socketService.socket.connected) {
                     msg.setText(ar.lobby.cannotConnect);
@@ -202,18 +213,23 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.cameras.main.setBackgroundColor("#060810");
 
+        // Ø®Ù„ÙÙŠØ© Ø³ÙˆØ¯Ø§Ø¡
         const bg = this.add.rectangle(W / 2, H / 2, W, H, 0x000000).setDepth(0);
 
+        // ØµÙˆØ±Ø© Ø§Ù„Ù€ splash
         const img = this.add.image(W / 2, H / 2, "welcome")
             .setDepth(1).setAlpha(0);
 
+        // ØªÙ†Ø§Ø³Ø¨ Ø§Ù„ØµÙˆØ±Ø© - contain Ø¹Ù„Ù‰ Ø§Ù„Ø¯ÙŠØ³ÙƒØªÙˆØ¨ØŒ cover Ø¹Ù„Ù‰ Ø§Ù„Ù‡Ø§ØªÙ
         const isMobile = W < 700;
         const scaleX = W / img.width;
         const scaleY = H / img.height;
         img.setScale(isMobile ? Math.max(scaleX, scaleY) : Math.min(scaleX, scaleY) * 0.85);
 
+        // fade in Ø§Ù„ØµÙˆØ±Ø©
         this.tweens.add({ targets: img, alpha: 1, duration: 900, delay: 200 });
 
+        // â”€â”€â”€ Ø²Ø± HTML Ø¹Ø´Ø§Ù† Ø§Ù„Ù†Øµ Ø§Ù„Ø¹Ø±Ø¨ÙŠ ÙŠØ·Ù„Ø¹ ØµØ­ (RTL) â”€â”€â”€
         const btn = document.createElement("button");
         btn.id = "splash-btn";
         btn.textContent = ar.lobby.enterSociety;
@@ -243,8 +259,10 @@ export default class LobbyScene extends Phaser.Scene {
         btn.addEventListener("mousedown", () => { btn.style.transform = "translateX(-50%) scale(0.96)"; });
         document.body.appendChild(btn);
 
+        // Ø£Ù†Ø´Ø¦ Ø²Ø± Ø§Ù„Ù€ mute ÙÙˆØ±Ø§Ù‹ (Ù…Ø³ØªÙ‚Ù„ Ø¹Ù† Ø§Ù„Ù…ÙˆØ³ÙŠÙ‚Ù‰)
         audioManager.createMuteButton();
 
+        // fade in Ø§Ù„Ø²Ø± Ø¨Ø¹Ø¯ Ø§Ù„ØµÙˆØ±Ø©
         this.time.delayedCall(900, () => { btn.style.opacity = "1"; });
 
         let entered = false;
@@ -253,10 +271,11 @@ export default class LobbyScene extends Phaser.Scene {
             entered = true;
             audioManager.play();
 
+            // â”€â”€â”€ Ø£Ù†Ø´Ø¦ Ø§Ù„ÙÙŠØ¯ÙŠÙˆ ÙˆØ´ØºÙ‘Ù„Ù‡ Ù…Ø¨Ø§Ø´Ø±Ø© Ø¶Ù…Ù† user gesture â”€â”€â”€
             document.getElementById("lobby-bg-video")?.remove();
             const vid = document.createElement("video");
             vid.id = "lobby-bg-video";
-            vid.src = "/bg-desktop.mp4";
+            vid.src = "/bg-desktop.mp4"; // Ù†ÙØ³ Ø§Ù„ÙÙŠØ¯ÙŠÙˆ Ù„Ù„ÙƒÙ„ Ø¹Ø´Ø§Ù† ÙŠØ´ØªØºÙ„ Ø¹Ù„Ù‰ Ø§Ù„Ø£Ù†Ø¯Ø±ÙˆÙŠØ¯
             vid.loop = true;
             vid.muted = true;
             vid.preload = "auto";
@@ -275,6 +294,7 @@ export default class LobbyScene extends Phaser.Scene {
             vid.addEventListener("playing", showVideo, { once: true });
             vid.addEventListener("loadeddata", showVideo, { once: true });
             document.body.insertBefore(vid, document.body.firstChild);
+            // Ø´ØºÙ‘Ù„ Ù…Ø¨Ø§Ø´Ø±Ø© â€” Ù‡Ù†Ø§ Ø¶Ù…Ù† user gesture chain Ø¨Ù†Ø¬Ø­ Ø¹Ù„Ù‰ ÙƒÙ„ Ø§Ù„Ù…ØªØµÙØ­Ø§Øª
             vid.play().catch(() => { });
 
             btn.style.opacity = "0";
@@ -287,6 +307,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         btn.addEventListener("click", enterLobby);
 
+        // fallback: Ø£ÙŠ Ø¶ØºØ·Ø© Ø¹Ù„Ù‰ Ø§Ù„Ø´Ø§Ø´Ø© ØªØ´ØºÙ‘Ù„ Ø§Ù„Ù„ÙˆØ¨ÙŠ
         const onFirstClick = (e: Event) => {
             document.removeEventListener("pointerdown", onFirstClick);
             document.removeEventListener("touchstart", onFirstClick);
@@ -321,36 +342,47 @@ export default class LobbyScene extends Phaser.Scene {
         }, 3000);
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  DESKTOP LAYOUT
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private buildDesktopLayout(W: number, H: number) {
         const cy = H / 2;
 
-        const heroW = Math.floor(W * 0.55);
-        const formW = W - heroW;
-        const heroCx = heroW / 2;
-        const formCx = heroW + formW / 2;
+        // â”€â”€â”€ Ø§Ù„Ù‚Ø³Ù…Ø©: 55% ÙŠØ³Ø§Ø± (hero) | 45% ÙŠÙ…ÙŠÙ† (form card) â”€â”€â”€
+        const heroW = Math.floor(W * 0.55);   // Ø¹Ø±Ø¶ Ù…Ù†Ø·Ù‚Ø© Ø§Ù„Ù€ hero
+        const formW = W - heroW;              // Ø¹Ø±Ø¶ Ù…Ù†Ø·Ù‚Ø© Ø§Ù„ÙÙˆØ±Ù…
+        const heroCx = heroW / 2;             // Ù…Ø±ÙƒØ² Ø§Ù„Ù€ hero
+        const formCx = heroW + formW / 2;     // Ù…Ø±ÙƒØ² Ø§Ù„ÙÙˆØ±Ù…
 
+        // â”€â”€â”€ Ø¨Ø·Ø§Ù‚Ø© Ø§Ù„ÙÙˆØ±Ù… â”€â”€â”€
         const cardPad = 40;
         const cardW = formW - cardPad * 2;
         const cardH = Math.min(H - 80, 460);
         const cardTop = cy - cardH / 2;
 
+        // Ø¨Ø·Ø§Ù‚Ø© Ø´ÙØ§ÙØ© - backdrop blur Ø¨Ø¯Ù„ Ø§Ù„Ù„ÙˆÙ† Ø§Ù„ØµÙ„Ø¨
         this.add.rectangle(formCx, cy, cardW + 6, cardH + 6, 0x3b82f6, 0.08).setDepth(1);
         const card = this.add.rectangle(formCx, cy, cardW, cardH, 0x060810, 0.94).setDepth(2);
         card.setStrokeStyle(1, this.C.cardBorder);
 
+        // Ø´Ø±ÙŠØ· Ù„ÙˆÙ†ÙŠ Ø£Ø¹Ù„Ù‰ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø©
         this.add.rectangle(formCx, cardTop + 2, cardW - 2, 3, this.C.accent)
             .setOrigin(0.5, 0).setDepth(3);
 
+        // Ø®Ø· Ø±Ø£Ø³ÙŠ ÙØ§ØµÙ„ Ø¨ÙŠÙ† Ø§Ù„Ù‚Ø³Ù…ÙŠÙ†
         const sepLine = this.add.graphics().setDepth(1);
         sepLine.lineStyle(1, this.C.cardBorder, 0.6);
         sepLine.moveTo(heroW, H * 0.1);
         sepLine.lineTo(heroW, H * 0.9);
         sepLine.strokePath();
 
+        // â”€â”€â”€ Ù…Ø­ØªÙˆÙ‰ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© â”€â”€â”€
         const pad = 28;
-        const fL = formCx - cardW / 2 + pad;
+        const fL = formCx - cardW / 2 + pad;   // Ø­Ø§ÙØ© ÙŠØ³Ø§Ø±
         let posY = cardTop + 30;
 
+        // Ø¹Ù†ÙˆØ§Ù† ØµØºÙŠØ± Ø¯Ø§Ø®Ù„ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø©
+        // Ø¹Ù†ÙˆØ§Ù† ØµØºÙŠØ± Ø£Ø¹Ù„Ù‰ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© - HTML Ø¹Ø´Ø§Ù† RTL
         const cardTagEl = document.createElement("div");
         cardTagEl.id = "lobby-card-tag";
         cardTagEl.textContent = ar.lobby.cardTag;
@@ -369,44 +401,53 @@ export default class LobbyScene extends Phaser.Scene {
         document.body.appendChild(cardTagEl);
         posY += 28;
 
+        // USERNAME
         this.addFieldLabel(fL, posY, ar.lobby.usernameLabel);
         posY += 18;
         this.createUsernameInput(fL, posY, cardW - pad * 2);
-        posY += 56;
+        posY += 56; // Ø§Ø±ØªÙØ§Ø¹ Ø§Ù„Ù€ input (44px) + gap (12px)
 
+        // JOIN AS
         this.addFieldLabel(fL, posY, ar.lobby.joinAsLabel);
         posY += 18;
         this.createRoleButtons(formCx, posY + 32, cardW - pad * 2);
-        posY += 90;
+        posY += 90; // Ø§Ø±ØªÙØ§Ø¹ Ø§Ù„Ø£Ø²Ø±Ø§Ø± (64px) + gap (26px)
 
+        // JOIN BUTTON
         const btnY = cardTop + cardH - 72;
         this.createJoinButton(formCx, btnY, cardW - pad * 2);
 
+        // Queue status
         this.queueStatusText = this.add.text(formCx, cardTop + cardH - 32,
             ar.lobby.queueCount(0, 6), {
             fontSize: "11px", color: "#3b4a5c",
             fontFamily: "'Courier New', monospace", letterSpacing: 1
         }).setOrigin(0.5).setDepth(3);
 
+        // fade in
         card.setAlpha(0);
         this.tweens.add({ targets: card, alpha: 1, duration: 600, delay: 150 });
 
+        // â”€â”€â”€ Hero ÙŠØ³Ø§Ø± â”€â”€â”€
         this.buildDesktopHero(heroCx, cy, heroW);
     }
 
     private buildDesktopHero(cx: number, cy: number, heroW: number) {
-        const s = Math.min(heroW * 0.06, 24);
+        // â”€â”€â”€ Ø£ÙŠÙ‚ÙˆÙ†Ø© Ù…Ø§Ø³Ø© â”€â”€â”€
+        const s = Math.min(heroW * 0.06, 24); // Ø­Ø¬Ù… Ù…ØªÙ†Ø§Ø³Ø¨ Ù…Ø¹ Ø§Ù„Ø¹Ø±Ø¶
         const icon = this.add.graphics().setDepth(2).setAlpha(0);
         icon.fillStyle(this.C.accent, 1);
         icon.fillTriangle(cx - s, cy - s * 3.2, cx + s, cy - s * 3.2, cx, cy - s * 1.5);
         icon.fillTriangle(cx - s, cy - s * 1.2, cx + s, cy - s * 1.2, cx, cy - s * 2.9);
         this.tweens.add({ targets: icon, alpha: 0.85, duration: 800, delay: 100 });
 
+        // Ø®Ø· Ø¹Ù„ÙˆÙŠ Ø²Ø®Ø±ÙÙŠ
         const lineW = Math.min(heroW * 0.3, 120);
         const g1 = this.add.graphics().setDepth(2);
         g1.lineStyle(1, this.C.accent, 0.22);
         g1.moveTo(cx - lineW / 2, cy - s * 4.2); g1.lineTo(cx + lineW / 2, cy - s * 4.2); g1.strokePath();
 
+        // â”€â”€â”€ Ø§Ù„Ø¹Ù†ÙˆØ§Ù† Ø§Ù„Ø±Ø¦ÙŠØ³ÙŠ (HTML Ø¹Ø´Ø§Ù† RTL ÙŠØ´ØªØºÙ„ ØµØ­) â”€â”€â”€
         const titleSize = Math.min(Math.floor(heroW * 0.055), 28);
         const titleEl = document.createElement("div");
         titleEl.id = "lobby-hero-title";
@@ -430,25 +471,29 @@ export default class LobbyScene extends Phaser.Scene {
         });
         document.body.appendChild(titleEl);
         this.time.delayedCall(200, () => { titleEl.style.opacity = "1"; });
-        
+        // placeholder Ø´ÙØ§Ù ÙÙŠ Phaser Ù„Ù„Ù€ spacing
         const t1 = this.add.rectangle(cx, cy - 10, 10, titleSize * 2.4, 0x000000, 0).setDepth(2);
 
+        // subtitle
         const t2 = this.add.text(cx, cy + titleSize + 22, ar.lobby.subtitle, {
             fontSize: "10px", color: "#3b82f6",
             fontFamily: "'Courier New', monospace", letterSpacing: 3
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: t2, alpha: 1, duration: 600, delay: 400 });
 
+        // Ø®Ø· Ø³ÙÙ„ÙŠ Ø²Ø®Ø±ÙÙŠ
         const g2 = this.add.graphics().setDepth(2);
         g2.lineStyle(1, this.C.accent, 0.12);
         g2.moveTo(cx - lineW / 2, cy + titleSize + 50); g2.lineTo(cx + lineW / 2, cy + titleSize + 50); g2.strokePath();
 
+        // Ø¬Ù…Ù„Ø© italics
         const t3 = this.add.text(cx, cy + titleSize + 68, ar.lobby.tagline, {
             fontSize: "13px", color: "#2d3748",
             fontFamily: "'Georgia', serif", fontStyle: "italic"
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: t3, alpha: 1, duration: 600, delay: 550 });
 
+        // â”€â”€â”€ Features â”€â”€â”€
         const baseY = cy + titleSize + 108;
         [
             { ico: "🔪", text: ar.lobby.featureHiddenRoles },
@@ -463,17 +508,23 @@ export default class LobbyScene extends Phaser.Scene {
         });
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  MOBILE LAYOUT
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private buildMobileLayout(W: number, H: number) {
         const cx = W / 2;
-        const pad = 16;
+        const pad = 16; // padding Ø¬Ø§Ù†Ø¨ÙŠ
 
+        // â”€â”€â”€ Ø±Ø£Ø³ â”€â”€â”€
         const headerH = 108;
 
+        // Ø£ÙŠÙ‚ÙˆÙ†Ø© Ù…Ø§Ø³Ø© ØµØºÙŠØ±Ø©
         const icon = this.add.graphics().setDepth(2);
         icon.fillStyle(this.C.accent, 0.9);
         icon.fillTriangle(cx - 10, 28, cx + 10, 28, cx, 44);
         icon.fillTriangle(cx - 10, 50, cx + 10, 50, cx, 34);
 
+        // Ø§Ù„Ø¹Ù†ÙˆØ§Ù† Ø§Ù„Ø¹Ø±Ø¨ÙŠ ÙƒÙ€ HTML Ø¹Ø´Ø§Ù† RTL
         const mTitleEl = document.createElement("div");
         mTitleEl.id = "lobby-mobile-title";
         mTitleEl.textContent = ar.appTitle;
@@ -494,47 +545,58 @@ export default class LobbyScene extends Phaser.Scene {
         });
         document.body.appendChild(mTitleEl);
 
-        this.add.text(cx, 86, ar.lobby.mobileSubtitle, {
-            fontSize: "10px", color: "#3b82f6",
-            fontFamily: ARABIC_FONT_FAMILY, letterSpacing: 1
+        this.add.text(cx, 86, "MULTIPLAYER · SOCIAL DEDUCTION", {
+            fontSize: "8px", color: "#3b82f6",
+            fontFamily: "'Courier New', monospace", letterSpacing: 2
         }).setOrigin(0.5).setDepth(2);
 
+        // â”€â”€â”€ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© â”€â”€â”€
         const cardW = W - pad * 2;
         const cardH = H - headerH - pad;
         const cardCX = cx;
         const cardCY = headerH + cardH / 2;
-        const cardT = headerH;
+        const cardT = headerH; // Ø£Ø¹Ù„Ù‰ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø©
 
+        // Ø¨Ø·Ø§Ù‚Ø© Ø´ÙØ§ÙØ© Ù…Ø¹ HTML blur overlay
         const card = this.add.rectangle(cardCX, cardCY, cardW, cardH, 0x060810, 0.94).setDepth(1);
         card.setStrokeStyle(1, this.C.cardBorder);
 
+        // Ø´Ø±ÙŠØ· Ù„ÙˆÙ†ÙŠ Ø£Ø¹Ù„Ù‰
         this.add.rectangle(cardCX, cardT + 2, cardW - 2, 3, this.C.accent)
             .setOrigin(0.5, 0).setDepth(2);
 
+        // â”€â”€â”€ Ù…Ø­ØªÙˆÙ‰ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© (positioning Ø¹Ù…ÙˆØ¯ÙŠ Ø«Ø§Ø¨Øª) â”€â”€â”€
         const fL = cardCX - cardW / 2 + 18;
         let posY = cardT + 24;
 
+        // USERNAME
         this.addFieldLabel(fL, posY, ar.lobby.usernameLabel);
         posY += 17;
         this.createUsernameInput(fL, posY, cardW - 36);
-        posY += 58;
+        posY += 58; // input height 44px + gap 14px
 
+        // JOIN AS
         this.addFieldLabel(fL, posY, ar.lobby.joinAsLabel);
         posY += 18;
         this.createRoleButtons(cardCX, posY + 32, cardW - 36);
+        // Ø£Ø²Ø±Ø§Ø± Ø§Ù„Ø¯ÙˆØ± Ø§Ø±ØªÙØ§Ø¹Ù‡Ø§ 64px
 
+        // JOIN BUTTON - Ù…Ù† Ø£Ø³ÙÙ„ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø©
         const btnY = cardT + cardH - 68;
         const queueY = cardT + cardH - 30;
 
         this.createJoinButton(cardCX, btnY, cardW - 36);
 
         this.queueStatusText = this.add.text(cardCX, queueY,
-            ar.lobby.queueCount(0, 6), {
+            "â—  0 / 6 in queue", {
             fontSize: "11px", color: "#3b4a5c",
             fontFamily: "'Courier New', monospace", letterSpacing: 1
         }).setOrigin(0.5).setDepth(3);
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  FIELD HELPERS
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private addFieldLabel(x: number, y: number, label: string) {
         this.add.text(x, y, label, {
             fontSize: "9px", color: "#4a5568",
@@ -547,7 +609,7 @@ export default class LobbyScene extends Phaser.Scene {
         this.usernameInput = document.createElement("input");
         this.usernameInput.id = "lobby-username";
         this.usernameInput.type = "text";
-        this.usernameInput.placeholder = ar.game.usernamePlaceholder;
+        this.usernameInput.placeholder = "Your name...";
         this.usernameInput.maxLength = 20;
         this.usernameInput.autocomplete = "off";
         Object.assign(this.usernameInput.style, {
@@ -582,6 +644,7 @@ export default class LobbyScene extends Phaser.Scene {
         const btnW = (totalW - gap * 2) / 3;
         const btnH = 64;
         const sx = cx - totalW / 2 + btnW / 2;
+        // Ù†Ø­ÙØ¸ Ø§Ù„Ø¹Ø±Ø¶ Ø¹Ø´Ø§Ù† Ù†Ø³ØªØ®Ø¯Ù…Ù‡ ÙÙŠ unlockPlayerButton
         this.roleBtnW = btnW;
         this.roleBtnH = btnH;
 
@@ -591,13 +654,14 @@ export default class LobbyScene extends Phaser.Scene {
             const isPlayerLocked = role.key === "player" && !this.sessionPasswordReady;
 
             const c = this.add.container(bx, cy).setDepth(3);
-            if (isPlayerLocked) c.setAlpha(0.4);
+            if (isPlayerLocked) c.setAlpha(0.4); // Ù…Ø¸Ù‡Ø± Ù…Ù‚ÙÙ„
 
             const bg = this.add.rectangle(0, 0, btnW, btnH,
                 isActive ? 0x0d1f3c : this.C.card);
             bg.setStrokeStyle(isActive ? 2 : 1,
                 isActive ? role.colHex : this.C.cardBorder);
 
+            // Ø£ÙŠÙ‚ÙˆÙ†Ø© â€” PLAYER Ø§Ù„Ù…Ù‚ÙÙ„ ÙŠØ´ÙˆÙ ðŸ”’
             const displayIcon = isPlayerLocked ? "🔒" : role.icon;
             const iconTxt = this.add.text(0, -12, displayIcon, { fontSize: "20px" }).setOrigin(0.5);
             const lbl = this.add.text(0, 14, role.label, {
@@ -607,6 +671,7 @@ export default class LobbyScene extends Phaser.Scene {
 
             c.add([bg, iconTxt, lbl]);
 
+            // PLAYER Ø§Ù„Ù…Ù‚ÙÙ„: Ù…Ø´ interactive
             if (!isPlayerLocked) {
                 c.setInteractive(
                     new Phaser.Geom.Rectangle(-btnW / 2, -btnH / 2, btnW, btnH),
@@ -648,11 +713,13 @@ export default class LobbyScene extends Phaser.Scene {
             });
         });
 
+        // â”€â”€â”€ Ù„Ùˆ ÙƒÙ„Ù…Ø© Ø§Ù„Ø³Ø± Ø¬Ø§Ù‡Ø²Ø© Ù‚Ø¨Ù„ Ù…Ø§ ØªØªÙ†Ø´Ø£ Ø§Ù„Ø£Ø²Ø±Ø§Ø± â€” Ù†ÙØªØ­ PLAYER ÙÙˆØ±Ø§Ù‹ â”€â”€â”€
         if (this.sessionPasswordReady) {
             this.time.delayedCall(50, () => this.unlockPlayerButton());
         }
     }
 
+    // â”€â”€â”€ ØªÙØ¹ÙŠÙ„ Ø²Ø± PLAYER Ù„Ù…Ø§ Ø§Ù„Ø£Ø¯Ù…Ù† ÙŠØ­Ø· ÙƒÙ„Ù…Ø© Ø§Ù„Ø³Ø± â”€â”€â”€
     private unlockPlayerButton() {
         const c = this.roleButtons["player"];
         if (!c) return;
@@ -668,6 +735,7 @@ export default class LobbyScene extends Phaser.Scene {
             ),
             Phaser.Geom.Rectangle.Contains
         );
+        // Ù…Ø§ Ù†Ø·Ù„Ø¹ toast Ù„Ùˆ Ø§Ù„Ø²Ø± Ø§ØªÙØªØ­ ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ Ø¹Ù†Ø¯ Ø§Ù„Ø¯Ø®ÙˆÙ„
         if (!this.roleButtons["player"]?.getData("autoUnlocked")) {
             this.showToast(ar.lobby.roleUnlocked, "success");
         }
@@ -691,6 +759,9 @@ export default class LobbyScene extends Phaser.Scene {
         this.selectedType = key;
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  ADMIN RESET BUTTON (ÙŠØ·Ù„Ø¹ ÙÙŠ Ø§Ù„Ù€ lobby Ø¨Ø¹Ø¯ Ø¯Ø®ÙˆÙ„ Ø§Ù„Ø£Ø¯Ù…Ù†)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showAdminResetButton() {
         document.getElementById("admin-reset-btn")?.remove();
 
@@ -733,6 +804,9 @@ export default class LobbyScene extends Phaser.Scene {
         document.body.appendChild(btn);
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  ADMIN PASSWORD POPUP
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showAdminPasswordPopup() {
         document.getElementById("admin-pass-overlay")?.remove();
 
@@ -757,16 +831,16 @@ export default class LobbyScene extends Phaser.Scene {
         lockIcon.style.cssText = "font-size:30px;text-align:center;margin-bottom:10px";
 
         const title = document.createElement("div");
-        title.textContent = ar.lobby.adminAccess;
+        title.textContent = "ADMIN ACCESS";
         title.style.cssText = "color:#f59e0b;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold";
 
         const sub = document.createElement("div");
-        sub.textContent = ar.lobby.enterAdminPassword;
+        sub.textContent = "Enter admin password to continue";
         sub.style.cssText = "color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px";
 
         const passInput = document.createElement("input");
         passInput.type = "password";
-        passInput.placeholder = ar.lobby.passwordPlaceholder;
+        passInput.placeholder = "Password...";
         Object.assign(passInput.style, {
             width: "100%", padding: "10px 12px", boxSizing: "border-box",
             backgroundColor: "#010409", color: "#f1f5f9",
@@ -790,7 +864,7 @@ export default class LobbyScene extends Phaser.Scene {
         btnRow.style.cssText = "display:flex;gap:8px;margin-top:4px";
 
         const cancelBtn = document.createElement("button");
-        cancelBtn.textContent = ar.lobby.cancel;
+        cancelBtn.textContent = "CANCEL";
         Object.assign(cancelBtn.style, {
             flex: "1", padding: "10px", border: "1px solid #21262d",
             borderRadius: "6px", background: "none", color: "#4a5568",
@@ -799,7 +873,7 @@ export default class LobbyScene extends Phaser.Scene {
         });
 
         const confirmBtn = document.createElement("button");
-        confirmBtn.textContent = ar.lobby.confirm;
+        confirmBtn.textContent = "CONFIRM";
         Object.assign(confirmBtn.style, {
             flex: "1", padding: "10px", border: "none",
             borderRadius: "6px", backgroundColor: "#f59e0b", color: "#000",
@@ -817,15 +891,18 @@ export default class LobbyScene extends Phaser.Scene {
             if (passInput.value === ADMIN_PASSWORD) {
                 overlay.remove();
                 this.activateRole("admin", roles);
-                this.showToast(ar.lobby.adminAccessGranted, "success");
+                this.showToast("Admin access granted \u2713", "success");
+                // â”€â”€â”€ Ø£Ø¸Ù‡Ø± Ø²Ø± RESET SERVER ÙÙŠ Ø§Ù„Ù€ lobby â”€â”€â”€
                 this.showAdminResetButton();
+                // â”€â”€â”€ Ø¨Ø¹Ø¯ Ø¯Ø®ÙˆÙ„ Ø§Ù„Ø£Ø¯Ù…Ù†ØŒ Ù†Ø·Ù„Ø¨ Ù…Ù†Ù‡ ÙŠØ­Ø· ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø§Ù„Ø¬Ù„Ø³Ø© â”€â”€â”€
                 this.time.delayedCall(400, () => this.showSessionPasswordPopup());
             } else {
-                errEl.textContent = ar.lobby.incorrectPassword;
+                errEl.textContent = "Incorrect password";
                 passInput.value = "";
                 passInput.style.borderColor = "#ef4444";
                 passInput.style.boxShadow = "0 0 0 3px rgba(239,68,68,0.1)";
                 passInput.focus();
+                // shake
                 let n = 0;
                 const iv = setInterval(() => {
                     box.style.marginLeft = n % 2 === 0 ? "7px" : "-7px";
@@ -856,6 +933,9 @@ export default class LobbyScene extends Phaser.Scene {
         setTimeout(() => passInput.focus(), 60);
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  SESSION PASSWORD POPUP (Ù„Ù„Ø£Ø¯Ù…Ù† â€” ÙŠØ­Ø· ÙƒÙ„Ù…Ø© Ù…Ø±ÙˆØ± Ø§Ù„Ø¬Ù„Ø³Ø©)
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showSessionPasswordPopup() {
         document.getElementById("session-pass-overlay")?.remove();
 
@@ -876,25 +956,25 @@ export default class LobbyScene extends Phaser.Scene {
         });
 
         box.innerHTML = `
-            <div style="font-size:30px;text-align:center;margin-bottom:10px">🔑</div>
-            <div style="color:#3b82f6;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold">${ar.lobby.sessionSettings}</div>
-            <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">${ar.lobby.setPasswordAndPlayers}</div>
+            <div style="font-size:30px;text-align:center;margin-bottom:10px">ðŸ”‘</div>
+            <div style="color:#3b82f6;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold">SESSION SETTINGS</div>
+            <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">Set password & player count for this session</div>
 
-            <div style="color:#64748b;font-size:9px;letter-spacing:2px;margin-bottom:6px">${ar.lobby.password}</div>
-            <input id="session-pass-input" type="text" placeholder="${ar.lobby.passwordExample}" style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:14px"/>
+            <div style="color:#64748b;font-size:9px;letter-spacing:2px;margin-bottom:6px">PASSWORD</div>
+            <input id="session-pass-input" type="text" placeholder="e.g. mafia2024" style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:14px"/>
 
-            <div style="color:#64748b;font-size:9px;letter-spacing:2px;margin-bottom:8px">${ar.lobby.numberOfPlayers}</div>
+            <div style="color:#64748b;font-size:9px;letter-spacing:2px;margin-bottom:8px">NUMBER OF PLAYERS</div>
             <div id="count-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
                 ${[4, 5, 6, 7, 8, 9, 10].map(n => `
                     <button data-count="${n}" style="flex:1;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid ${n === 6 ? "#3b82f6" : "rgba(255,255,255,0.08)"};background:${n === 6 ? "#3b82f6" : "transparent"};color:${n === 6 ? "#fff" : "#8b949e"};font-size:12px;font-family:'Courier New',monospace;cursor:pointer">${n}</button>
                 `).join("")}
             </div>
-            <div id="count-desc" style="color:#3b82f6;font-size:9px;text-align:center;margin-bottom:12px;letter-spacing:1px">${ar.lobby.playerCountDesc6}</div>
+            <div id="count-desc" style="color:#3b82f6;font-size:9px;text-align:center;margin-bottom:12px;letter-spacing:1px">6 players â€” 1 Mafia, 1 Doctor, 1 Detective, 3 Citizens</div>
 
             <div id="session-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
             <div style="display:flex;gap:8px">
-                <button id="session-skip-btn" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">${ar.lobby.noPassword}</button>
-                <button id="session-set-btn" style="flex:1;padding:10px;border:none;border-radius:6px;background:#3b82f6;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">${ar.lobby.confirm}</button>
+                <button id="session-skip-btn" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">NO PASSWORD</button>
+                <button id="session-set-btn" style="flex:1;padding:10px;border:none;border-radius:6px;background:#3b82f6;color:#fff;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">CONFIRM</button>
             </div>
         `;
 
@@ -908,15 +988,16 @@ export default class LobbyScene extends Phaser.Scene {
 
         setTimeout(() => input.focus(), 60);
 
+        // â”€â”€â”€ Ù…Ù†Ø·Ù‚ Ø£Ø²Ø±Ø§Ø± Ø§Ù„Ø¹Ø¯Ø¯ â”€â”€â”€
         let selectedCount = 6;
         const roleDesc: Record<number, string> = {
-            4: ar.lobby.playerCountDesc4,
-            5: ar.lobby.playerCountDesc5,
-            6: ar.lobby.playerCountDesc6,
-            7: ar.lobby.playerCountDesc7,
-            8: ar.lobby.playerCountDesc8,
-            9: ar.lobby.playerCountDesc9,
-            10: ar.lobby.playerCountDesc10,
+            4: "4 لاعبين — 1 مافيا، 1 طبيب، 2 مواطن",
+            5: "5 لاعبين — 1 مافيا، 1 طبيب، 1 محقق، 2 مواطن",
+            6: "6 لاعبين — 1 مافيا، 1 طبيب، 1 محقق، 3 مواطنون",
+            7: "7 لاعبين — 2 مافيا، 1 طبيب، 1 محقق، 3 مواطنون",
+            8: "8 لاعبين — 2 مافيا، 1 طبيب، 1 محقق، 4 مواطنون",
+            9: "9 لاعبين — 2 مافيا، 1 طبيب، 1 محقق، 5 مواطنون",
+            10: "10 لاعبين — 3 مافيا، 1 طبيب، 1 محقق، 5 مواطنون",
         };
         const descEl = box.querySelector<HTMLElement>("#count-desc")!;
         const countBtns = box.querySelectorAll<HTMLButtonElement>("#count-btns button");
@@ -936,17 +1017,17 @@ export default class LobbyScene extends Phaser.Scene {
             socketService.socket.emit("set_session_password", { password: password || "" });
             socketService.socket.emit("set_player_count", { count: selectedCount });
             overlay.remove();
-            const countMsg = `${selectedCount} ${ar.lobby.players}`;
+            const countMsg = `${selectedCount} players`;
             if (password) {
-                this.showToast(`${ar.lobby.passwordSetText} ${password} | ${countMsg}`, "success");
+                this.showToast(`âœ“ Password: ${password} | ${countMsg}`, "success");
             } else {
-                this.showToast(`${ar.lobby.noPasswordText} | ${countMsg}`, "info");
+                this.showToast(`âœ“ No password | ${countMsg}`, "info");
             }
         };
 
         setBtn.addEventListener("click", () => {
             const val = input.value.trim();
-            if (!val) { errEl.textContent = ar.lobby.pleaseEnterPassword; return; }
+            if (!val) { errEl.textContent = "Please enter a password"; return; }
             applyPassword(val);
         });
 
@@ -967,6 +1048,9 @@ export default class LobbyScene extends Phaser.Scene {
         });
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  JOIN BUTTON
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private createJoinButton(cx: number, cy: number, width: number) {
         const btnH = 48;
         const c = this.add.container(cx, cy).setDepth(3);
@@ -989,6 +1073,12 @@ export default class LobbyScene extends Phaser.Scene {
         this.joinBtnLabel = lbl;
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  PLAYER PASSWORD PROMPT
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  PLAYER JOIN POPUP â€” ÙƒÙ„Ù…Ø© Ø³Ø± Ø£Ùˆ ÙƒÙˆØ¯ Ø±Ø¬ÙˆØ¹
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showPlayerJoinPopup(roles: Array<{ key: string; colHex: number; hex: string }>) {
         document.getElementById("player-join-overlay")?.remove();
 
@@ -1009,31 +1099,31 @@ export default class LobbyScene extends Phaser.Scene {
         });
 
         box.innerHTML = `
-            <div style="font-size:28px;text-align:center;margin-bottom:10px">⚔</div>
-            <div style="color:#22c55e;font-size:11px;letter-spacing:3px;text-align:center;margin-bottom:16px;font-weight:bold">${ar.lobby.joinAsPlayer}</div>
+            <div style="font-size:28px;text-align:center;margin-bottom:10px">âš”</div>
+            <div style="color:#22c55e;font-size:11px;letter-spacing:3px;text-align:center;margin-bottom:16px;font-weight:bold">JOIN AS PLAYER</div>
 
             <div id="pjp-tabs" style="display:flex;gap:6px;margin-bottom:16px">
-                <button id="pjp-tab-password" style="flex:1;padding:8px;border-radius:5px;border:1px solid #22c55e;background:#22c55e;color:#000;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">${ar.lobby.passwordTab}</button>
-                <button id="pjp-tab-code" style="flex:1;padding:8px;border-radius:5px;border:1px solid #21262d;background:none;color:#4a5568;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:'Courier New',monospace">${ar.lobby.rejoinCodeTab}</button>
+                <button id="pjp-tab-password" style="flex:1;padding:8px;border-radius:5px;border:1px solid #22c55e;background:#22c55e;color:#000;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">ÙƒÙ„Ù…Ø© Ø§Ù„Ø³Ø±</button>
+                <button id="pjp-tab-code" style="flex:1;padding:8px;border-radius:5px;border:1px solid #21262d;background:none;color:#4a5568;font-size:10px;letter-spacing:1px;cursor:pointer;font-family:'Courier New',monospace">ÙƒÙˆØ¯ Ø§Ù„Ø±Ø¬ÙˆØ¹</button>
             </div>
 
             <div id="pjp-panel-password">
-                <input id="pjp-password-input" type="password" placeholder="${ar.lobby.sessionPasswordPlaceholder}"
+                <input id="pjp-password-input" type="password" placeholder="Session password..."
                     style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
             </div>
 
             <div id="pjp-panel-code" style="display:none">
-                <div style="color:#4a5568;font-size:9px;letter-spacing:1px;margin-bottom:10px;direction:rtl;text-align:right;line-height:1.6">${ar.lobby.rejoinInstructions}</div>
-                <input id="pjp-rejoin-name" type="text" placeholder="${ar.lobby.yourUsername}"
+                <div style="color:#4a5568;font-size:9px;letter-spacing:1px;margin-bottom:10px;direction:rtl;text-align:right;line-height:1.6">Ø£Ø¯Ø®Ù„ Ø§Ø³Ù…Ùƒ ÙƒÙ…Ø§ ÙƒØ§Ù† ÙÙŠ Ø§Ù„Ù„Ø¹Ø¨Ø© ÙˆØ§Ù„ÙƒÙˆØ¯ Ø§Ù„Ø°ÙŠ Ø£Ø¹Ø·Ø§Ùƒ Ø¥ÙŠØ§Ù‡ Ø§Ù„Ø£Ø¯Ù…Ù†</div>
+                <input id="pjp-rejoin-name" type="text" placeholder="Your username..."
                     style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
-                <input id="pjp-code-input" type="text" placeholder="${ar.lobby.codePlaceholder}"
+                <input id="pjp-code-input" type="text" placeholder="123456"
                     style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#22c55e;border:1px solid #21262d;border-radius:6px;font-size:22px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px;letter-spacing:8px;text-align:center"/>
             </div>
 
             <div id="pjp-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
             <div style="display:flex;gap:8px">
-                <button id="pjp-cancel" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">${ar.lobby.cancel}</button>
-                <button id="pjp-confirm" style="flex:1;padding:10px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">${ar.lobby.confirm}</button>
+                <button id="pjp-cancel" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">CANCEL</button>
+                <button id="pjp-confirm" style="flex:1;padding:10px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">CONFIRM</button>
             </div>
         `;
 
@@ -1088,21 +1178,23 @@ export default class LobbyScene extends Phaser.Scene {
             confirmBtn.style.pointerEvents = "none";
 
             if (activeTab === "password") {
+                // â”€â”€â”€ ÙƒÙ„Ù…Ø© Ø§Ù„Ø³Ø± Ø§Ù„Ø¹Ø§Ø¯ÙŠØ© â”€â”€â”€
                 const val = passwordInput.value.trim();
-                if (!val) { errEl.textContent = ar.lobby.pleaseEnterPassword; confirmBtn.style.opacity = "1"; confirmBtn.style.pointerEvents = "auto"; return; }
+                if (!val) { errEl.textContent = "❌ كلمة السر غلط"; confirmBtn.style.opacity = "1"; confirmBtn.style.pointerEvents = "auto"; return; }
                 socketService.socket.emit("verify_session_password", { password: val });
 
-                const onOk = () => { socketService.socket.off("password_verify_fail", onFail); overlay.remove(); (this as any)._pendingPlayerPassword = val; this.activateRole("player", roles); this.showToast(ar.lobby.passwordCorrect, "success"); };
-                const onFail = () => { socketService.socket.off("password_verify_ok", onOk); confirmBtn.style.opacity = "1"; confirmBtn.style.pointerEvents = "auto"; errEl.textContent = ar.lobby.incorrectPassword; passwordInput.value = ""; passwordInput.style.borderColor = "#ef4444"; setTimeout(() => { let n = 0; const iv = setInterval(() => { box.style.marginLeft = n % 2 === 0 ? "7px" : "-7px"; n++; if (n >= 6) { clearInterval(iv); box.style.marginLeft = "0"; } }, 55); }, 0); };
+                const onOk = () => { socketService.socket.off("password_verify_fail", onFail); overlay.remove(); (this as any)._pendingPlayerPassword = val; this.activateRole("player", roles); this.showToast("âœ“ ÙƒÙ„Ù…Ø© Ø§Ù„Ø³Ø± ØµØ­ â€” Ø§Ø¶ØºØ· JOIN", "success"); };
+                const onFail = () => { socketService.socket.off("password_verify_ok", onOk); confirmBtn.style.opacity = "1"; confirmBtn.style.pointerEvents = "auto"; errEl.textContent = "❌ كلمة السر غلط"; passwordInput.value = ""; passwordInput.style.borderColor = "#ef4444"; setTimeout(() => { let n = 0; const iv = setInterval(() => { box.style.marginLeft = n % 2 === 0 ? "7px" : "-7px"; n++; if (n >= 6) { clearInterval(iv); box.style.marginLeft = "0"; } }, 55); }, 0); };
                 socketService.socket.once("password_verify_ok", onOk);
                 socketService.socket.once("password_verify_fail", onFail);
 
             } else {
+                // â”€â”€â”€ ÙƒÙˆØ¯ Ø§Ù„Ø±Ø¬ÙˆØ¹ â€” Ø§Ø³Ù… + ÙƒÙˆØ¯ â”€â”€â”€
                 const rejoinName = (box.querySelector<HTMLInputElement>("#pjp-rejoin-name")?.value || "").trim();
                 const code = codeInput.value.trim();
 
-                if (!rejoinName) { errEl.textContent = ar.lobby.pleaseEnterUsername; confirmBtn.style.opacity = "1"; confirmBtn.style.pointerEvents = "auto"; return; }
-                if (!code) { errEl.textContent = ar.lobby.pleaseEnterCode; confirmBtn.style.opacity = "1"; confirmBtn.style.pointerEvents = "auto"; return; }
+                if (!rejoinName) { errEl.textContent = "أدخل اسمك"; confirmBtn.style.opacity = "1"; confirmBtn.style.pointerEvents = "auto"; return; }
+                if (!code) { errEl.textContent = "أدخل الكود"; confirmBtn.style.opacity = "1"; confirmBtn.style.pointerEvents = "auto"; return; }
 
                 socketService.socket.emit("rejoin_with_code", { code, username: rejoinName });
 
@@ -1119,7 +1211,7 @@ export default class LobbyScene extends Phaser.Scene {
                     socketService.socket.off("game_started", onOk);
                     confirmBtn.style.opacity = "1";
                     confirmBtn.style.pointerEvents = "auto";
-                    errEl.textContent = data.message || ar.lobby.invalidCode;
+                    errEl.textContent = data.message || "كود غلط ❌";
                     codeInput.value = "";
                     codeInput.style.borderColor = "#ef4444";
                 };
@@ -1134,6 +1226,108 @@ export default class LobbyScene extends Phaser.Scene {
         codeInput.addEventListener("keydown", e => { if (e.key === "Enter") confirm(); if (e.key === "Escape") overlay.remove(); });
     }
 
+    private showPlayerPasswordPrompt(onConfirm: (password: string) => void) {
+        document.getElementById("player-pass-overlay")?.remove();
+
+        const overlay = document.createElement("div");
+        overlay.id = "player-pass-overlay";
+        Object.assign(overlay.style, {
+            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
+            zIndex: "9990", backgroundColor: "rgba(0,0,0,0.78)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontFamily: "'Courier New', monospace",
+        });
+
+        const box = document.createElement("div");
+        Object.assign(box.style, {
+            backgroundColor: "#0d1117", border: "1px solid #22c55e",
+            borderRadius: "10px", padding: "28px 26px 22px",
+            width: "300px", boxShadow: "0 0 50px rgba(34,197,94,0.1)",
+        });
+
+        box.innerHTML = `
+            <div style="font-size:30px;text-align:center;margin-bottom:10px">ðŸŽ®</div>
+            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold">SESSION PASSWORD</div>
+            <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">Enter the password provided by the admin</div>
+            <input id="player-pass-input" type="password" placeholder="Session password..." style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
+            <div id="player-pass-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
+            <div style="display:flex;gap:8px">
+                <button id="player-pass-cancel" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">CANCEL</button>
+                <button id="player-pass-confirm" style="flex:1;padding:10px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">CONFIRM</button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        const input = box.querySelector<HTMLInputElement>("#player-pass-input")!;
+        const errEl = box.querySelector<HTMLElement>("#player-pass-err")!;
+        const confirmBtn = box.querySelector<HTMLButtonElement>("#player-pass-confirm")!;
+        const cancelBtn = box.querySelector<HTMLButtonElement>("#player-pass-cancel")!;
+
+        setTimeout(() => input.focus(), 60);
+
+        const confirm = () => {
+            const val = input.value.trim();
+            if (!val) { errEl.textContent = "❌ كلمة السر غلط"; return; }
+
+            // â”€â”€â”€ Ù†Ø¨Ø¹Ø« Ù„Ù„Ø³ÙŠØ±ÙØ± ÙŠØªØ­Ù‚Ù‚ â”€â”€â”€
+            confirmBtn.style.opacity = "0.5";
+            confirmBtn.style.pointerEvents = "none";
+            errEl.textContent = "";
+
+            socketService.socket.emit("verify_session_password", { password: val });
+
+            // Ù†Ø³ØªÙ†Ù‰ Ø±Ø¯ Ø§Ù„Ø³ÙŠØ±ÙØ±
+            const onOk = () => {
+                socketService.socket.off("password_verify_ok", onOk);
+                socketService.socket.off("password_verify_fail", onFail);
+                overlay.remove();
+                onConfirm(val);
+            };
+            const onFail = () => {
+                socketService.socket.off("password_verify_ok", onOk);
+                socketService.socket.off("password_verify_fail", onFail);
+                // Ø±Ø¬Ù‘Ø¹ Ø§Ù„Ø²Ø± ÙˆØ£Ø¸Ù‡Ø± Ø§Ù„Ø®Ø·Ø£
+                confirmBtn.style.opacity = "1";
+                confirmBtn.style.pointerEvents = "auto";
+                errEl.textContent = "❌ كلمة السر غلط";
+                input.value = "";
+                input.style.borderColor = "#ef4444";
+                input.style.boxShadow = "0 0 0 3px rgba(239,68,68,0.1)";
+                input.focus();
+                // shake
+                let n = 0;
+                const iv = setInterval(() => {
+                    box.style.marginLeft = n % 2 === 0 ? "7px" : "-7px";
+                    n++;
+                    if (n >= 6) { clearInterval(iv); box.style.marginLeft = "0"; }
+                }, 55);
+            };
+
+            socketService.socket.once("password_verify_ok", onOk);
+            socketService.socket.once("password_verify_fail", onFail);
+        };
+
+        confirmBtn.addEventListener("click", confirm);
+        cancelBtn.addEventListener("click", () => overlay.remove());
+        input.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") confirm();
+            if (e.key === "Escape") overlay.remove();
+        });
+        input.addEventListener("focus", () => {
+            input.style.borderColor = "#22c55e";
+            input.style.boxShadow = "0 0 0 3px rgba(34,197,94,0.1)";
+        });
+        input.addEventListener("blur", () => {
+            input.style.borderColor = "#21262d";
+            input.style.boxShadow = "none";
+        });
+    }
+
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  HANDLE JOIN
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private handleJoin() {
         const username = this.usernameInput?.value.trim();
         if (!username || username.length < 2) {
@@ -1142,7 +1336,7 @@ export default class LobbyScene extends Phaser.Scene {
             return;
         }
         socketService.reset();
-        socketService.saveUsername(username);
+        socketService.saveUsername(username); // â”€â”€â”€ Ù†Ø­ÙØ¸ Ø§Ù„Ø§Ø³Ù… â”€â”€â”€
         socketService.socket.emit("set_username", username);
         socketService.socket.emit("set_avatar", "😎");
         socketService.socket.emit("set_color", "#1e293b");
@@ -1157,9 +1351,10 @@ export default class LobbyScene extends Phaser.Scene {
             this.joinBtnLabel.setText(ar.lobby.searching);
             this.showToast(ar.lobby.spectatorJoining, "info");
         } else {
+            // â”€â”€â”€ Ø§Ù„Ù„Ø§Ø¹Ø¨ â€” ÙŠØ³ØªØ®Ø¯Ù… ÙƒÙ„Ù…Ø© Ø§Ù„Ø³Ø± Ø§Ù„Ù…Ø­ÙÙˆØ¸Ø© Ù…Ù† Ø§Ù„Ù€ popup â”€â”€â”€
             const password = (this as any)._pendingPlayerPassword || "";
             if (!password) {
-                this.showToast(ar.lobby.selectPlayerFirst, "error");
+                this.showToast("اختر PLAYER وحط كلمة السر أولاً", "error");
                 return;
             }
             socketService.socket.emit("join_queue", { type: "player", password });
@@ -1181,6 +1376,9 @@ export default class LobbyScene extends Phaser.Scene {
         });
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  SOCKET EVENTS
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private setupSocketEvents() {
         ["game_started", "queue_update", "error", "connect", "connect_error", "waiting_for_players", "admin_joined"]
             .forEach(ev => socketService.socket.off(ev));
@@ -1190,7 +1388,7 @@ export default class LobbyScene extends Phaser.Scene {
             const size = data.queueSize || 0;
             const required = data.required || (this as any)._requiredPlayers || 6;
             const color = size >= required - 1 ? "#22c55e" : size >= Math.floor(required / 2) ? "#f59e0b" : "#3b4a5c";
-            this.queueStatusText.setText(ar.lobby.queueCount(size, required)).setColor(color);
+            this.queueStatusText.setText(`â—  ${size} / ${required} in queue`).setColor(color);
         });
 
         socketService.socket.on("error", (data: any) => {
@@ -1203,7 +1401,8 @@ export default class LobbyScene extends Phaser.Scene {
                     Phaser.Geom.Rectangle.Contains
                 );
             }
-            if (data.message && data.message.includes("password")) {
+            // Ù„Ùˆ ÙƒØ§Ù†Øª Ø§Ù„Ù…Ø´ÙƒÙ„Ø© ÙƒÙ„Ù…Ø© Ø³Ø± ØºÙ„Ø· â€” Ù†Ø±Ø¬Ø¹ Ø§Ù„Ù€ popup
+            if (data.message && data.message.includes("كلمة السر")) {
                 this.time.delayedCall(300, () => {
                     this.showPlayerPasswordPrompt((password) => {
                         socketService.socket.emit("join_queue", { type: "player", password });
@@ -1215,12 +1414,12 @@ export default class LobbyScene extends Phaser.Scene {
             }
         });
 
-        socketService.socket.on("admin_joined", () => this.showToast(ar.lobby.adminPanelReady, "success"));
+        socketService.socket.on("admin_joined", () => this.showToast("Admin panel ready \u2713", "success"));
 
         socketService.socket.on("waiting_for_players", (data: any) => {
             this.showToast(data.message || ar.lobby.waitingForPlayers, "info");
             if (this.queueStatusText?.active)
-                this.queueStatusText.setText(ar.lobby.waitingForPlayersText).setColor("#f59e0b");
+                this.queueStatusText.setText(ar.lobby.waitingForPlayers).setColor("#f59e0b");
             if (this.joinButton?.active) {
                 this.joinBtnLabel?.setText(ar.lobby.joinQueue);
                 this.joinButton.setAlpha(1);
@@ -1237,6 +1436,7 @@ export default class LobbyScene extends Phaser.Scene {
             else if (data.role === "SPECTATOR") { userType = "SPECTATOR"; }
             this.cleanupAllLobbyHTML();
 
+            // â”€â”€â”€ Ø§Ù…Ø³Ø­ Ø§Ù„ÙÙŠØ¯ÙŠÙˆ ÙˆØ£Ø±Ø¬Ø¹ ÙƒÙ„ Ø´ÙŠ Ù„Ø­Ø§Ù„ØªÙ‡ Ù‚Ø¨Ù„ Ø§Ù„Ø§Ù†ØªÙ‚Ø§Ù„ â”€â”€â”€
             document.getElementById("lobby-bg-video")?.remove();
             document.body.style.background = "";
             document.body.style.margin = "";
@@ -1266,7 +1466,16 @@ export default class LobbyScene extends Phaser.Scene {
         socketService.socket.on("connect_error", () => this.showToast(ar.lobby.cannotConnect, "error"));
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  BACKGROUND
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  VIDEO BACKGROUND
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private startBgVideo() {
+        // Ø§Ù„ÙÙŠØ¯ÙŠÙˆ Ù…ÙˆØ¬ÙˆØ¯ ÙˆÙ…Ø´ØºÙ‘Ù„ Ù…Ù† showSplashScreen + enterLobby
+        // Ù‡Ù†Ø§ ÙÙ‚Ø· Ù†Ø®Ù„ÙŠ Ø§Ù„Ù€ canvas Ø´ÙØ§Ù Ø¹Ø´Ø§Ù† ÙŠØ¨ÙŠÙ‘Ù† Ø§Ù„ÙÙŠØ¯ÙŠÙˆ Ù…Ù† ØªØ­ØªÙ‡
+
         document.body.style.background = "transparent";
         document.body.style.margin = "0";
 
@@ -1313,6 +1522,9 @@ export default class LobbyScene extends Phaser.Scene {
         }
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  UTILITIES
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showToast(message: string, type: "success" | "error" | "info") {
         const cm = { success: { bg: 0x052e16, border: 0x22c55e, text: "#22c55e" }, error: { bg: 0x2d0a0a, border: 0xef4444, text: "#ef4444" }, info: { bg: 0x0a1628, border: 0x3b82f6, text: "#3b82f6" } }[type];
         const W = this.scale.width;
@@ -1327,101 +1539,6 @@ export default class LobbyScene extends Phaser.Scene {
         );
     }
 
-    private showPlayerPasswordPrompt(onConfirm: (password: string) => void) {
-        document.getElementById("player-pass-overlay")?.remove();
-
-        const overlay = document.createElement("div");
-        overlay.id = "player-pass-overlay";
-        Object.assign(overlay.style, {
-            position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
-            zIndex: "9990", backgroundColor: "rgba(0,0,0,0.78)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Courier New', monospace",
-        });
-
-        const box = document.createElement("div");
-        Object.assign(box.style, {
-            backgroundColor: "#0d1117", border: "1px solid #22c55e",
-            borderRadius: "10px", padding: "28px 26px 22px",
-            width: "300px", boxShadow: "0 0 50px rgba(34,197,94,0.1)",
-        });
-
-        box.innerHTML = `
-            <div style="font-size:30px;text-align:center;margin-bottom:10px">🎮</div>
-            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold">${ar.lobby.sessionPassword}</div>
-            <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">${ar.lobby.enterSessionPassword}</div>
-            <input id="player-pass-input" type="password" placeholder="${ar.lobby.sessionPasswordPlaceholder}" style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
-            <div id="player-pass-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
-            <div style="display:flex;gap:8px">
-                <button id="player-pass-cancel" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">${ar.lobby.cancel}</button>
-                <button id="player-pass-confirm" style="flex:1;padding:10px;border:none;border-radius:6px;background:#22c55e;color:#000;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace;font-weight:bold">${ar.lobby.confirm}</button>
-            </div>
-        `;
-
-        overlay.appendChild(box);
-        document.body.appendChild(overlay);
-
-        const input = box.querySelector<HTMLInputElement>("#player-pass-input")!;
-        const errEl = box.querySelector<HTMLElement>("#player-pass-err")!;
-        const confirmBtn = box.querySelector<HTMLButtonElement>("#player-pass-confirm")!;
-        const cancelBtn = box.querySelector<HTMLButtonElement>("#player-pass-cancel")!;
-
-        setTimeout(() => input.focus(), 60);
-
-        const confirm = () => {
-            const val = input.value.trim();
-            if (!val) { errEl.textContent = ar.lobby.pleaseEnterPassword; return; }
-
-            confirmBtn.style.opacity = "0.5";
-            confirmBtn.style.pointerEvents = "none";
-            errEl.textContent = "";
-
-            socketService.socket.emit("verify_session_password", { password: val });
-
-            const onOk = () => {
-                socketService.socket.off("password_verify_ok", onOk);
-                socketService.socket.off("password_verify_fail", onFail);
-                overlay.remove();
-                onConfirm(val);
-            };
-            const onFail = () => {
-                socketService.socket.off("password_verify_ok", onOk);
-                socketService.socket.off("password_verify_fail", onFail);
-                confirmBtn.style.opacity = "1";
-                confirmBtn.style.pointerEvents = "auto";
-                errEl.textContent = ar.lobby.incorrectPassword;
-                input.value = "";
-                input.style.borderColor = "#ef4444";
-                input.style.boxShadow = "0 0 0 3px rgba(239,68,68,0.1)";
-                input.focus();
-                let n = 0;
-                const iv = setInterval(() => {
-                    box.style.marginLeft = n % 2 === 0 ? "7px" : "-7px";
-                    n++;
-                    if (n >= 6) { clearInterval(iv); box.style.marginLeft = "0"; }
-                }, 55);
-            };
-
-            socketService.socket.once("password_verify_ok", onOk);
-            socketService.socket.once("password_verify_fail", onFail);
-        };
-
-        confirmBtn.addEventListener("click", confirm);
-        cancelBtn.addEventListener("click", () => overlay.remove());
-        input.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") confirm();
-            if (e.key === "Escape") overlay.remove();
-        });
-        input.addEventListener("focus", () => {
-            input.style.borderColor = "#22c55e";
-            input.style.boxShadow = "0 0 0 3px rgba(34,197,94,0.1)";
-        });
-        input.addEventListener("blur", () => {
-            input.style.borderColor = "#21262d";
-            input.style.boxShadow = "none";
-        });
-    }
-
     private shakeInput() {
         this.usernameInput.style.borderColor = "#ef4444";
         this.usernameInput.style.boxShadow = "0 0 0 3px rgba(239,68,68,0.2)";
@@ -1434,6 +1551,9 @@ export default class LobbyScene extends Phaser.Scene {
         }, 50);
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  UPDATE
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     update(time: number, _delta: number) {
         const W = this.scale.width;
         const H = this.scale.height;
@@ -1455,6 +1575,10 @@ export default class LobbyScene extends Phaser.Scene {
             }
     }
 
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    //  SHUTDOWN
+    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // â”€â”€â”€ Ù…Ø³Ø­ ÙƒÙ„ HTML elements Ø¯ÙØ¹Ø© ÙˆØ§Ø­Ø¯Ø© â”€â”€â”€
     private cleanupAllLobbyHTML() {
         const ids = [
             "lobby-username",
@@ -1466,17 +1590,16 @@ export default class LobbyScene extends Phaser.Scene {
             "lobby-card-overlay",
             "global-mute-btn",
             "admin-reset-btn",
-            "player-join-overlay",
-            "player-pass-overlay",
-            "session-pass-overlay",
         ];
         ids.forEach(id => document.getElementById(id)?.remove());
+        // Ù…Ù„Ø§Ø­Ø¸Ø©: lobby-bg-video Ùˆ global-audio-ctrl Ù„Ø§ ÙŠÙÙ…Ø³Ø­Ø§Ù† - ÙŠØ¶Ù„Ø§Ù† Ø¸Ø§Ù‡Ø±ÙŠÙ†
     }
 
     shutdown() {
         if (this.playerCountInterval) clearInterval(this.playerCountInterval);
         this.cleanupAllLobbyHTML();
 
+        // â”€â”€â”€ Ù…Ø³Ø­ Ø§Ù„ÙÙŠØ¯ÙŠÙˆ ÙˆØ¥Ø±Ø¬Ø§Ø¹ ÙƒÙ„ Ø´ÙŠ Ù„Ø­Ø§Ù„ØªÙ‡ Ø§Ù„Ø·Ø¨ÙŠØ¹ÙŠØ© â”€â”€â”€
         document.getElementById("lobby-bg-video")?.remove();
         document.body.style.background = "";
         document.body.style.margin = "";
