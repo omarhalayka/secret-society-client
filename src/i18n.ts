@@ -1,213 +1,119 @@
-export const ARABIC_FONT_FAMILY = "Tajawal";
-export const UI_FONT_FAMILY = ARABIC_FONT_FAMILY;
-
+export const ARABIC_FONT_FAMILY = "'Tajawal', 'Arial', sans-serif";
 export const ar = {
-    appTitle: "المنظمة السرية",
-    phases: {
-        WAITING: "بانتظار البدء",
-        LOBBY: "الردهة",
-        DAY: "النهار",
-        NIGHT: "الليل",
-        VOTING: "التصويت",
-        NIGHT_REVIEW: "مراجعة الليل",
-        GAME_OVER: "انتهت اللعبة",
-    },
-    lobby: {
-        reconnecting: "جارٍ إعادة الاتصال...",
-        welcomeBack: (username: string) => `مرحباً بعودتك يا ${username}`,
-        startingNewSession: "جارٍ بدء جلسة جديدة...",
-        connectionTimeout: "انتهت مهلة الاتصال",
-        cannotConnect: "تعذر الاتصال بالخادم",
-        enterSociety: "الدخول إلى المنظمة السرية",
-        joinQueue: "انضم الآن",
-        connecting: "جارٍ الاتصال...",
-        searching: "جارٍ البحث...",
-        joining: "جارٍ الانضمام...",
-        waitingForPlayers: "بانتظار بقية اللاعبين...",
-        connected: "تم الاتصال بالخادم",
-        adminReady: "لوحة الأدمن جاهزة",
-        adminJoining: "جارٍ الدخول كأدمن...",
-        spectatorJoining: "جارٍ البحث عن لعبة نشطة...",
-        playerJoining: "جارٍ الانضمام إلى الطابور...",
-        usernameMin: "الاسم يجب أن يكون حرفين على الأقل",
-        playerPasswordRequired: "اختر لاعب ثم أدخل كلمة السر أولاً",
-        queueCount: (size: number, required: number) => `• في الطابور: ${size} / ${required}`,
-        passwordSet: (password: string) => `تم حفظ كلمة السر: ${password}`,
-        noPassword: "لا توجد كلمة سر للجلسة",
-        serverReset: "تمت إعادة ضبط الخادم من الأدمن",
-        sessionReset: "تم تغيير كلمة السر، أدخل الكلمة الجديدة للمتابعة",
-        usernameLabel: "اسم المستخدم",
-        joinAsLabel: "طريقة الدخول",
-        cardTag: "المنظمة السرية",
-        subtitle: "لعبة جماعية في الخداع والاستنتاج",
-        tagline: "اخدع. استنتج. وابقَ حياً.",
-        featureHiddenRoles: "أدوار مخفية",
-        featureStrategicVoting: "تصويت استراتيجي",
-        featureNightElimination: "إقصاء ليلي",
-        rolePlayer: "لاعب",
-        roleSpectator: "مشاهد",
-        roleAdmin: "أدمن",
-        roleUnlocked: "تم فتح اللعب، اختر لاعب",
-        resetServerButton: "إعادة ضبط الخادم",
-        resetServerConfirm: "سيتم طرد جميع اللاعبين ومسح الجلسة بالكامل. هل أنت متأكد؟",
-    },
-    roles: {
-        ADMIN: "الأدمن",
-        MAFIA: "المافيا",
-        DOCTOR: "الطبيب",
-        DETECTIVE: "المحقق",
-        CITIZEN: "المواطن",
-        SPECTATOR: "المشاهد",
-    },
-    night: {
-        room: (roomId: string) => `الغرفة ${roomId}`,
-        nightPhase: "مرحلة الليل",
-        mafiaRoleLabel: "المافيا",
-        doctorRoleLabel: "الطبيب",
-        detectiveRoleLabel: "المحقق",
-        mafiaTitle: "اختر هدفك",
-        mafiaDeadTitle: "لقد خرجت من اللعبة",
-        mafiaSubtitle: "نسّق مع فريقك ثم ثبّت الهدف",
-        mafiaDeadSubtitle: "راقب تخطيط المافيا من بعيد",
-        mafiaSuggested: "تم اقتراح الهدف",
-        mafiaSuggest: "اقترح",
-        mafiaChannel: "قناة المافيا",
-        mafiaSystemSuggested: (from: string, target: string) => `${from} اقترح استهداف ${target}`,
-        doctorTitle: "من تريد حمايته؟",
-        doctorSubtitle: "احمِ لاعباً واحداً من هجوم المافيا الليلة",
-        doctorProtect: "احمِه",
-        doctorSaving: "جارٍ الحماية",
-        doctorProtected: "تمت الحماية",
-        doctorProtecting: (username: string) => `أنت تحمي ${username}`,
-        detectiveTitle: "حقّق مع مشتبه به",
-        detectiveSubtitle: "اكشف هوية لاعب واحد هذه الليلة",
-        detectiveInspect: "حقّق",
-        detectiveScanning: "جارٍ التحقيق",
-        detectiveInvestigating: (username: string) => `جارٍ التحقيق مع ${username}`,
-        noTargets: "لا يوجد أهداف متاحة",
-        noPlayers: "لا يوجد لاعبون متاحون",
-        noSuspects: "لا يوجد مشتبه بهم حالياً",
-        you: "أنت",
-        eliminatedNight: (username: string) => `تم قتل ${username} أثناء الليل`,
-        failedSave: (username: string) => `فشلت الحماية، قُتل ${username}`,
-    },
-    game: {
-        players: "اللاعبون",
-        stats: "الإحصاءات",
-        timeline: "التسلسل",
-        events: "الأحداث",
-        chat: "الدردشة",
-        live: "مباشر",
-        room: (roomId: string) => `الغرفة ${roomId}`,
-        round: (round: number) => `الجولة ${round}`,
-        voteTie: "تعادل في التصويت، لم يُقصَ أحد",
-        voteEliminated: (username: string) => `تم إقصاء ${username} بالتصويت`,
-        newGameStarting: "تبدأ لعبة جديدة...",
-        nightStory: (story: string) => `القصة: ${story}`,
-        doctorSelectionError: "اختيار الطبيب غير صالح",
-        mafiaSelectionError: "اختيار المافيا غير صالح",
-        voiceMicDenied: "تم رفض إذن الميكروفون",
-        voiceFailed: "تعذر تشغيل الصوت",
-        voiceClickToUnmute: "اضغط لإلغاء الكتم",
-        voiceClickToMute: "اضغط لكتم الميكروفون",
-        winner: "الفائز",
-        roundsPlayed: "الجولات",
-        gameDuration: "مدة اللعبة",
-        nightKills: "قتلى الليل",
-        doctorSaves: "إنقاذات الطبيب",
-        votedOut: "المقصيون بالتصويت",
-        voteTies: "تعادلات التصويت",
-        noEventsRecorded: "لا توجد أحداث مسجلة",
-        waitingForAdmin: "بانتظار الأدمن لبدء لعبة جديدة...",
-        adminPanel: "لوحة الأدمن",
-        close: "إغلاق",
-        rejoin: "إعادة الانضمام",
-        rejoinCode: "رمز إعادة الانضمام",
-        selectReplacementRole: "اختر دور اللاعب البديل ثم ولّد الرمز",
-        generateCode: "توليد الرمز",
-        generating: "جارٍ التوليد...",
-        newCode: "رمز جديد",
-        validFor15Minutes: "صالح لمدة 15 دقيقة",
-        phaseControls: "التحكم بالمراحل",
-        startNight: "ابدأ الليل",
-        endNight: "إنهاء الليل",
-        startVoting: "ابدأ التصويت",
-        stopVoting: "إيقاف التصويت",
-        forceEnd: "إنهاء فوري",
-        restart: "إعادة التشغيل",
-        nightActions: "إجراءات الليل",
-        waiting: "بانتظار التنفيذ",
-        completedBy: (username: string) => `تم بواسطة ${username}`,
-        nightResults: "نتائج الليل",
-        tonightStory: "قصة الليلة",
-        writeTonightStory: "اكتب ما حدث هذه الليلة...",
-        revealStory: "اعرض القصة للجميع",
-        mafiaTarget: "هدف المافيا",
-        doctorSaved: "إنقاذ الطبيب",
-        finalVictim: "الضحية النهائية",
-        protected: "تمت الحماية",
-        noValue: "—",
-    roleResultWinnerMafia: "المافيا",
-        roleResultWinnerCitizens: "المواطنون",
-        roundLabel: (round: number) => `الجولة ${round}`,
-        // Mobile tabs
-        tabPlayers: "اللاعبون",
-        tabEvents: "الأحداث",
-        tabChat: "الدردشة",
-        // Event labels
-        eventEliminated: "تم الإقصاء",
-        eventVotedOut: "تم التصويت",
-        eventVote: "تصويت",
-        eventStory: "قصة",
-        eventSystem: "نظام",
-        eventGeneral: "حدث",
-        // Voting
-        voteTitle: "صوتوا لإقصاء شخص",
-        voteSub: "اختروا من \u062aعتقدون أنه هديدللمجتمع",
-        // Chat placeholders
-        chatPlaceholder: "اكتب رسالة...",
-        chatLocked: "الدردشة مغلقة أثناء الليل...",
-        mafiaTeamChat: "رسالة للفريق...",
-        send: "إرسال",
-        usernameNameLabel: "الاسم",
-        joinAsLabelMobile: "اختر طريقة الدخول",
-        usernamePlaceholder: "اكتب اسمك...",
-        queueStatus: (size: number, required: number) => `● في الطابور: ${size} / ${required}`,
-        you: "أنت",
-    },
+  appTitle: "المنظمة السرية",
+
+  game: {
+    usernamePlaceholder: "اكتب اسمك...",
+  },
+
+  lobby: {
+    // ===== General =====
+    reconnecting: "جارٍ إعادة الاتصال...",
+    welcomeBack: (name: string) => `أهلاً بعودتك ${name}`,
+    startingNewSession: "بدء جلسة جديدة...",
+    connectionTimeout: "انتهت مهلة الاتصال",
+    sessionExpired: "انتهت الجلسة",
+    cannotConnect: "تعذر الاتصال بالسيرفر",
+
+    // ===== Splash =====
+    enterSociety: "دخول المنظمة",
+
+    // ===== Labels =====
+    cardTag: "LOBBY",
+    usernameLabel: "اسم المستخدم",
+    joinAsLabel: "الدخول كـ",
+
+    // ===== Roles =====
+    rolePlayer: "لاعب",
+    roleSpectator: "مشاهد",
+    roleAdmin: "أدمن",
+    roleUnlocked: "تم فتح دور اللاعب",
+
+    // ===== Buttons =====
+    joinQueue: "دخول الطابور",
+    connecting: "جارٍ الاتصال...",
+    searching: "جارٍ البحث...",
+    joining: "جارٍ الانضمام...",
+
+    cancel: "إلغاء",
+    confirm: "تأكيد",
+
+    // ===== Queue =====
+    queueCount: (current: number, required: number) =>
+      `اللاعبين: ${current} / ${required}`,
+
+    waitingForPlayers: "بانتظار باقي اللاعبين...",
+    waitingForPlayersText: "بانتظار اللاعبين...",
+
+    // ===== Status =====
+    connected: "تم الاتصال",
+    serverReset: "تم إعادة تشغيل السيرفر",
+    sessionReset: "تم إعادة ضبط الجلسة",
+
+    // ===== Admin =====
+    adminAccess: "دخول الأدمن",
+    enterAdminPassword: "أدخل كلمة مرور الأدمن",
+    adminAccessGranted: "تم منح صلاحية الأدمن",
+    incorrectPassword: "كلمة المرور غير صحيحة",
+    resetServerButton: "إعادة تشغيل السيرفر",
+    resetServerConfirm: "هل أنت متأكد؟",
+
+    // ===== Session Settings =====
+    sessionSettings: "إعدادات الجلسة",
+    setPasswordAndPlayers: "حدد كلمة المرور وعدد اللاعبين",
+    password: "كلمة المرور",
+    passwordExample: "مثال: 1234",
+    numberOfPlayers: "عدد اللاعبين",
+    players: "لاعب",
+
+    playerCountDesc4: "4 لاعبين (بسيط)",
+    playerCountDesc5: "5 لاعبين",
+    playerCountDesc6: "6 لاعبين (متوازن)",
+    playerCountDesc7: "7 لاعبين",
+    playerCountDesc8: "8 لاعبين",
+    playerCountDesc9: "9 لاعبين",
+    playerCountDesc10: "10 لاعبين",
+
+    pleaseEnterPassword: "أدخل كلمة المرور",
+    pleaseEnterUsername: "أدخل اسم المستخدم",
+    pleaseEnterCode: "أدخل الكود",
+
+    passwordSet: (pass: string) => `تم تعيين كلمة المرور: ${pass}`,
+    noPassword: "بدون كلمة مرور",
+    passwordSetText: "تم تعيين كلمة المرور",
+    noPasswordText: "بدون كلمة مرور",
+
+    // ===== Player Join =====
+    joinAsPlayer: "الدخول كلاعب",
+    passwordTab: "كلمة المرور",
+    rejoinCodeTab: "كود الرجوع",
+    sessionPasswordPlaceholder: "أدخل كلمة المرور",
+    sessionPassword: "كلمة مرور الجلسة",
+    enterSessionPassword: "أدخل كلمة المرور للانضمام",
+    passwordCorrect: "كلمة المرور صحيحة",
+
+    rejoinInstructions: "أدخل اسمك والكود للرجوع",
+    yourUsername: "اسمك",
+    codePlaceholder: "الكود",
+    invalidCode: "الكود غير صحيح",
+
+    // ===== Messages =====
+    usernameMin: "الاسم قصير جدًا",
+    adminJoining: "جارٍ دخول الأدمن...",
+    spectatorJoining: "جارٍ دخول المشاهد...",
+    playerJoining: "جارٍ دخول اللاعب...",
+    selectPlayerFirst: "اختر لاعب أولاً",
+
+    adminPanelReady: "لوحة الأدمن جاهزة",
+
+    passwordPlaceholder: "كلمة المرور",
+
+    mobileSubtitle: "ادخل وابدأ اللعب",
+    subtitle: "SECRET SOCIETY",
+    tagline: "لعبة خداع واستراتيجية",
+
+    featureHiddenRoles: "أدوار مخفية",
+    featureStrategicVoting: "تصويت استراتيجي",
+    featureNightElimination: "إقصاء ليلي",
+  },
 };
-
-
-export function t(path: string) {
-    const value = path.split(".").reduce<any>((acc, key) => acc?.[key], ar);
-    return typeof value === "string" ? value : path;
-}
-
-export function getPhaseLabel(phase: string) {
-    return ar.phases[phase as keyof typeof ar.phases] || phase;
-}
-
-export function applyArabicDocumentLayout() {
-    document.documentElement.lang = "ar";
-    // Keep LTR layout to prevent reversed UI on mobile
-    document.documentElement.dir = "ltr";
-    document.body.dir = "ltr";
-    document.body.style.direction = "ltr";
-    document.documentElement.style.setProperty("--ss-font-ar", ARABIC_FONT_FAMILY);
-
-    if (!document.getElementById("ss-arabic-layout")) {
-        const style = document.createElement("style");
-        style.id = "ss-arabic-layout";
-        style.textContent = `
-            html, body, button, input, textarea, select {
-                font-family: var(--ss-font-ar), Cairo, 'Segoe UI', Tahoma, sans-serif;
-            }
-            /* Arabic text elements use RTL, but layout stays LTR */
-            .ar-text {
-                direction: rtl;
-                unicode-bidi: embed;
-            }
-        `;
-        document.head.appendChild(style);
-    }
-}
