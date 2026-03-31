@@ -1,5 +1,4 @@
-// ─── i18n.ts — نظام الترجمة العربي الكامل ────────────────────────────────────
-// هذا الملف يحتوي على جميع النصوص العربية المستخدمة في اللعبة
+// i18n.ts — نظام الترجمة العربي الكامل مع الإضافات الجديدة (بدون تكرار)
 // UTF-8 encoding — لا تعدّل الـ encoding
 
 export const ARABIC_FONT_FAMILY = "'Tajawal', 'Cairo', 'Arial', sans-serif";
@@ -27,64 +26,83 @@ export const ar = {
         SPECTATOR:  "المشاهد",
     },
 
-    lobby: {
-        // ─── اتصال ───
-        reconnecting:         "جارٍ إعادة الاتصال...",
-        welcomeBack:          (username: string) => `مرحباً بعودتك يا ${username}`,
-        startingNewSession:   "جارٍ بدء جلسة جديدة...",
-        connectionTimeout:    "انتهت مهلة الاتصال",
-        cannotConnect:        "تعذر الاتصال بالخادم",
+lobby: {
+    // ─── اتصال ───
+    reconnecting:         "جارٍ إعادة الاتصال...",
+    welcomeBack:          (username: string) => `مرحباً بعودتك يا ${username}`,
+    startingNewSession:   "جارٍ بدء جلسة جديدة...",
+    connectionTimeout:    "انتهت مهلة الاتصال",
+    cannotConnect:        "تعذر الاتصال بالخادم",
 
-        // ─── شاشة البداية ───
-        enterSociety:         "الدخول إلى المنظمة السرية",
-        joinQueue:            "انضم الآن",
-        connecting:           "جارٍ الاتصال...",
-        searching:            "جارٍ البحث...",
-        joining:              "جارٍ الانضمام...",
-        waitingForPlayers:    "بانتظار بقية اللاعبين...",
-        connected:            "تم الاتصال بالخادم",
+    // ─── شاشة البداية ───
+    enterSociety:         "الدخول إلى المنظمة السرية",
+    joinQueue:            "انضم الآن",
+    connecting:           "جارٍ الاتصال...",
+    searching:            "جارٍ البحث...",
+    joining:              "جارٍ الانضمام...",
+    waitingForPlayers:    "بانتظار بقية اللاعبين...",
+    connected:            "تم الاتصال بالخادم",
 
-        // ─── أدوار ───
-        rolePlayer:           "لاعب",
-        roleSpectator:        "مشاهد",
-        roleAdmin:            "أدمن",
-        roleUnlocked:         "تم فتح اللعب، اختر لاعب",
+    // ─── أدوار ───
+    rolePlayer:           "لاعب",
+    roleSpectator:        "مشاهد",
+    roleAdmin:            "أدمن",
+    roleUnlocked:         "تم فتح اللعب، اختر لاعب",
 
-        // ─── أدمن ───
-        adminReady:           "لوحة الأدمن جاهزة",
-        adminJoining:         "جارٍ الدخول كأدمن...",
-        resetServerButton:    "إعادة ضبط الخادم",
-        resetServerConfirm:   "سيتم طرد جميع اللاعبين ومسح الجلسة بالكامل. هل أنت متأكد؟",
+    // ─── أدمن ───
+    adminReady:           "لوحة الأدمن جاهزة",
+    adminJoining:         "جارٍ الدخول كأدمن...",
+    resetServerButton:    "إعادة ضبط الخادم",
+    resetServerConfirm:   "سيتم طرد جميع اللاعبين ومسح الجلسة بالكامل. هل أنت متأكد؟",
 
-        // ─── مشاهد ───
-        spectatorJoining:     "جارٍ البحث عن لعبة نشطة...",
+    // ─── مشاهد ───
+    spectatorJoining:     "جارٍ البحث عن لعبة نشطة...",
 
-        // ─── لاعب ───
-        playerJoining:        "جارٍ الانضمام إلى الطابور...",
-        playerPasswordRequired:"اختر لاعب ثم أدخل كلمة السر أولاً",
+    // ─── لاعب ───
+    playerJoining:        "جارٍ الانضمام إلى الطابور...",
+    playerPasswordRequired:"اختر لاعب ثم أدخل كلمة السر أولاً",
 
-        // ─── طابور ───
-        queueCount:           (size: number, required: number) => `• في الطابور: ${size} / ${required}`,
+    // ─── طابور ───
+    queueCount:           (size: number, required: number) => `• في الطابور: ${size} / ${required}`,
 
-        // ─── كلمة السر ───
-        passwordSet:          (password: string) => `تم حفظ كلمة السر: ${password}`,
-        noPassword:           "لا توجد كلمة سر للجلسة",
-        sessionReset:         "تم تغيير كلمة السر، أدخل الكلمة الجديدة للمتابعة",
-        serverReset:          "تمت إعادة ضبط الخادم من الأدمن",
+    // ─── كلمة السر ───
+    passwordSet:          (password: string) => `تم حفظ كلمة السر: ${password}`,
+    noPassword:           "لا توجد كلمة سر للجلسة",
+    sessionReset:         "تم تغيير كلمة السر، أدخل الكلمة الجديدة للمتابعة",
+    serverReset:          "تمت إعادة ضبط الخادم من الأدمن",
 
-        // ─── مدخلات ───
-        usernameLabel:        "اسم المستخدم",
-        usernameMin:          "الاسم يجب أن يكون حرفين على الأقل",
-        joinAsLabel:          "طريقة الدخول",
+    // ─── مدخلات ───
+    usernameLabel:        "اسم المستخدم",
+    usernameMin:          "الاسم يجب أن يكون حرفين على الأقل",
+    joinAsLabel:          "طريقة الدخول",
 
-        // ─── بطاقة اللوبي ───
-        cardTag:              "المنظمة السرية",
-        subtitle:             "لعبة جماعية في الخداع والاستنتاج",
-        tagline:              "اخدع. استنتج. وابقَ حياً.",
-        featureHiddenRoles:   "أدوار مخفية",
-        featureStrategicVoting:"تصويت استراتيجي",
-        featureNightElimination:"إقصاء ليلي",
-    },
+    // ─── بطاقة اللوبي ───
+    cardTag:              "المنظمة السرية",
+    subtitle:             "لعبة جماعية في الخداع والاستنتاج",
+    tagline:              "اخدع. استنتج. وابقَ حياً.",
+    featureHiddenRoles:   "أدوار مخفية",
+    featureStrategicVoting:"تصويت استراتيجي",
+    featureNightElimination:"إقصاء ليلي",
+
+    // ─── ترجمات إضافية للوبي (جديدة) ───
+    playersTab:           "اللاعبون",
+    eventsTab:            "الأحداث",
+    chatTab:              "الدردشة",
+    adminAccess:          "دخول الأدمن",
+    adminPassword:        "أدخل كلمة سر الأدمن للمتابعة",
+    cancel:               "إلغاء",
+    confirm:              "تأكيد",
+    sessionSettings:      "إعدادات الجلسة",
+    setSession:           "تعيين كلمة السر وعدد اللاعبين للجلسة",
+    passwordLabel:        "كلمة السر",
+    playerCountLabel:     "عدد اللاعبين",
+    joinAsPlayer:         "الدخول كلاعب",
+    sessionPasswordPlaceholder: "كلمة سر الجلسة...",
+    rejoinCodeLabel:      "كود إعادة الانضمام",
+    rejoinNamePlaceholder:"اسم المستخدم...",
+    codePlaceholder:      "6 أرقام",
+    selectReplacementRole:"اختر دور اللاعب البديل",
+},
 
     night: {
         room:                 (roomId: string) => `الغرفة ${roomId}`,
@@ -127,6 +145,10 @@ export const ar = {
         you:                  "أنت",
         eliminatedNight:      (username: string) => `تم قتل ${username} أثناء الليل`,
         failedSave:           (username: string) => `فشلت الحماية، قُتل ${username}`,
+
+        // ─── ترجمات إضافية للقناة والدردشة في الليل ───
+        typeMessage:          "اكتب رسالة...",
+        send:                 "إرسال",
     },
 
     game: {
@@ -203,6 +225,32 @@ export const ar = {
         doctorSaved:          "إنقاذ الطبيب",
         finalVictim:          "الضحية النهائية",
         protected:            "تمت الحماية",
+
+        // ─── ترجمات إضافية للعبة (جديدة، غير مكررة) ───
+        playersTab:           "اللاعبون",
+        eventsTab:            "الأحداث",
+        chatTab:              "الدردشة",
+        messagePlaceholder:   "اكتب رسالة...",
+        voteToEliminate:      "صوِّت للإقصاء",
+        voteSubtitle:         "اختر من يهدد المجتمع",
+        votes:                "الأصوات",
+        watching:             "مشاهد",
+        vote:                 "صوِّت",
+        you:                  "أنت",
+        votingDiscussion:     "نقاش التصويت",
+        discussBeforeVote:    "ناقش قبل التصويت",
+        yourOpinion:          "رأيك...",
+        yourTarget:           "هدفك",
+        outcome:              "النتيجة",
+        youProtected:         "لقد حميت",
+        nightVictim:          "ضحية الليل",
+        tapToDismiss:         "اضغط للإغلاق",
+        mafiaConfirmed:       "مافيا مؤكد",
+        innocentCitizen:      "مواطن بريء",
+        mafiaWins:            "المافيا تفوز",
+        citizensWin:          "المواطنون يفوزون",
+        rounds:               "الجولات",
+        duration:             "المدة",
     },
 };
 
