@@ -1,4 +1,4 @@
-﻿// GameScene.ts - النسخة النهائية مع جميع الترجمة العربية وتصحيح اتجاه النصوص
+﻿// GameScene.ts - النسخة النهائية مع إصلاح كامل للعربية
 import Phaser from "phaser";
 import { socketService } from "../../socket";
 import { voiceManager } from "../../VoiceManager";
@@ -251,32 +251,39 @@ export default class GameScene extends Phaser.Scene {
         line.strokePath();
 
         const titleFontSize = this.isMobile ? "12px" : "16px";
+        // عنوان اللعبة بمحاذاة اليمين
         this.add.text(12, this.TOPBAR_H / 2, ar.appTitle, {
             fontSize: titleFontSize, color: "#f1f5f9",
-            fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", align: "right"
+            fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold",
+            align: "right"
         }).setOrigin(0, 0.5).setDepth(4);
 
         if (!this.isMobile) {
-            this.add.text(this.W / 2, this.TOPBAR_H / 2,
-                ar.game.room(this.roomId?.substring(0, 8).toUpperCase()), {
+            // اسم الغرفة (مركز)
+            this.add.text(this.W / 2, this.TOPBAR_H / 2, ar.game.room(this.roomId?.substring(0, 8).toUpperCase()), {
                 fontSize: "11px", color: "#64748b",
-                fontFamily: "'Courier New', monospace", letterSpacing: 2
+                fontFamily: "'Courier New', monospace", letterSpacing: 2,
+                align: "center"
             }).setOrigin(0.5, 0.5).setDepth(4);
 
-            // عرض المرحلة بالعربية مع نقطة على اليمين
-            this.phaseText = this.add.text(this.W / 2 + 130, this.TOPBAR_H / 2, `â—‰  ${getPhaseLabel("WAITING")}`, {
+            // نص المرحلة (يمين) - نستخدم origin 1 للمحاذاة لليمين
+            this.phaseText = this.add.text(this.W - 20, this.TOPBAR_H / 2, `•  ${getPhaseLabel("WAITING")}`, {
                 fontSize: "11px", color: "#64748b",
-                fontFamily: "'Courier New', monospace", letterSpacing: 2
-            }).setOrigin(0, 0.5).setDepth(4);
+                fontFamily: "'Courier New', monospace", letterSpacing: 2,
+                align: "right"
+            }).setOrigin(1, 0.5).setDepth(4);
 
-            this.roundText = this.add.text(this.W / 2 + 270, this.TOPBAR_H / 2, ar.game.round(1), {
+            // رقم الجولة (أقصى اليمين) - origin 1 أيضاً
+            this.roundText = this.add.text(this.W - 20, this.TOPBAR_H / 2 + 22, ar.game.round(1), {
                 fontSize: "11px", color: "#64748b",
-                fontFamily: "'Courier New', monospace", letterSpacing: 2
-            }).setOrigin(0, 0.5).setDepth(4);
+                fontFamily: "'Courier New', monospace", letterSpacing: 2,
+                align: "right"
+            }).setOrigin(1, 0.5).setDepth(4);
         } else {
-            this.phaseText = this.add.text(this.W / 2, this.TOPBAR_H / 2, `â—‰  ${getPhaseLabel("WAITING")}`, {
+            this.phaseText = this.add.text(this.W / 2, this.TOPBAR_H / 2, `•  ${getPhaseLabel("WAITING")}`, {
                 fontSize: "10px", color: "#64748b",
-                fontFamily: "'Courier New', monospace", letterSpacing: 1
+                fontFamily: "'Courier New', monospace", letterSpacing: 1,
+                align: "center"
             }).setOrigin(0.5, 0.5).setDepth(4);
         }
 
@@ -290,8 +297,8 @@ export default class GameScene extends Phaser.Scene {
             DOCTOR: this.C.doctor, CITIZEN: this.C.citizen, SPECTATOR: 0x64748b
         };
         const icons: Record<string, string> = {
-            ADMIN: "ðŸ‘‘", MAFIA: "ðŸ”ª", DETECTIVE: "ðŸ”",
-            DOCTOR: "âœš", CITIZEN: "â—Ž", SPECTATOR: "ðŸ‘"
+            ADMIN: "👑", MAFIA: "🔪", DETECTIVE: "🔍",
+            DOCTOR: "✚", CITIZEN: "○", SPECTATOR: "👁"
         };
         const chipColor = colors[this.role] || 0x64748b;
         const chipHex = "#" + chipColor.toString(16).padStart(6, "0");
@@ -302,9 +309,10 @@ export default class GameScene extends Phaser.Scene {
         const c = this.add.container(this.W - 6, this.TOPBAR_H / 2).setDepth(4);
         const bg = this.add.rectangle(0, 0, chipW, this.isMobile ? 24 : 30, 0x0f1520);
         bg.setStrokeStyle(1, chipColor); bg.setOrigin(1, 0.5);
-        const lbl = this.add.text(-8, 0, `${icons[this.role] || "â—Ž"}  ${ar.roles[this.role as keyof typeof ar.roles] || this.role}`, {
+        const lbl = this.add.text(-8, 0, `${icons[this.role] || "○"}  ${ar.roles[this.role as keyof typeof ar.roles] || this.role}`, {
             fontSize, color: chipHex,
-            fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 2
+            fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 2,
+            align: "right"
         }).setOrigin(1, 0.5);
         c.add([bg, lbl]);
         this.roleChip = c;
@@ -314,14 +322,15 @@ export default class GameScene extends Phaser.Scene {
     private drawSectionHeaders() {
         const chatX = this.PLAYERS_W + this.EVENTS_W;
         [
-            { x: 16, label: ar.game.playersTab },
-            { x: this.PLAYERS_W + 16, label: ar.game.eventsTab },
-            { x: chatX + 16, label: ar.game.chatTab },
+            { x: this.PLAYERS_W - 16, label: ar.game.playersTab },
+            { x: this.PLAYERS_W + this.EVENTS_W - 16, label: ar.game.eventsTab },
+            { x: chatX + this.CHAT_W - 16, label: ar.game.chatTab },
         ].forEach((h, i) => {
             const t = this.add.text(h.x, this.TOPBAR_H + 16, h.label, {
                 fontSize: "10px", color: "#3b82f6",
-                fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3
-            }).setDepth(3).setAlpha(0);
+                fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3,
+                align: "right"
+            }).setOrigin(1, 0.5).setDepth(3).setAlpha(0);
             this.tweens.add({ targets: t, alpha: 1, y: t.y - 4, duration: 400, delay: i * 80 });
         });
         const sepY = this.TOPBAR_H + 34;
@@ -336,7 +345,7 @@ export default class GameScene extends Phaser.Scene {
 
         this.chatStatusText = this.add.text(
             chatX + this.CHAT_W - 14, this.TOPBAR_H + 16,
-            `â— ${ar.game.live}`, { fontSize: "9px", color: "#22c55e", fontFamily: "'Courier New', monospace", letterSpacing: 1 }
+            `● ${ar.game.live}`, { fontSize: "9px", color: "#22c55e", fontFamily: "'Courier New', monospace", letterSpacing: 1, align: "right" }
         ).setOrigin(1, 0.5).setDepth(3);
     }
 
@@ -348,7 +357,8 @@ export default class GameScene extends Phaser.Scene {
             bottom: "0", zIndex: "100",
             display: "flex", flexDirection: "column",
             backgroundColor: "#0a0d13",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
+            direction: "rtl",
         });
 
         const tabBar = document.createElement("div");
@@ -359,9 +369,9 @@ export default class GameScene extends Phaser.Scene {
         });
 
         const tabs = [
-            { id: "players", icon: "ðŸ‘¥", label: ar.game.playersTab },
-            { id: "events", icon: "ðŸ“‹", label: ar.game.eventsTab },
-            { id: "chat", icon: "ðŸ’¬", label: ar.game.chatTab },
+            { id: "players", icon: "👥", label: ar.game.playersTab },
+            { id: "events", icon: "📋", label: ar.game.eventsTab },
+            { id: "chat", icon: "💬", label: ar.game.chatTab },
         ];
 
         tabs.forEach(tab => {
@@ -370,7 +380,7 @@ export default class GameScene extends Phaser.Scene {
             btn.textContent = `${tab.icon} ${tab.label}`;
             Object.assign(btn.style, {
                 flex: "1", padding: "10px 4px", fontSize: "11px",
-                fontFamily: "'Courier New', monospace", fontWeight: "bold",
+                fontFamily: ARABIC_FONT_FAMILY, fontWeight: "bold",
                 letterSpacing: "1px", border: "none", borderBottom: "2px solid transparent",
                 backgroundColor: "transparent", color: "#64748b",
                 cursor: "pointer", transition: "all 0.15s",
@@ -431,14 +441,15 @@ export default class GameScene extends Phaser.Scene {
             flex: "1", padding: "10px 12px",
             backgroundColor: "#0a0d13", color: "#f1f5f9",
             border: "1px solid #1e2d45", borderRadius: "4px",
-            fontFamily: "'Courier New', monospace", fontSize: "13px",
+            fontFamily: ARABIC_FONT_FAMILY, fontSize: "13px",
             outline: "none", WebkitAppearance: "none",
+            direction: "rtl",
         });
         mobileInput.addEventListener("focus", () => { mobileInput.style.borderColor = "#3b82f6"; });
         mobileInput.addEventListener("blur", () => { mobileInput.style.borderColor = "#1e2d45"; });
 
         const mobileSendBtn = document.createElement("button");
-        mobileSendBtn.textContent = "âž¤";
+        mobileSendBtn.textContent = "➤";
         Object.assign(mobileSendBtn.style, {
             padding: "10px 16px", fontSize: "16px",
             backgroundColor: "#3b82f6", color: "#fff",
@@ -509,8 +520,8 @@ export default class GameScene extends Phaser.Scene {
         if (this.mobileActiveTab === tabId) return;
         const btn = document.getElementById(`tab-btn-${tabId}`);
         if (btn) {
-            const icons: Record<string, string> = { players: "ðŸ‘¥", events: "ðŸ“‹", chat: "ðŸ’¬" };
-            btn.textContent = `${icons[tabId]} â— ${label}`;
+            const icons: Record<string, string> = { players: "👥", events: "📋", chat: "💬" };
+            btn.textContent = `${icons[tabId]} ● ${label}`;
             btn.style.color = "#22c55e";
         }
     }
@@ -544,6 +555,7 @@ export default class GameScene extends Phaser.Scene {
                 padding: "10px 12px", borderRadius: "6px",
                 backgroundColor: isMe ? "rgba(59,130,246,0.1)" : "rgba(17,24,39,0.6)",
                 border: isMe ? "1px solid rgba(59,130,246,0.4)" : "1px solid #1e2d45",
+                direction: "rtl",
             });
 
             const avatarDiv = document.createElement("div");
@@ -555,15 +567,16 @@ export default class GameScene extends Phaser.Scene {
                 border: `1px solid ${p.alive ? "#22c55e44" : "#37415144"}`,
                 opacity: p.alive ? "1" : "0.4",
             });
-            avatarDiv.textContent = p.avatar || "ðŸ˜Ž";
+            avatarDiv.textContent = p.avatar || "😎";
 
             const name = document.createElement("span");
             let nameText = p.username;
             if (isMe) nameText += ` (${ar.game.you})`;
             Object.assign(name.style, {
-                fontFamily: "'Courier New', monospace", fontSize: "13px",
+                fontFamily: ARABIC_FONT_FAMILY, fontSize: "13px",
                 color: p.alive ? (isMe ? "#f1f5f9" : "#94a3b8") : "#374151",
                 flex: "1", fontWeight: isMe ? "bold" : "normal",
+                textAlign: "right",
             });
             name.textContent = nameText;
 
@@ -581,7 +594,7 @@ export default class GameScene extends Phaser.Scene {
                     CITIZEN: "#64748b", ADMIN: "#f59e0b",
                 };
                 Object.assign(roleSpan.style, {
-                    fontSize: "10px", fontFamily: "'Courier New', monospace",
+                    fontSize: "10px", fontFamily: ARABIC_FONT_FAMILY,
                     color: roleColors[p.role] || "#4b5563",
                     opacity: p.alive ? "1" : "0.5",
                 });
@@ -609,14 +622,15 @@ export default class GameScene extends Phaser.Scene {
         else if (this.userType === "SPECTATOR") tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
         else if (!isAlive) tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
 
-        const avatarEmoji = player.avatar || "ðŸ˜Ž";
+        const avatarEmoji = player.avatar || "😎";
         const avatarText = this.add.text(30, 0, avatarEmoji, {
             fontSize: "14px"
         }).setOrigin(0, 0.5);
 
         const name = this.add.text(52, 0, `${player.username}${tag}`, {
             fontSize: "13px", color: isAlive ? "#e2e8f0" : "#374151",
-            fontFamily: "'Courier New', monospace", fontStyle: isMe ? "bold" : "normal"
+            fontFamily: ARABIC_FONT_FAMILY, fontStyle: isMe ? "bold" : "normal",
+            align: "right"
         }).setOrigin(0, 0.5);
 
         const sep = this.add.graphics();
@@ -627,15 +641,15 @@ export default class GameScene extends Phaser.Scene {
         if (isAlive && !this.isAdmin && this.userType !== "SPECTATOR") {
             const btnX = this.PLAYERS_W - 32;
             if (this.role === "MAFIA" && isNight && !isMe)
-                this.addActionBtn(container, btnX, 0, "âš”", "#ef4444", () => {
+                this.addActionBtn(container, btnX, 0, "⚔", "#ef4444", () => {
                     socketService.socket.emit("mafia_kill", player.id);
                 });
             if (this.role === "DOCTOR" && isNight)
-                this.addActionBtn(container, btnX, 0, "âœš", "#22c55e", () => {
+                this.addActionBtn(container, btnX, 0, "✚", "#22c55e", () => {
                     socketService.socket.emit("doctor_save", player.id);
                 });
             if (this.role === "DETECTIVE" && isNight && !isMe)
-                this.addActionBtn(container, btnX, 0, "ðŸ”", "#3b82f6", () => {
+                this.addActionBtn(container, btnX, 0, "🔍", "#3b82f6", () => {
                     socketService.socket.emit("detective_check", player.id);
                 });
         }
@@ -661,16 +675,16 @@ export default class GameScene extends Phaser.Scene {
 
     private getEventMeta(msg: string, color: string): { icon: string; label: string; bgAlpha: number; glowColor: number } {
         if (color === "#f87171" && msg.toLowerCase().includes("kill"))
-            return { icon: "😁", label: "ELIMINATED", bgAlpha: 0.18, glowColor: 0xef4444 };
+            return { icon: "🔪", label: "ELIMINATED", bgAlpha: 0.18, glowColor: 0xef4444 };
         if (color === "#f87171" && msg.toLowerCase().includes("eliminat"))
-            return { icon: "😃", label: "VOTED OUT", bgAlpha: 0.16, glowColor: 0xef4444 };
+            return { icon: "⚖️", label: "VOTED OUT", bgAlpha: 0.16, glowColor: 0xef4444 };
         if (color === "#fbbf24")
-            return { icon: "😒", label: "VOTE", bgAlpha: 0.14, glowColor: 0xf59e0b };
+            return { icon: "🗳", label: "VOTE", bgAlpha: 0.14, glowColor: 0xf59e0b };
         if (color === "#c084fc")
-            return { icon: "😒", label: "STORY", bgAlpha: 0.14, glowColor: 0xa855f7 };
+            return { icon: "📖", label: "STORY", bgAlpha: 0.14, glowColor: 0xa855f7 };
         if (color === "#3b82f6")
-            return { icon: "😒", label: "SYSTEM", bgAlpha: 0.12, glowColor: 0x3b82f6 };
-        return { icon: "â—‰", label: "EVENT", bgAlpha: 0.12, glowColor: 0x64748b };
+            return { icon: "⤳", label: "SYSTEM", bgAlpha: 0.12, glowColor: 0x3b82f6 };
+        return { icon: "●", label: "EVENT", bgAlpha: 0.12, glowColor: 0x64748b };
     }
 
     private addEventLog(msg: string, color: string) {
@@ -707,13 +721,15 @@ export default class GameScene extends Phaser.Scene {
             fontSize: "8px", color: color,
             fontFamily: "'Courier New', monospace",
             fontStyle: "bold", letterSpacing: 2,
+            align: "right"
         }).setOrigin(0, 0);
 
-        const cleanMsg = msg.replace(/^[ðŸ“–âŸ³â—‰â€º\s]+/, "").trim();
+        const cleanMsg = msg.replace(/^[📖⤳●➤\s]+/, "").trim();
         const mainTxt = this.add.text(36, 20, cleanMsg, {
             fontSize: "12px", color: "#e2e8f0",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
             wordWrap: { width: cardW - 55 },
+            align: "right"
         }).setOrigin(0, 0);
 
         const now = new Date();
@@ -721,6 +737,7 @@ export default class GameScene extends Phaser.Scene {
         const timeTxt = this.add.text(cardW - 8, 9, time, {
             fontSize: "8px", color: "#374151",
             fontFamily: "'Courier New', monospace",
+            align: "right"
         }).setOrigin(1, 0);
 
         container.add([bg, bar, icon, labelTxt, mainTxt, timeTxt]);
@@ -762,21 +779,21 @@ export default class GameScene extends Phaser.Scene {
         type EventType = { icon: string; label: string; bg: string; border: string };
         let meta: EventType;
         if (color === "#f87171" && msg.toLowerCase().includes("kill"))
-            meta = { icon: "ðŸ”ª", label: "ELIMINATED", bg: "rgba(239,68,68,0.1)", border: "#ef4444" };
+            meta = { icon: "🔪", label: "ELIMINATED", bg: "rgba(239,68,68,0.1)", border: "#ef4444" };
         else if (color === "#f87171")
-            meta = { icon: "âš–ï¸", label: "VOTED OUT", bg: "rgba(239,68,68,0.1)", border: "#ef4444" };
+            meta = { icon: "⚖️", label: "VOTED OUT", bg: "rgba(239,68,68,0.1)", border: "#ef4444" };
         else if (color === "#fbbf24")
-            meta = { icon: "ðŸ—³", label: "VOTE", bg: "rgba(245,158,11,0.1)", border: "#f59e0b" };
+            meta = { icon: "🗳", label: "VOTE", bg: "rgba(245,158,11,0.1)", border: "#f59e0b" };
         else if (color === "#c084fc")
-            meta = { icon: "ðŸ“–", label: "STORY", bg: "rgba(168,85,247,0.1)", border: "#a855f7" };
+            meta = { icon: "📖", label: "STORY", bg: "rgba(168,85,247,0.1)", border: "#a855f7" };
         else if (color === "#3b82f6")
-            meta = { icon: "âŸ³", label: "SYSTEM", bg: "rgba(59,130,246,0.1)", border: "#3b82f6" };
+            meta = { icon: "⤳", label: "SYSTEM", bg: "rgba(59,130,246,0.1)", border: "#3b82f6" };
         else
-            meta = { icon: "â—‰", label: "EVENT", bg: "rgba(100,116,139,0.1)", border: "#64748b" };
+            meta = { icon: "●", label: "EVENT", bg: "rgba(100,116,139,0.1)", border: "#64748b" };
 
         const now = new Date();
         const time = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-        const cleanMsg = msg.replace(/^[ðŸ“–âŸ³â—‰â€º\s]+/, "").trim();
+        const cleanMsg = msg.replace(/^[📖⤳●➤\s]+/, "").trim();
 
         const card = document.createElement("div");
         Object.assign(card.style, {
@@ -787,8 +804,10 @@ export default class GameScene extends Phaser.Scene {
             borderRadius: "8px",
             backgroundColor: meta.bg,
             border: `1px solid ${meta.border}44`,
-            borderLeft: `3px solid ${meta.border}`,
+            borderRight: `3px solid ${meta.border}`,
             animation: "eventSlideIn 0.3s ease-out",
+            direction: "rtl",
+            fontFamily: ARABIC_FONT_FAMILY,
         });
 
         const iconEl = document.createElement("div");
@@ -814,7 +833,7 @@ export default class GameScene extends Phaser.Scene {
 
         const textEl = document.createElement("div");
         textEl.textContent = cleanMsg;
-        textEl.style.cssText = "font-size:13px;color:#e2e8f0;font-family:'Courier New',monospace;line-height:1.4;word-break:break-word";
+        textEl.style.cssText = "font-size:13px;color:#e2e8f0;font-family:" + ARABIC_FONT_FAMILY + ";line-height:1.4;word-break:break-word;text-align:right";
 
         body.appendChild(labelRow);
         body.appendChild(textEl);
@@ -863,9 +882,9 @@ export default class GameScene extends Phaser.Scene {
         this.chatMessages.forEach((t, i) =>
             this.tweens.add({ targets: t, y: baseY + i * lineH, duration: 180 })
         );
-        const text = this.add.text(chatX + 14, baseY + this.chatMessages.length * lineH + lineH,
-            `${isAlive ? "" : "â˜  "}${username}: ${message}`,
-            { fontSize: "12px", color: msgColor, fontFamily: "'Courier New', monospace", wordWrap: { width: this.CHAT_W - 28 } }
+        const text = this.add.text(chatX + this.CHAT_W - 14, baseY + this.chatMessages.length * lineH + lineH,
+            `${isAlive ? "" : "☠ "}${username}: ${message}`,
+            { fontSize: "12px", color: msgColor, fontFamily: ARABIC_FONT_FAMILY, wordWrap: { width: this.CHAT_W - 28 }, align: "right" }
         ).setDepth(3).setAlpha(0);
         this.tweens.add({ targets: text, alpha: 1, y: text.y - lineH, duration: 280, ease: "Back.easeOut" });
         this.chatMessages.push(text);
@@ -884,13 +903,14 @@ export default class GameScene extends Phaser.Scene {
             padding: "6px 10px", borderRadius: "6px",
             backgroundColor: isMe ? "rgba(59,130,246,0.1)" : "rgba(17,24,39,0.5)",
             border: isMe ? "1px solid rgba(59,130,246,0.3)" : "1px solid transparent",
-            fontFamily: "'Courier New', monospace", fontSize: "13px",
+            fontFamily: ARABIC_FONT_FAMILY, fontSize: "13px",
+            textAlign: "right",
         });
         el.innerHTML = `<span style="color:${alive ? (isMe ? "#60a5fa" : "#3b82f6") : "#4b5563"};font-weight:bold">${username}:</span> <span style="color:${alive ? "#cbd5e1" : "#4b5563"}">${message}</span>`;
         msgs.appendChild(el);
         msgs.scrollTop = msgs.scrollHeight;
         while (msgs.children.length > 40) msgs.removeChild(msgs.firstChild!);
-        this.showMobileTabBadge("chat", "ðŸ’¬");
+        this.showMobileTabBadge("chat", "💬");
     }
 
     private createDesktopChatInput() {
@@ -903,10 +923,11 @@ export default class GameScene extends Phaser.Scene {
         Object.assign(this.chatInput.style, {
             position: "absolute", left: `${chatX + 12}px`, bottom: "14px",
             width: `${this.CHAT_W - 60}px`, padding: "9px 14px",
-            fontSize: "13px", fontFamily: "'Courier New', monospace",
+            fontSize: "13px", fontFamily: ARABIC_FONT_FAMILY,
             border: "1px solid #1e2d45", borderRadius: "4px",
             backgroundColor: "#0a0d13", color: "#f1f5f9",
             outline: "none", zIndex: "1000",
+            direction: "rtl",
         });
         this.chatInput.addEventListener("focus", () => this.chatInput.style.borderColor = "#3b82f6");
         this.chatInput.addEventListener("blur", () => this.chatInput.style.borderColor = "#1e2d45");
@@ -914,7 +935,7 @@ export default class GameScene extends Phaser.Scene {
 
         this.sendBtn = document.createElement("button");
         this.sendBtn.id = "desktop-send-btn";
-        this.sendBtn.textContent = "âž¤";
+        this.sendBtn.textContent = "➤";
         Object.assign(this.sendBtn.style, {
             position: "absolute", left: `${chatX + this.CHAT_W - 44}px`, bottom: "14px",
             width: "36px", height: "36px", fontSize: "14px",
@@ -938,11 +959,11 @@ export default class GameScene extends Phaser.Scene {
     private updateChatUI(phase: string) {
         if (!this.isMobile && this.chatStatusText?.active) {
             const map: Record<string, [string, string]> = {
-                NIGHT: ["â— NIGHT", "#6366f1"],
-                NIGHT_REVIEW: ["â— NIGHT", "#6366f1"],
-                VOTING: ["â— VOTING", "#f59e0b"],
+                NIGHT: ["● NIGHT", "#6366f1"],
+                NIGHT_REVIEW: ["● NIGHT", "#6366f1"],
+                VOTING: ["● VOTING", "#f59e0b"],
             };
-            const [txt, clr] = map[phase] || ["â— LIVE", "#22c55e"];
+            const [txt, clr] = map[phase] || ["● LIVE", "#22c55e"];
             this.chatStatusText.setText(txt).setColor(clr);
         }
 
@@ -971,11 +992,13 @@ export default class GameScene extends Phaser.Scene {
 
         const titleTxt = this.add.text(this.W / 2, 78, ar.game.voteToEliminate, {
             fontSize: "32px", color: "#f1f5f9",
-            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 8
+            fontFamily: "'Georgia', serif", fontStyle: "bold", letterSpacing: 8,
+            align: "center"
         }).setOrigin(0.5);
         const subTxt = this.add.text(this.W / 2, 120, ar.game.voteSubtitle, {
             fontSize: "12px", color: "#64748b",
-            fontFamily: "'Courier New', monospace", letterSpacing: 2
+            fontFamily: ARABIC_FONT_FAMILY, letterSpacing: 2,
+            align: "center"
         }).setOrigin(0.5);
         overlay.add([titleTxt, subTxt]);
 
@@ -1010,21 +1033,23 @@ export default class GameScene extends Phaser.Scene {
         const bg = this.add.rectangle(0, 0, cardW, cardH, 0x0d1117); bg.setStrokeStyle(1, this.C.border); bg.setOrigin(0.5);
         const topBar = this.add.rectangle(0, -(cardH / 2) + 2, cardW - 2, 3, 0xf59e0b, 0); topBar.setOrigin(0.5, 0);
         const avatarBg = this.add.circle(0, -60, 27, 0x0a0d13); avatarBg.setStrokeStyle(1, this.C.border);
-        const avatarIcon = this.add.text(0, -60, isMe ? "ðŸ§‘" : "ðŸ‘¤", { fontSize: "24px" }).setOrigin(0.5);
+        const avatarIcon = this.add.text(0, -60, isMe ? "🧑" : "👤", { fontSize: "24px" }).setOrigin(0.5);
         const pulse = this.add.circle(0, -60, 34, 0xf59e0b, 0);
         this.tweens.add({ targets: pulse, alpha: 0.1, scaleX: 1.3, scaleY: 1.3, duration: 1000, yoyo: true, repeat: -1, delay: Math.random() * 500 });
         const nameTxt = this.add.text(0, -20, player.username.toUpperCase(), {
             fontSize: "11px", color: isMe ? "#fcd34d" : "#e2e8f0",
-            fontFamily: "'Courier New', monospace", fontStyle: isMe ? "bold" : "normal", letterSpacing: 1
+            fontFamily: "'Courier New', monospace", fontStyle: isMe ? "bold" : "normal", letterSpacing: 1,
+            align: "center"
         }).setOrigin(0.5);
-        const youLbl = isMe ? this.add.text(0, -6, ar.game.you, { fontSize: "9px", color: "#64748b", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5) : null;
+        const youLbl = isMe ? this.add.text(0, -6, ar.game.you, { fontSize: "9px", color: "#64748b", fontFamily: "'Courier New', monospace", letterSpacing: 2, align: "center" }).setOrigin(0.5) : null;
         const barBg = this.add.rectangle(0, 34, cardW - 24, 6, 0x111827).setOrigin(0.5);
         const barFill = this.add.rectangle(-(cardW - 24) / 2, 34, 0, 6, 0xf59e0b, 0.8).setOrigin(0, 0.5);
-        const voteLabel = this.add.text(0, 50, `${ar.game.votes} 0`, { fontSize: "10px", color: "#64748b", fontFamily: "'Courier New', monospace", letterSpacing: 1 }).setOrigin(0.5);
+        const voteLabel = this.add.text(0, 50, `${ar.game.votes} 0`, { fontSize: "10px", color: "#64748b", fontFamily: "'Courier New', monospace", letterSpacing: 1, align: "center" }).setOrigin(0.5);
         const btnBg = this.add.rectangle(0, 74, cardW - 24, 26, 0x0a0d13); btnBg.setStrokeStyle(1, isSpectator ? 0x1e2d45 : 0xf59e0b, isSpectator ? 0.3 : 0.45).setOrigin(0.5);
         const btnLabel = this.add.text(0, 74, isSpectator ? ar.game.watching : (isMe ? "—" : ar.game.vote), {
             fontSize: "10px", color: isSpectator ? "#334155" : (isMe ? "#374151" : "#f59e0b"),
-            fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3
+            fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3,
+            align: "center"
         }).setOrigin(0.5);
 
         const items: Phaser.GameObjects.GameObject[] = [shadow, bg, topBar, pulse, avatarBg, avatarIcon, nameTxt, barBg, barFill, voteLabel, btnBg, btnLabel];
@@ -1051,7 +1076,7 @@ export default class GameScene extends Phaser.Scene {
         });
         bg.setFillStyle(0x150c00); bg.setStrokeStyle(2, 0xef4444);
         topBar.setFillStyle(0xef4444); topBar.setAlpha(1);
-        btnLabel.setText("VOTED âœ“").setColor("#f87171");
+        btnLabel.setText("VOTED ✓").setColor("#f87171");
         this.cameras.main.flash(220, 50, 20, 0);
     }
 
@@ -1080,7 +1105,7 @@ export default class GameScene extends Phaser.Scene {
                 backgroundColor: "rgba(8,12,6,0.95)",
                 border: "1px solid rgba(251,191,36,0.5)",
                 borderRadius: "8px", color: "#fbbf24",
-                fontSize: "11px", fontFamily: "'Courier New', monospace",
+                fontSize: "11px", fontFamily: ARABIC_FONT_FAMILY,
                 fontWeight: "bold", cursor: "pointer",
                 boxShadow: "0 0 15px rgba(251,191,36,0.2)",
             });
@@ -1095,18 +1120,17 @@ export default class GameScene extends Phaser.Scene {
                 backgroundColor: "rgba(8,12,6,0.97)",
                 border: "1px solid rgba(251,191,36,0.3)",
                 borderRadius: "10px", display: "none",
-                flexDirection: "column", fontFamily: "'Courier New', monospace",
+                flexDirection: "column", fontFamily: ARABIC_FONT_FAMILY,
                 boxShadow: "0 0 20px rgba(251,191,36,0.1)",
+                direction: "rtl",
             });
             panel.innerHTML = `
                 <div style="padding:8px 12px;border-bottom:1px solid rgba(251,191,36,0.15);color:#fbbf24;font-size:9px;letter-spacing:2px">${ar.game.votingDiscussion}</div>
-                <div id="voting-chat-messages" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px">
-                    <div style="color:#374151;font-size:9px;text-align:center">${ar.game.discussBeforeVote}</div>
-                </div>
+                <div id="voting-chat-messages" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px"></div>
                 <div style="display:flex;gap:5px;padding:6px;border-top:1px solid rgba(251,191,36,0.1)">
                     <input id="voting-chat-input" type="text" placeholder="${ar.game.yourOpinion}"
-                        style="flex:1;padding:6px 8px;background:#060a04;color:#f1f5f9;border:1px solid rgba(251,191,36,0.2);border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
-                    <button id="voting-chat-send" style="padding:6px 10px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer">â–¶</button>
+                        style="flex:1;padding:6px 8px;background:#060a04;color:#f1f5f9;border:1px solid rgba(251,191,36,0.2);border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none;direction:rtl"/>
+                    <button id="voting-chat-send" style="padding:6px 10px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer">➤</button>
                 </div>
             `;
             document.body.appendChild(toggle);
@@ -1115,7 +1139,7 @@ export default class GameScene extends Phaser.Scene {
             toggle.addEventListener("click", () => {
                 chatOpen = !chatOpen;
                 panel.style.display = chatOpen ? "flex" : "none";
-                toggle.textContent = chatOpen ? "âœ• CLOSE" : ar.game.votingDiscussion;
+                toggle.textContent = chatOpen ? "✕ CLOSE" : ar.game.votingDiscussion;
             });
 
             const input = panel.querySelector<HTMLInputElement>("#voting-chat-input")!;
@@ -1138,18 +1162,17 @@ export default class GameScene extends Phaser.Scene {
                 backgroundColor: "rgba(8,12,6,0.95)",
                 border: "1px solid rgba(251,191,36,0.3)",
                 borderRadius: "10px", display: "flex", flexDirection: "column",
-                fontFamily: "'Courier New', monospace",
+                fontFamily: ARABIC_FONT_FAMILY,
                 boxShadow: "0 0 30px rgba(251,191,36,0.1)",
+                direction: "rtl",
             });
             panel.innerHTML = `
                 <div style="padding:8px 14px;border-bottom:1px solid rgba(251,191,36,0.15);background:rgba(0,0,0,0.3);border-radius:10px 10px 0 0;color:#fbbf24;font-size:10px;letter-spacing:3px;font-weight:bold">${ar.game.votingDiscussion}</div>
-                <div id="voting-chat-messages" style="flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:4px">
-                    <div style="color:#374151;font-size:9px;text-align:center;letter-spacing:1px">${ar.game.discussBeforeVote}</div>
-                </div>
+                <div id="voting-chat-messages" style="flex:1;overflow-y:auto;padding:8px 12px;display:flex;flex-direction:column;gap:4px"></div>
                 <div style="display:flex;gap:6px;padding:8px;border-top:1px solid rgba(251,191,36,0.1)">
                     <input id="voting-chat-input" type="text" placeholder="${ar.game.yourOpinion}"
-                        style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(251,191,36,0.2);border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none"/>
-                    <button id="voting-chat-send" style="padding:7px 12px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer;font-family:'Courier New',monospace">â–¶</button>
+                        style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(251,191,36,0.2);border-radius:5px;font-size:12px;font-family:'Courier New',monospace;outline:none;direction:rtl"/>
+                    <button id="voting-chat-send" style="padding:7px 12px;border:1px solid rgba(251,191,36,0.4);border-radius:5px;background:transparent;color:#fbbf24;font-size:12px;cursor:pointer;font-family:'Courier New',monospace">➤</button>
                 </div>
             `;
             document.body.appendChild(panel);
@@ -1174,13 +1197,13 @@ export default class GameScene extends Phaser.Scene {
         const ov = this.votingOverlayContainer;
         if (showResult && result) {
             const isTie = result.tie;
-            const label = isTie ? "TIE â€” No one eliminated" : `${result.eliminated} eliminated`;
+            const label = isTie ? "TIE — No one eliminated" : `${result.eliminated} eliminated`;
             const bColor = isTie ? 0xfbbf24 : 0xef4444;
             const tColor = isTie ? "#fcd34d" : "#f87171";
             const banner = this.add.container(this.W / 2, this.H / 2).setDepth(55).setAlpha(0);
             const panBg = this.add.rectangle(0, 0, 420, 78, isTie ? 0x0d1000 : 0x130500); panBg.setStrokeStyle(2, bColor);
-            const panTxt = this.add.text(0, -12, label, { fontSize: "22px", color: tColor, fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3 }).setOrigin(0.5);
-            const panSub = this.add.text(0, 16, "Voting session closed", { fontSize: "11px", color: "#4b5563", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
+            const panTxt = this.add.text(0, -12, label, { fontSize: "22px", color: tColor, fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3, align: "center" }).setOrigin(0.5);
+            const panSub = this.add.text(0, 16, "Voting session closed", { fontSize: "11px", color: "#4b5563", fontFamily: "'Courier New', monospace", letterSpacing: 2, align: "center" }).setOrigin(0.5);
             banner.add([panBg, panTxt, panSub]);
             this.tweens.add({ targets: banner, alpha: 1, duration: 320, ease: "Back.easeOut" });
             this.time.delayedCall(2200, () => {
@@ -1207,7 +1230,8 @@ export default class GameScene extends Phaser.Scene {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
             zIndex: "200", backgroundColor: "rgba(6,10,18,0.98)",
             display: "flex", flexDirection: "column",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
+            direction: "rtl",
         });
 
         const header = document.createElement("div");
@@ -1244,8 +1268,8 @@ export default class GameScene extends Phaser.Scene {
         });
         chatInput.innerHTML = `
             <input id="mvoting-chat-input" type="text" placeholder="${ar.game.yourOpinion}"
-                style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(245,158,11,0.2);border-radius:5px;font-size:13px;font-family:'Courier New',monospace;outline:none"/>
-            <button id="mvoting-chat-send" style="padding:7px 12px;border:1px solid rgba(245,158,11,0.4);border-radius:5px;background:transparent;color:#f59e0b;font-size:13px;cursor:pointer;touch-action:manipulation">â–¶</button>
+                style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(245,158,11,0.2);border-radius:5px;font-size:13px;font-family:'Courier New',monospace;outline:none;direction:rtl"/>
+            <button id="mvoting-chat-send" style="padding:7px 12px;border:1px solid rgba(245,158,11,0.4);border-radius:5px;background:transparent;color:#f59e0b;font-size:13px;cursor:pointer;touch-action:manipulation">➤</button>
         `;
         overlay.appendChild(chatInput);
 
@@ -1275,10 +1299,11 @@ export default class GameScene extends Phaser.Scene {
                 backgroundColor: "rgba(17,24,39,0.9)",
                 border: `1px solid ${isMe ? "rgba(245,158,11,0.3)" : "#1e2d45"}`,
                 opacity: isMe ? "0.6" : "1",
+                direction: "rtl",
             });
 
             row.innerHTML = `
-                <span style="font-size:22px">${isMe ? "ðŸ§‘" : "ðŸ‘¤"}</span>
+                <span style="font-size:22px">${isMe ? "🧑" : "👤"}</span>
                 <div style="flex:1">
                     <div style="color:#f1f5f9;font-size:14px;font-weight:bold;letter-spacing:1px">${p.username}${isMe ? ` (${ar.game.you})` : ""}</div>
                     <div style="height:3px;background:#1e2d45;border-radius:2px;margin-top:5px;overflow:hidden">
@@ -1295,7 +1320,7 @@ export default class GameScene extends Phaser.Scene {
                     if (this.myVote) return;
                     this.myVote = p.id;
                     socketService.socket.emit("vote", p.id);
-                    btn.textContent = "âœ“ VOTED";
+                    btn.textContent = "✓ VOTED";
                     btn.style.backgroundColor = "#f59e0b";
                     btn.style.color = "#000";
                     row.style.borderColor = "#f59e0b";
@@ -1336,7 +1361,8 @@ export default class GameScene extends Phaser.Scene {
                 remaining > 0 ? `${remaining} vote${remaining !== 1 ? "s" : ""} remaining` : "All votes cast",
                 {
                     fontSize: "11px", color: remaining > 0 ? "#64748b" : "#22c55e",
-                    fontFamily: "'Courier New', monospace", letterSpacing: 2
+                    fontFamily: "'Courier New', monospace", letterSpacing: 2,
+                    align: "center"
                 }
             ).setOrigin(0.5).setDepth(51);
             this.votingOverlayContainer.add(remainingTxt);
@@ -1352,7 +1378,7 @@ export default class GameScene extends Phaser.Scene {
 
         const baseX = this.PLAYERS_W + 16;
         let baseY = this.TOPBAR_H + this.CONTENT_H - 180;
-        this.voteTitle = this.add.text(baseX, baseY, ar.game.votes, { fontSize: "10px", color: "#f59e0b", fontFamily: "'Courier New', monospace", letterSpacing: 3 }).setDepth(4);
+        this.voteTitle = this.add.text(baseX, baseY, ar.game.votes, { fontSize: "10px", color: "#f59e0b", fontFamily: "'Courier New', monospace", letterSpacing: 3, align: "right" }).setDepth(4);
         baseY += 20;
 
         for (const id in votes) {
@@ -1362,7 +1388,7 @@ export default class GameScene extends Phaser.Scene {
             const barW = Math.min(count * 22, this.EVENTS_W - 130);
             const bgBar = this.add.rectangle(baseX, baseY + 8, this.EVENTS_W - 64, 15, 0x111827).setOrigin(0, 0.5).setDepth(3);
             const bar = this.add.rectangle(baseX, baseY + 8, 2, 15, 0xf59e0b, 0.45).setOrigin(0, 0.5).setDepth(4); bar.setStrokeStyle(1, 0xf59e0b, 0.55);
-            const lbl = this.add.text(baseX + 8, baseY + 8, `${uname}  Ã—${count}`, { fontSize: "11px", color: "#fbbf24", fontFamily: "'Courier New', monospace" }).setOrigin(0, 0.5).setDepth(5);
+            const lbl = this.add.text(baseX + 8, baseY + 8, `${uname}  ×${count}`, { fontSize: "11px", color: "#fbbf24", fontFamily: "'Courier New', monospace", align: "right" }).setOrigin(0, 0.5).setDepth(5);
             this.tweens.add({ targets: bar, width: barW, duration: 400, ease: "Cubic.easeOut" });
             this.voteEntries.push(bgBar, bar, lbl);
             baseY += 24;
@@ -1381,15 +1407,15 @@ export default class GameScene extends Phaser.Scene {
 
         const rows: Array<{ icon: string; label: string; value: string; color: string }> = [];
         if (this.role === "MAFIA") {
-            rows.push({ icon: "ðŸ”ª", label: ar.game.yourTarget, value: mafiaTarget?.username || "â€”", color: "#f87171" });
-            rows.push({ icon: "â˜ ", label: ar.game.outcome, value: victim ? `${victim.username} eliminated` : "Target was saved!", color: victim ? "#f87171" : "#4ade80" });
+            rows.push({ icon: "🔪", label: ar.game.yourTarget, value: mafiaTarget?.username || "—", color: "#f87171" });
+            rows.push({ icon: "☠", label: ar.game.outcome, value: victim ? `${victim.username} eliminated` : "Target was saved!", color: victim ? "#f87171" : "#4ade80" });
         }
         if (this.role === "DOCTOR") {
-            rows.push({ icon: "âœš", label: ar.game.youProtected, value: doctorSave?.username || "â€”", color: "#4ade80" });
-            rows.push({ icon: "â˜ ", label: ar.game.outcome, value: victim ? `${victim.username} died` : "You saved them! âœ“", color: victim ? "#f87171" : "#4ade80" });
+            rows.push({ icon: "✚", label: ar.game.youProtected, value: doctorSave?.username || "—", color: "#4ade80" });
+            rows.push({ icon: "☠", label: ar.game.outcome, value: victim ? `${victim.username} died` : "You saved them! ✓", color: victim ? "#f87171" : "#4ade80" });
         }
         if (this.role === "DETECTIVE") {
-            rows.push({ icon: "ðŸ”", label: ar.game.nightVictim, value: victim ? victim.username : "Nobody died tonight", color: victim ? "#f87171" : "#4ade80" });
+            rows.push({ icon: "🔍", label: ar.game.nightVictim, value: victim ? victim.username : "Nobody died tonight", color: victim ? "#f87171" : "#4ade80" });
         }
 
         if (this.isMobile) {
@@ -1400,17 +1426,17 @@ export default class GameScene extends Phaser.Scene {
         const panelW = 340, panelH = 64 + rows.length * 46 + 24;
         const c = this.add.container(this.W / 2, this.H / 2 - 50).setDepth(48).setAlpha(0);
         const bg = this.add.rectangle(0, 0, panelW, panelH, 0x08090f); bg.setStrokeStyle(2, 0xa855f7); bg.setOrigin(0.5);
-        const titleTxt = this.add.text(0, -(panelH / 2) + 22, `${ar.game.nightResults}`, { fontSize: "13px", color: "#c084fc", fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3 }).setOrigin(0.5);
+        const titleTxt = this.add.text(0, -(panelH / 2) + 22, `${ar.game.nightResults}`, { fontSize: "13px", color: "#c084fc", fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3, align: "center" }).setOrigin(0.5);
         c.add([bg, titleTxt]);
         rows.forEach((row, i) => {
             const rowY = -(panelH / 2) + 58 + i * 46;
             const rowBg = this.add.rectangle(0, rowY, panelW - 24, 36, 0x0d0f18).setOrigin(0.5); rowBg.setStrokeStyle(1, 0x1e2d45);
             const iconT = this.add.text(-(panelW / 2) + 28, rowY, row.icon, { fontSize: "17px" }).setOrigin(0.5);
-            const lblT = this.add.text(-(panelW / 2) + 54, rowY - 7, row.label, { fontSize: "9px", color: "#64748b", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0, 0.5);
-            const valT = this.add.text(-(panelW / 2) + 54, rowY + 8, row.value, { fontSize: "13px", color: row.color, fontFamily: "'Courier New', monospace", fontStyle: "bold" }).setOrigin(0, 0.5);
+            const lblT = this.add.text(-(panelW / 2) + 54, rowY - 7, row.label, { fontSize: "9px", color: "#64748b", fontFamily: "'Courier New', monospace", letterSpacing: 2, align: "right" }).setOrigin(0, 0.5);
+            const valT = this.add.text(-(panelW / 2) + 54, rowY + 8, row.value, { fontSize: "13px", color: row.color, fontFamily: "'Courier New', monospace", fontStyle: "bold", align: "right" }).setOrigin(0, 0.5);
             c.add([rowBg, iconT, lblT, valT]);
         });
-        const dismissTxt = this.add.text(0, panelH / 2 - 14, ar.game.tapToDismiss, { fontSize: "9px", color: "#2d3a4a", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
+        const dismissTxt = this.add.text(0, panelH / 2 - 14, ar.game.tapToDismiss, { fontSize: "9px", color: "#2d3a4a", fontFamily: "'Courier New', monospace", letterSpacing: 2, align: "center" }).setOrigin(0.5);
         c.add(dismissTxt);
         this.nightResultOverlay = c;
         this.tweens.add({ targets: c, alpha: 1, duration: 420, ease: "Back.easeOut" });
@@ -1428,13 +1454,14 @@ export default class GameScene extends Phaser.Scene {
             position: "fixed", top: "70px", left: "10px", right: "10px",
             zIndex: "600", padding: "16px",
             backgroundColor: "#0a0d13", border: "1px solid #a855f7",
-            borderRadius: "10px", fontFamily: "'Courier New', monospace",
+            borderRadius: "10px", fontFamily: ARABIC_FONT_FAMILY,
             boxShadow: "0 0 30px rgba(168,85,247,0.3)",
+            direction: "rtl",
         });
 
         const titleEl = document.createElement("div");
         titleEl.textContent = ar.game.nightResults;
-        Object.assign(titleEl.style, { color: "#c084fc", fontSize: "12px", letterSpacing: "3px", fontWeight: "bold", marginBottom: "12px" });
+        Object.assign(titleEl.style, { color: "#c084fc", fontSize: "12px", letterSpacing: "3px", fontWeight: "bold", marginBottom: "12px", textAlign: "center" });
         banner.appendChild(titleEl);
 
         rows.forEach(row => {
@@ -1444,12 +1471,13 @@ export default class GameScene extends Phaser.Scene {
                 padding: "8px 10px", borderRadius: "4px",
                 backgroundColor: "rgba(13,15,24,0.8)",
                 border: "1px solid #1e2d45", marginBottom: "6px",
+                direction: "rtl",
             });
             rowEl.innerHTML = `
                 <span style="font-size:18px">${row.icon}</span>
-                <div>
-                    <div style="color:#64748b;font-size:9px;letter-spacing:2px">${row.label}</div>
-                    <div style="color:${row.color};font-size:13px;font-weight:bold">${row.value}</div>
+                <div style="flex:1">
+                    <div style="color:#64748b;font-size:9px;letter-spacing:2px;text-align:right">${row.label}</div>
+                    <div style="color:${row.color};font-size:13px;font-weight:bold;text-align:right">${row.value}</div>
                 </div>
             `;
             banner.appendChild(rowEl);
@@ -1472,7 +1500,7 @@ export default class GameScene extends Phaser.Scene {
 
         if (this.isMobile) {
             const rows = [{
-                icon: isMafia ? "âš " : "âœ“",
+                icon: isMafia ? "⚠" : "✓",
                 label: ar.game.nightResults,
                 value: `${data.username} is ${data.role || (isMafia ? "MAFIA" : "INNOCENT")}`,
                 color: hex,
@@ -1483,8 +1511,8 @@ export default class GameScene extends Phaser.Scene {
 
         const c = this.add.container(this.W / 2, this.H / 2 - 40).setDepth(45).setAlpha(0);
         const bg = this.add.rectangle(0, 0, 360, 88, isMafia ? 0x1a0505 : 0x051a0a); bg.setStrokeStyle(2, color);
-        const title = this.add.text(0, -15, isMafia ? ar.game.mafiaConfirmed : ar.game.innocentCitizen, { fontSize: "22px", color: hex, fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 4 }).setOrigin(0.5);
-        const sub = this.add.text(0, 18, data.username, { fontSize: "13px", color: "#94a3b8", fontFamily: "'Courier New', monospace", letterSpacing: 2 }).setOrigin(0.5);
+        const title = this.add.text(0, -15, isMafia ? ar.game.mafiaConfirmed : ar.game.innocentCitizen, { fontSize: "22px", color: hex, fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 4, align: "center" }).setOrigin(0.5);
+        const sub = this.add.text(0, 18, data.username, { fontSize: "13px", color: "#94a3b8", fontFamily: "'Courier New', monospace", letterSpacing: 2, align: "center" }).setOrigin(0.5);
         c.add([bg, title, sub]);
         this.tweens.add({ targets: c, alpha: 1, duration: 400, ease: "Back.easeOut" });
         this.time.delayedCall(6000, () => this.tweens.add({ targets: c, alpha: 0, duration: 400, onComplete: () => c.destroy() }));
@@ -1498,17 +1526,18 @@ export default class GameScene extends Phaser.Scene {
         const fontSize = this.isMobile ? "44px" : "68px";
         const phaseName = getPhaseLabel(phase);
         // عرض المرحلة بالعربية مع نقطة على اليمين
-        const displayText = `â—‰  ${phaseName}`;
+        const displayText = `•  ${phaseName}`;
         const ov = this.add.text(this.W / 2, this.H / 2, displayText, {
             fontSize, color, fontFamily: "'Georgia', serif", fontStyle: "bold",
-            letterSpacing: 12, stroke: "#00000088", strokeThickness: 4
+            letterSpacing: 12, stroke: "#00000088", strokeThickness: 4,
+            align: "center"
         }).setOrigin(0.5).setAlpha(0).setScale(0.7).setDepth(60);
         this.tweens.add({
             targets: ov, alpha: 0.92, scaleX: 1.08, scaleY: 1.08, duration: 550, ease: "Back.easeOut",
             onComplete: () => this.tweens.add({ targets: ov, alpha: 0, scaleX: 1.4, scaleY: 1.4, duration: 650, delay: 1100, onComplete: () => ov.destroy() })
         });
         // تحديث النص الثابت في الشريط العلوي (عرض المرحلة بالعربية)
-        this.phaseText?.setText(`â—‰  ${phaseName}`).setColor(color);
+        this.phaseText?.setText(`•  ${phaseName}`).setColor(color);
     }
 
     private showWinOverlay(data: any) {
@@ -1584,7 +1613,8 @@ export default class GameScene extends Phaser.Scene {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
             zIndex: "9999", backgroundColor: "rgba(0,0,0,0.65)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
+            direction: "rtl",
         });
 
         const card = document.createElement("div");
@@ -1603,25 +1633,26 @@ export default class GameScene extends Phaser.Scene {
         });
         const leftH = document.createElement("div");
         const iconEl = document.createElement("div");
-        iconEl.textContent = isMafia ? "ðŸ”ª" : "ðŸ‘‘";
-        iconEl.style.cssText = "font-size:36px;margin-bottom:4px";
+        iconEl.textContent = isMafia ? "🔪" : "👑";
+        iconEl.style.cssText = "font-size:36px;margin-bottom:4px;text-align:center";
         const titleEl = document.createElement("div");
         titleEl.textContent = isMafia ? ar.game.mafiaWins : ar.game.citizensWin;
         Object.assign(titleEl.style, {
             color: accent, fontSize: "28px", fontWeight: "bold",
             fontFamily: "'Georgia', serif", letterSpacing: "4px",
+            textAlign: "right",
         });
         leftH.appendChild(iconEl);
         leftH.appendChild(titleEl);
 
         const rightH = document.createElement("div");
-        rightH.style.cssText = "text-align:right";
+        rightH.style.cssText = "text-align:left";
         const durEl = document.createElement("div");
         durEl.textContent = data.duration || "";
-        durEl.style.cssText = `color:${accent};font-size:20px;font-weight:bold`;
+        durEl.style.cssText = `color:${accent};font-size:20px;font-weight:bold;text-align:left`;
         const roundsEl = document.createElement("div");
         roundsEl.textContent = `${data.rounds || 1} ${ar.game.rounds}`;
-        roundsEl.style.cssText = "color:#475569;font-size:11px;letter-spacing:2px;margin-top:4px";
+        roundsEl.style.cssText = "color:#475569;font-size:11px;letter-spacing:2px;margin-top:4px;text-align:left";
         rightH.appendChild(durEl);
         rightH.appendChild(roundsEl);
         header.appendChild(leftH);
@@ -1644,12 +1675,13 @@ export default class GameScene extends Phaser.Scene {
             Object.assign(el.style, {
                 color: "#475569", fontSize: "10px", letterSpacing: "3px",
                 padding: "12px 16px 8px", borderBottom: `1px solid ${accent}22`,
+                textAlign: "right",
             });
             return el;
         };
 
         const col1 = document.createElement("div");
-        col1.style.cssText = `border-right:1px solid ${accent}22;overflow-y:auto;max-height:340px`;
+        col1.style.cssText = `border-left:1px solid ${accent}22;overflow-y:auto;max-height:340px`;
         col1.appendChild(makePanelHeader(ar.game.playersTab));
         const col1content = document.createElement("div");
         col1content.style.cssText = "padding:10px";
@@ -1661,6 +1693,7 @@ export default class GameScene extends Phaser.Scene {
                 backgroundColor: "rgba(255,255,255,0.03)",
                 borderRadius: "6px",
                 opacity: r.alive === false ? "0.45" : "1",
+                direction: "rtl",
             });
             const av = document.createElement("div");
             Object.assign(av.style, {
@@ -1670,20 +1703,20 @@ export default class GameScene extends Phaser.Scene {
                 fontSize: "16px", flexShrink: "0",
                 border: `2px solid ${roleColors[r.role] || "#94a3b8"}`,
             });
-            av.textContent = r.avatar || "ðŸ˜Ž";
+            av.textContent = r.avatar || "😎";
             const nameEl = document.createElement("span");
             nameEl.textContent = r.username;
-            nameEl.style.cssText = "color:#e2e8f0;font-size:12px;font-weight:bold;flex:1";
+            nameEl.style.cssText = "color:#e2e8f0;font-size:12px;font-weight:bold;flex:1;text-align:right";
             const roleEl = document.createElement("span");
             roleEl.textContent = ar.roles[r.role as keyof typeof ar.roles] || r.role;
-            roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:9px;letter-spacing:2px`;
+            roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:9px;letter-spacing:2px;text-align:right`;
             row.appendChild(av); row.appendChild(nameEl); row.appendChild(roleEl);
             col1content.appendChild(row);
         });
         col1.appendChild(col1content);
 
         const col2 = document.createElement("div");
-        col2.style.cssText = `border-right:1px solid ${accent}22`;
+        col2.style.cssText = `border-left:1px solid ${accent}22`;
         col2.appendChild(makePanelHeader(ar.game.stats));
         const col2content = document.createElement("div");
         col2content.style.cssText = "padding:10px";
@@ -1697,6 +1730,7 @@ export default class GameScene extends Phaser.Scene {
                 display: "flex", justifyContent: "space-between",
                 padding: "8px 10px", marginBottom: "5px",
                 backgroundColor: "rgba(255,255,255,0.02)", borderRadius: "5px",
+                direction: "rtl",
             });
             const l = document.createElement("span");
             l.textContent = label;
@@ -1707,9 +1741,9 @@ export default class GameScene extends Phaser.Scene {
             row.appendChild(l); row.appendChild(v);
             return row;
         };
-        col2content.appendChild(makeStatDesktop(ar.game.winner, isMafia ? "ðŸ”ª MAFIA" : "ðŸ‘‘ CITIZENS", accent));
+        col2content.appendChild(makeStatDesktop(ar.game.winner, isMafia ? "🔪 MAFIA" : "👑 CITIZENS", accent));
         col2content.appendChild(makeStatDesktop(ar.game.rounds, `${data.rounds || 1}`, "#e2e8f0"));
-        col2content.appendChild(makeStatDesktop(ar.game.duration, data.duration || "â€”", "#e2e8f0"));
+        col2content.appendChild(makeStatDesktop(ar.game.duration, data.duration || "—", "#e2e8f0"));
         col2content.appendChild(makeStatDesktop(ar.game.nightKills, `${kills}`, "#ef4444"));
         col2content.appendChild(makeStatDesktop(ar.game.doctorSaves, `${saves}`, "#22c55e"));
         col2content.appendChild(makeStatDesktop(ar.game.votedOut, `${eliminated}`, "#f59e0b"));
@@ -1729,18 +1763,19 @@ export default class GameScene extends Phaser.Scene {
             Object.assign(row.style, {
                 display: "flex", gap: "8px", padding: "7px 8px", marginBottom: "5px",
                 backgroundColor: "rgba(255,255,255,0.02)", borderRadius: "5px",
-                borderLeft: `2px solid ${typeColors[entry.type] || "#1e3a5f"}`,
+                borderRight: `2px solid ${typeColors[entry.type] || "#1e3a5f"}`,
+                direction: "rtl",
             });
             const iconEl = document.createElement("span");
-            iconEl.textContent = entry.icon || "â€¢";
+            iconEl.textContent = entry.icon || "•";
             iconEl.style.cssText = "font-size:12px;flex-shrink:0";
             const textEl = document.createElement("div");
             const roundEl = document.createElement("div");
             roundEl.textContent = `R${entry.round}`;
-            roundEl.style.cssText = "color:#374151;font-size:9px;letter-spacing:1px";
+            roundEl.style.cssText = "color:#374151;font-size:9px;letter-spacing:1px;text-align:right";
             const msgEl = document.createElement("div");
             msgEl.textContent = entry.text;
-            msgEl.style.cssText = "color:#94a3b8;font-size:10px;line-height:1.4;margin-top:1px";
+            msgEl.style.cssText = "color:#94a3b8;font-size:10px;line-height:1.4;margin-top:1px;text-align:right";
             textEl.appendChild(roundEl); textEl.appendChild(msgEl);
             row.appendChild(iconEl); row.appendChild(textEl);
             col3content.appendChild(row);
@@ -1779,8 +1814,9 @@ export default class GameScene extends Phaser.Scene {
             zIndex: "9999", backgroundColor: "rgba(0,0,0,0.95)",
             display: "flex", flexDirection: "column",
             alignItems: "center", overflowY: "auto",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
             padding: "16px",
+            direction: "rtl",
         });
 
         const card = document.createElement("div");
@@ -1800,7 +1836,7 @@ export default class GameScene extends Phaser.Scene {
             borderBottom: `1px solid ${accent}33`,
         });
         const icon = document.createElement("div");
-        icon.textContent = isMafia ? "ðŸ”ª" : "ðŸ‘‘";
+        icon.textContent = isMafia ? "🔪" : "👑";
         icon.style.cssText = "font-size:44px;margin-bottom:8px";
         const title = document.createElement("div");
         title.textContent = isMafia ? ar.game.mafiaWins : ar.game.citizensWin;
@@ -1830,7 +1866,7 @@ export default class GameScene extends Phaser.Scene {
                 background: "none", border: "none",
                 color: "#475569", fontSize: "11px",
                 letterSpacing: "2px", cursor: "pointer",
-                fontFamily: "'Courier New', monospace",
+                fontFamily: ARABIC_FONT_FAMILY,
                 transition: "all 0.15s",
             });
             const content = document.createElement("div");
@@ -1871,6 +1907,7 @@ export default class GameScene extends Phaser.Scene {
                     borderRadius: "8px",
                     border: `1px solid ${r.alive === false ? "#1f2937" : "rgba(255,255,255,0.05)"}`,
                     opacity: r.alive === false ? "0.55" : "1",
+                    direction: "rtl",
                 });
 
                 const avatarEl = document.createElement("div");
@@ -1885,11 +1922,11 @@ export default class GameScene extends Phaser.Scene {
 
                 const nameEl = document.createElement("span");
                 nameEl.textContent = r.username;
-                nameEl.style.cssText = "color:#e2e8f0;font-size:13px;font-weight:bold;flex:1";
+                nameEl.style.cssText = "color:#e2e8f0;font-size:13px;font-weight:bold;flex:1;text-align:right";
 
                 const roleEl = document.createElement("span");
                 roleEl.textContent = ar.roles[r.role as keyof typeof ar.roles] || r.role;
-                roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:10px;letter-spacing:2px`;
+                roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:10px;letter-spacing:2px;text-align:right`;
 
                 const deadEl = document.createElement("span");
                 deadEl.textContent = r.alive === false ? "✖" : "";
@@ -1910,6 +1947,7 @@ export default class GameScene extends Phaser.Scene {
                 padding: "10px 12px", marginBottom: "6px",
                 backgroundColor: "rgba(255,255,255,0.03)",
                 borderRadius: "6px", border: "1px solid rgba(255,255,255,0.04)",
+                direction: "rtl",
             });
             const lbl = document.createElement("span");
             lbl.textContent = label;
@@ -1941,13 +1979,14 @@ export default class GameScene extends Phaser.Scene {
                     display: "flex", alignItems: "flex-start", gap: "10px",
                     padding: "8px 10px", marginBottom: "6px",
                     backgroundColor: "rgba(255,255,255,0.02)",
-                    borderRadius: "6px", borderLeft: "2px solid",
+                    borderRadius: "6px", borderRight: "2px solid",
+                    direction: "rtl",
                 });
                 const typeColors: Record<string, string> = {
                     kill: "#ef4444", save: "#22c55e",
                     vote: "#f59e0b", tie: "#475569", quiet: "#1e3a5f",
                 };
-                row.style.borderLeftColor = typeColors[entry.type] || "#1e3a5f";
+                row.style.borderRightColor = typeColors[entry.type] || "#1e3a5f";
 
                 const iconEl = document.createElement("span");
                 iconEl.textContent = entry.icon || "•";
@@ -1956,10 +1995,10 @@ export default class GameScene extends Phaser.Scene {
                 const textEl = document.createElement("div");
                 const roundLabel = document.createElement("div");
                 roundLabel.textContent = ar.game.roundLabel(entry.round);
-                roundLabel.style.cssText = "color:#374151;font-size:9px;letter-spacing:1px;margin-bottom:2px";
+                roundLabel.style.cssText = "color:#374151;font-size:9px;letter-spacing:1px;margin-bottom:2px;text-align:right";
                 const msgEl = document.createElement("div");
                 msgEl.textContent = entry.text;
-                msgEl.style.cssText = "color:#94a3b8;font-size:11px;line-height:1.4";
+                msgEl.style.cssText = "color:#94a3b8;font-size:11px;line-height:1.4;text-align:right";
 
                 textEl.appendChild(roundLabel);
                 textEl.appendChild(msgEl);
@@ -2001,7 +2040,7 @@ export default class GameScene extends Phaser.Scene {
         Object.assign(this.adminToggleBtn.style, {
             position: "absolute", right: "16px", top: "10px",
             padding: "8px 20px", fontSize: "12px",
-            fontFamily: "'Courier New', monospace", fontWeight: "bold", letterSpacing: "2px",
+            fontFamily: ARABIC_FONT_FAMILY, fontWeight: "bold", letterSpacing: "2px",
             color: "#f59e0b", backgroundColor: "#0d0f14",
             border: "1px solid #f59e0b", borderRadius: "4px",
             cursor: "pointer", zIndex: "9999999",
@@ -2015,7 +2054,7 @@ export default class GameScene extends Phaser.Scene {
         Object.assign(rejoinBtn.style, {
             position: "absolute", right: "16px", top: "48px",
             padding: "6px 16px", fontSize: "11px",
-            fontFamily: "'Courier New', monospace", fontWeight: "bold", letterSpacing: "2px",
+            fontFamily: ARABIC_FONT_FAMILY, fontWeight: "bold", letterSpacing: "2px",
             color: "#22c55e", backgroundColor: "#0d0f14",
             border: "1px solid #22c55e", borderRadius: "4px",
             cursor: "pointer", zIndex: "9999999",
@@ -2034,8 +2073,9 @@ export default class GameScene extends Phaser.Scene {
             width: "260px", zIndex: "99999",
             backgroundColor: "#0d1117", border: "1px solid #22c55e",
             borderRadius: "10px", padding: "18px 16px",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
             boxShadow: "0 0 30px rgba(34,197,94,0.15)",
+            direction: "rtl",
         });
 
         const roles = [
@@ -2047,10 +2087,10 @@ export default class GameScene extends Phaser.Scene {
 
         popup.innerHTML = `
             <div style="color:#22c55e;font-size:10px;letter-spacing:3px;font-weight:bold;margin-bottom:8px">${ar.game.rejoinCode}</div>
-            <div style="color:#4a5568;font-size:9px;margin-bottom:12px;direction:rtl;text-align:right;line-height:1.5">${ar.game.selectReplacementRole}</div>
+            <div style="color:#4a5568;font-size:9px;margin-bottom:12px;text-align:right;line-height:1.5">${ar.game.selectReplacementRole}</div>
             <div id="arj-roles" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
                 ${roles.map(r => `
-                    <button data-role="${r.key}" style="padding:10px 6px;border:1px solid #21262d;border-radius:6px;background:transparent;color:#4a5568;font-size:11px;cursor:pointer;font-family:'Courier New',monospace;direction:rtl">${r.label}</button>
+                    <button data-role="${r.key}" style="padding:10px 6px;border:1px solid #21262d;border-radius:6px;background:transparent;color:#4a5568;font-size:11px;cursor:pointer;font-family:'Courier New',monospace;text-align:center">${r.label}</button>
                 `).join("")}
             </div>
             <button id="arj-gen-btn" style="width:100%;padding:11px;border:1px solid #374151;border-radius:6px;background:transparent;color:#374151;font-size:11px;letter-spacing:2px;cursor:not-allowed;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:10px" disabled>${ar.game.generateCode}</button>
@@ -2125,8 +2165,9 @@ export default class GameScene extends Phaser.Scene {
             boxShadow: "-8px 0 40px rgba(0,0,0,0.6)",
             zIndex: "999999", overflowY: "auto",
             transition: "right 0.35s cubic-bezier(0.4,0,0.2,1)",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
             display: "flex", flexDirection: "column",
+            direction: "rtl",
         });
         drawer.innerHTML = `
         <style>
@@ -2195,7 +2236,7 @@ export default class GameScene extends Phaser.Scene {
         drawer.querySelector("#adr-close-btn")?.addEventListener("click", () => this.closeAdminDrawer());
         drawer.querySelector("#adr-reveal-btn")?.addEventListener("click", () => {
             const ta = drawer.querySelector<HTMLTextAreaElement>("#adr-story-input");
-            const story = ta?.value.trim() || "The night passed in silence...";
+            const story = ta?.value.trim() || "مرت الليلة في صمت...";
             socketService.socket.emit("admin_reveal_night_results", story);
             (drawer.querySelector("#adr-night-section") as HTMLElement).style.display = "none";
             (drawer.querySelector("#adr-story-section") as HTMLElement).style.display = "none";
@@ -2296,7 +2337,8 @@ export default class GameScene extends Phaser.Scene {
             position: "fixed", bottom: "0", left: "0", right: "0",
             zIndex: "200", backgroundColor: "#080c12",
             borderTop: "1px solid rgba(245,158,11,0.3)",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
+            direction: "rtl",
         });
 
         const nightStatus = document.createElement("div");
@@ -2346,7 +2388,7 @@ export default class GameScene extends Phaser.Scene {
             btn.textContent = b.label;
             Object.assign(btn.style, {
                 padding: "8px 10px", fontSize: "10px", fontWeight: "bold",
-                fontFamily: "'Courier New', monospace", letterSpacing: "1px",
+                fontFamily: ARABIC_FONT_FAMILY, letterSpacing: "1px",
                 border: "1px solid #f59e0b", borderRadius: "4px",
                 backgroundColor: "transparent", color: "#f59e0b",
                 cursor: "pointer", flex: "1",
@@ -2359,7 +2401,7 @@ export default class GameScene extends Phaser.Scene {
         rejoinMobileBtn.textContent = ar.game.rejoin;
         Object.assign(rejoinMobileBtn.style, {
             padding: "8px 10px", fontSize: "10px", fontWeight: "bold",
-            fontFamily: "'Courier New', monospace", letterSpacing: "1px",
+            fontFamily: ARABIC_FONT_FAMILY, letterSpacing: "1px",
             border: "1px solid #22c55e", borderRadius: "4px",
             backgroundColor: "transparent", color: "#22c55e",
             cursor: "pointer", flex: "1",
@@ -2380,7 +2422,8 @@ export default class GameScene extends Phaser.Scene {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
             zIndex: "9999", backgroundColor: "rgba(0,0,0,0.85)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
+            direction: "rtl",
         });
 
         const box = document.createElement("div");
@@ -2399,10 +2442,10 @@ export default class GameScene extends Phaser.Scene {
 
         box.innerHTML = `
             <div style="color:#22c55e;font-size:11px;letter-spacing:3px;font-weight:bold;margin-bottom:8px">${ar.game.rejoinCode}</div>
-            <div style="color:#4a5568;font-size:10px;margin-bottom:14px;direction:rtl;text-align:right;line-height:1.5">${ar.game.selectReplacementRole}</div>
+            <div style="color:#4a5568;font-size:10px;margin-bottom:14px;text-align:right;line-height:1.5">${ar.game.selectReplacementRole}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
                 ${roles.map(r => `
-                    <button data-role="${r.key}" style="padding:12px 6px;border:1px solid #21262d;border-radius:6px;background:transparent;color:#4a5568;font-size:12px;cursor:pointer;font-family:'Courier New',monospace;direction:rtl;touch-action:manipulation">${r.label}</button>
+                    <button data-role="${r.key}" style="padding:12px 6px;border:1px solid #21262d;border-radius:6px;background:transparent;color:#4a5568;font-size:12px;cursor:pointer;font-family:'Courier New',monospace;text-align:center;touch-action:manipulation">${r.label}</button>
                 `).join("")}
             </div>
             <button id="mrj-gen-btn" style="width:100%;padding:12px;border:1px solid #374151;border-radius:6px;background:transparent;color:#374151;font-size:12px;letter-spacing:2px;cursor:not-allowed;font-family:'Courier New',monospace;font-weight:bold;margin-bottom:12px;touch-action:manipulation" disabled>${ar.game.generateCode}</button>
@@ -2485,7 +2528,7 @@ export default class GameScene extends Phaser.Scene {
                 NIGHT_REVIEW: "#c084fc", WAITING: "#64748b"
             };
             const phaseName = getPhaseLabel(data.phase);
-            this.phaseText?.setText(`â—‰  ${phaseName}`).setColor(colorMap[data.phase] || "#64748b");
+            this.phaseText?.setText(`•  ${phaseName}`).setColor(colorMap[data.phase] || "#64748b");
             this.drawPlayers(data.players, data.phase);
             this.updateChatUI(data.phase);
 
@@ -2617,6 +2660,7 @@ export default class GameScene extends Phaser.Scene {
                     backgroundColor: isMe ? "rgba(251,191,36,0.12)" : "rgba(255,255,255,0.04)",
                     border: isMe ? "1px solid rgba(251,191,36,0.3)" : "1px solid rgba(255,255,255,0.06)",
                     fontSize: "12px",
+                    direction: "rtl",
                 });
                 msg.innerHTML = `<span style="color:#6b7280;font-size:9px">${data.username}: </span><span style="color:#f1f5f9">${data.message}</span>`;
                 votingMessages.appendChild(msg);

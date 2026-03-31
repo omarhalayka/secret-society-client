@@ -1,4 +1,4 @@
-﻿// LobbyScene.ts - المعدل بالكامل مع ترجمة عربية كاملة
+﻿// LobbyScene.ts - النسخة النهائية مع كل التصحيحات العربية
 import Phaser from "phaser";
 import { socketService } from "../../socket";
 import { audioManager } from "../../AudioManager";
@@ -125,10 +125,12 @@ export default class LobbyScene extends Phaser.Scene {
         const msg = this.add.text(W / 2, H / 2 - 20, ar.lobby.reconnecting, {
             fontSize: "18px", color: "#3b82f6",
             fontFamily: "'Courier New', monospace", letterSpacing: 3,
+            align: "center"
         }).setOrigin(0.5);
         const sub = this.add.text(W / 2, H / 2 + 20, ar.lobby.welcomeBack(saved.username), {
             fontSize: "12px", color: "#4a5568",
             fontFamily: "'Courier New', monospace",
+            align: "center"
         }).setOrigin(0.5);
 
         socketService.saveUsername(saved.username);
@@ -164,7 +166,7 @@ export default class LobbyScene extends Phaser.Scene {
 
             socketService.socket.once("rejoin_failed", () => {
                 timeout.remove();
-                msg.setText("Session expired");
+                msg.setText("انتهت الجلسة");
                 goToLobby();
             });
 
@@ -317,7 +319,6 @@ export default class LobbyScene extends Phaser.Scene {
         }, 3000);
     }
 
-    // ─── Desktop Layout ────────────────────────────────────────────────
     private buildDesktopLayout(W: number, H: number) {
         const cy = H / 2;
         const heroW = Math.floor(W * 0.55);
@@ -381,7 +382,8 @@ export default class LobbyScene extends Phaser.Scene {
         this.queueStatusText = this.add.text(formCx, cardTop + cardH - 32,
             ar.lobby.queueCount(0, 6), {
             fontSize: "11px", color: "#3b4a5c",
-            fontFamily: "'Courier New', monospace", letterSpacing: 1
+            fontFamily: "'Courier New', monospace", letterSpacing: 1,
+            align: "center"
         }).setOrigin(0.5).setDepth(3);
 
         card.setAlpha(0);
@@ -431,7 +433,8 @@ export default class LobbyScene extends Phaser.Scene {
 
         const t2 = this.add.text(cx, cy + titleSize + 22, ar.lobby.subtitle, {
             fontSize: "10px", color: "#3b82f6",
-            fontFamily: "'Courier New', monospace", letterSpacing: 3
+            fontFamily: "'Courier New', monospace", letterSpacing: 3,
+            align: "center"
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: t2, alpha: 1, duration: 600, delay: 400 });
 
@@ -441,7 +444,8 @@ export default class LobbyScene extends Phaser.Scene {
 
         const t3 = this.add.text(cx, cy + titleSize + 68, ar.lobby.tagline, {
             fontSize: "13px", color: "#2d3748",
-            fontFamily: "'Georgia', serif", fontStyle: "italic"
+            fontFamily: "'Georgia', serif", fontStyle: "italic",
+            align: "center"
         }).setOrigin(0.5).setDepth(2).setAlpha(0);
         this.tweens.add({ targets: t3, alpha: 1, duration: 600, delay: 550 });
 
@@ -453,13 +457,13 @@ export default class LobbyScene extends Phaser.Scene {
         ].forEach((item, i) => {
             const f = this.add.text(cx, baseY + i * 32, `${item.ico}  ${item.text}`, {
                 fontSize: "12px", color: "#1a2535",
-                fontFamily: "'Courier New', monospace", letterSpacing: 1
+                fontFamily: "'Courier New', monospace", letterSpacing: 1,
+                align: "center"
             }).setOrigin(0.5).setDepth(2).setAlpha(0);
             this.tweens.add({ targets: f, alpha: 1, duration: 500, delay: 650 + i * 100 });
         });
     }
 
-    // ─── Mobile Layout ────────────────────────────────────────────────
     private buildMobileLayout(W: number, H: number) {
         const cx = W / 2;
         const pad = 16;
@@ -493,7 +497,8 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.add.text(cx, 86, ar.lobby.subtitle, {
             fontSize: "8px", color: "#3b82f6",
-            fontFamily: "'Courier New', monospace", letterSpacing: 2
+            fontFamily: "'Courier New', monospace", letterSpacing: 2,
+            align: "center"
         }).setOrigin(0.5).setDepth(2);
 
         const cardW = W - pad * 2;
@@ -528,15 +533,16 @@ export default class LobbyScene extends Phaser.Scene {
         this.queueStatusText = this.add.text(cardCX, queueY,
             ar.lobby.queueCount(0, 6), {
             fontSize: "11px", color: "#3b4a5c",
-            fontFamily: "'Courier New', monospace", letterSpacing: 1
+            fontFamily: "'Courier New', monospace", letterSpacing: 1,
+            align: "center"
         }).setOrigin(0.5).setDepth(3);
     }
 
-    // ─── UI Helpers ─────────────────────────────────────────────────
     private addFieldLabel(x: number, y: number, label: string) {
         this.add.text(x, y, label, {
             fontSize: "9px", color: "#4a5568",
-            fontFamily: "'Courier New', monospace", letterSpacing: 3
+            fontFamily: "'Courier New', monospace", letterSpacing: 3,
+            align: "right"
         }).setDepth(3);
     }
 
@@ -545,16 +551,17 @@ export default class LobbyScene extends Phaser.Scene {
         this.usernameInput = document.createElement("input");
         this.usernameInput.id = "lobby-username";
         this.usernameInput.type = "text";
-        this.usernameInput.placeholder = "Your name...";
+        this.usernameInput.placeholder = ar.lobby.usernameLabel;
         this.usernameInput.maxLength = 20;
         this.usernameInput.autocomplete = "off";
         Object.assign(this.usernameInput.style, {
             position: "absolute", left: `${x}px`, top: `${y}px`,
             width: `${width}px`, padding: "11px 14px", fontSize: "14px",
-            fontFamily: "'Courier New', monospace", borderRadius: "6px",
+            fontFamily: ARABIC_FONT_FAMILY, borderRadius: "6px",
             border: "1px solid #21262d", backgroundColor: "#010409", color: "#f1f5f9",
             outline: "none", zIndex: "1000", letterSpacing: "1px",
             transition: "border-color 0.2s, box-shadow 0.2s",
+            direction: "rtl",
         });
         this.usernameInput.addEventListener("focus", () => {
             this.usernameInput.style.borderColor = "#3b82f6";
@@ -600,7 +607,8 @@ export default class LobbyScene extends Phaser.Scene {
             const iconTxt = this.add.text(0, -12, displayIcon, { fontSize: "20px" }).setOrigin(0.5);
             const lbl = this.add.text(0, 14, role.label, {
                 fontSize: "9px", color: isActive ? role.hex : "#4a5568",
-                fontFamily: "'Courier New', monospace", letterSpacing: 1, fontStyle: "bold"
+                fontFamily: "'Courier New', monospace", letterSpacing: 1, fontStyle: "bold",
+                align: "center"
             }).setOrigin(0.5);
 
             c.add([bg, iconTxt, lbl]);
@@ -689,7 +697,6 @@ export default class LobbyScene extends Phaser.Scene {
         this.selectedType = key;
     }
 
-    // ─── Admin Reset Button ─────────────────────────────────────────
     private showAdminResetButton() {
         document.getElementById("admin-reset-btn")?.remove();
 
@@ -703,7 +710,7 @@ export default class LobbyScene extends Phaser.Scene {
             zIndex: "9999",
             padding: "10px 18px",
             fontSize: "11px",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
             fontWeight: "bold",
             letterSpacing: "2px",
             color: "#f43f5e",
@@ -732,7 +739,6 @@ export default class LobbyScene extends Phaser.Scene {
         document.body.appendChild(btn);
     }
 
-    // ─── Admin Password Popup ───────────────────────────────────────
     private showAdminPasswordPopup() {
         document.getElementById("admin-pass-overlay")?.remove();
 
@@ -742,7 +748,7 @@ export default class LobbyScene extends Phaser.Scene {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
             zIndex: "9990", backgroundColor: "rgba(0,0,0,0.78)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
         });
 
         const box = document.createElement("div");
@@ -750,6 +756,7 @@ export default class LobbyScene extends Phaser.Scene {
             backgroundColor: "#0d1117", border: "1px solid #f59e0b",
             borderRadius: "10px", padding: "28px 26px 22px",
             width: "290px", boxShadow: "0 0 50px rgba(245,158,11,0.12)",
+            direction: "rtl",
         });
 
         const lockIcon = document.createElement("div");
@@ -766,13 +773,14 @@ export default class LobbyScene extends Phaser.Scene {
 
         const passInput = document.createElement("input");
         passInput.type = "password";
-        passInput.placeholder = "Password...";
+        passInput.placeholder = "كلمة السر...";
         Object.assign(passInput.style, {
             width: "100%", padding: "10px 12px", boxSizing: "border-box",
             backgroundColor: "#010409", color: "#f1f5f9",
             border: "1px solid #21262d", borderRadius: "6px",
-            fontSize: "14px", fontFamily: "'Courier New', monospace",
+            fontSize: "14px", fontFamily: ARABIC_FONT_FAMILY,
             outline: "none", marginBottom: "10px",
+            direction: "rtl",
         });
         passInput.addEventListener("focus", () => {
             passInput.style.borderColor = "#f59e0b";
@@ -795,7 +803,7 @@ export default class LobbyScene extends Phaser.Scene {
             flex: "1", padding: "10px", border: "1px solid #21262d",
             borderRadius: "6px", background: "none", color: "#4a5568",
             fontSize: "10px", letterSpacing: "2px", cursor: "pointer",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
         });
 
         const confirmBtn = document.createElement("button");
@@ -804,7 +812,7 @@ export default class LobbyScene extends Phaser.Scene {
             flex: "1", padding: "10px", border: "none",
             borderRadius: "6px", backgroundColor: "#f59e0b", color: "#000",
             fontSize: "10px", letterSpacing: "2px", cursor: "pointer",
-            fontFamily: "'Courier New', monospace", fontWeight: "bold",
+            fontFamily: ARABIC_FONT_FAMILY, fontWeight: "bold",
         });
 
         const roles = [
@@ -817,11 +825,11 @@ export default class LobbyScene extends Phaser.Scene {
             if (passInput.value === ADMIN_PASSWORD) {
                 overlay.remove();
                 this.activateRole("admin", roles);
-                this.showToast("Admin access granted ✓", "success");
+                this.showToast("تم الدخول كأدمن ✓", "success");
                 this.showAdminResetButton();
                 this.time.delayedCall(400, () => this.showSessionPasswordPopup());
             } else {
-                errEl.textContent = "Incorrect password";
+                errEl.textContent = "كلمة السر غير صحيحة";
                 passInput.value = "";
                 passInput.style.borderColor = "#ef4444";
                 passInput.style.boxShadow = "0 0 0 3px rgba(239,68,68,0.1)";
@@ -856,7 +864,6 @@ export default class LobbyScene extends Phaser.Scene {
         setTimeout(() => passInput.focus(), 60);
     }
 
-    // ─── Session Password Popup (for admin) ─────────────────────────
     private showSessionPasswordPopup() {
         document.getElementById("session-pass-overlay")?.remove();
 
@@ -866,7 +873,7 @@ export default class LobbyScene extends Phaser.Scene {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
             zIndex: "9990", backgroundColor: "rgba(0,0,0,0.78)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
         });
 
         const box = document.createElement("div");
@@ -874,6 +881,7 @@ export default class LobbyScene extends Phaser.Scene {
             backgroundColor: "#0d1117", border: "1px solid #3b82f6",
             borderRadius: "10px", padding: "28px 26px 22px",
             width: "310px", boxShadow: "0 0 50px rgba(59,130,246,0.12)",
+            direction: "rtl",
         });
 
         box.innerHTML = `
@@ -882,7 +890,7 @@ export default class LobbyScene extends Phaser.Scene {
             <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">${ar.lobby.setSession}</div>
 
             <div style="color:#64748b;font-size:9px;letter-spacing:2px;margin-bottom:6px">${ar.lobby.passwordLabel}</div>
-            <input id="session-pass-input" type="text" placeholder="${ar.lobby.sessionPasswordPlaceholder}" style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:14px"/>
+            <input id="session-pass-input" type="text" placeholder="${ar.lobby.sessionPasswordPlaceholder}" style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:14px;direction:rtl"/>
 
             <div style="color:#64748b;font-size:9px;letter-spacing:2px;margin-bottom:8px">${ar.lobby.playerCountLabel}</div>
             <div id="count-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
@@ -890,7 +898,7 @@ export default class LobbyScene extends Phaser.Scene {
                     <button data-count="${n}" style="flex:1;min-width:36px;padding:8px 4px;border-radius:6px;border:1px solid ${n === 6 ? "#3b82f6" : "rgba(255,255,255,0.08)"};background:${n === 6 ? "#3b82f6" : "transparent"};color:${n === 6 ? "#fff" : "#8b949e"};font-size:12px;font-family:'Courier New',monospace;cursor:pointer">${n}</button>
                 `).join("")}
             </div>
-            <div id="count-desc" style="color:#3b82f6;font-size:9px;text-align:center;margin-bottom:12px;letter-spacing:1px">6 players — 1 Mafia, 1 Doctor, 1 Detective, 3 Citizens</div>
+            <div id="count-desc" style="color:#3b82f6;font-size:9px;text-align:center;margin-bottom:12px;letter-spacing:1px"></div>
 
             <div id="session-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
             <div style="display:flex;gap:8px">
@@ -932,22 +940,23 @@ export default class LobbyScene extends Phaser.Scene {
                 descEl.textContent = roleDesc[selectedCount] || "";
             });
         });
+        descEl.textContent = roleDesc[6];
 
         const applyPassword = (password: string | null) => {
             socketService.socket.emit("set_session_password", { password: password || "" });
             socketService.socket.emit("set_player_count", { count: selectedCount });
             overlay.remove();
-            const countMsg = `${selectedCount} players`;
+            const countMsg = `${selectedCount} لاعب`;
             if (password) {
-                this.showToast(`✓ Password: ${password} | ${countMsg}`, "success");
+                this.showToast(`✓ كلمة السر: ${password} | ${countMsg}`, "success");
             } else {
-                this.showToast(`✓ No password | ${countMsg}`, "info");
+                this.showToast(`✓ بدون كلمة سر | ${countMsg}`, "info");
             }
         };
 
         setBtn.addEventListener("click", () => {
             const val = input.value.trim();
-            if (!val) { errEl.textContent = "Please enter a password"; return; }
+            if (!val) { errEl.textContent = "أدخل كلمة السر"; return; }
             applyPassword(val);
         });
 
@@ -968,7 +977,6 @@ export default class LobbyScene extends Phaser.Scene {
         });
     }
 
-    // ─── Player Join Popup (password or rejoin code) ────────────────
     private showPlayerJoinPopup(roles: Array<{ key: string; colHex: number; hex: string }>) {
         document.getElementById("player-join-overlay")?.remove();
 
@@ -978,7 +986,7 @@ export default class LobbyScene extends Phaser.Scene {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
             zIndex: "9990", backgroundColor: "rgba(0,0,0,0.8)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
         });
 
         const box = document.createElement("div");
@@ -986,6 +994,7 @@ export default class LobbyScene extends Phaser.Scene {
             backgroundColor: "#0d1117", border: "1px solid #22c55e",
             borderRadius: "10px", padding: "24px 22px",
             width: "300px", boxShadow: "0 0 50px rgba(34,197,94,0.1)",
+            direction: "rtl",
         });
 
         box.innerHTML = `
@@ -999,15 +1008,15 @@ export default class LobbyScene extends Phaser.Scene {
 
             <div id="pjp-panel-password">
                 <input id="pjp-password-input" type="password" placeholder="${ar.lobby.sessionPasswordPlaceholder}"
-                    style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
+                    style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px;direction:rtl"/>
             </div>
 
             <div id="pjp-panel-code" style="display:none">
-                <div style="color:#4a5568;font-size:9px;letter-spacing:1px;margin-bottom:10px;direction:rtl;text-align:right;line-height:1.6">${ar.lobby.selectReplacementRole}</div>
+                <div style="color:#4a5568;font-size:9px;letter-spacing:1px;margin-bottom:10px;text-align:right;line-height:1.6">${ar.lobby.selectReplacementRole}</div>
                 <input id="pjp-rejoin-name" type="text" placeholder="${ar.lobby.rejoinNamePlaceholder}"
-                    style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
+                    style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px;direction:rtl"/>
                 <input id="pjp-code-input" type="text" placeholder="${ar.lobby.codePlaceholder}"
-                    style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#22c55e;border:1px solid #21262d;border-radius:6px;font-size:22px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px;letter-spacing:8px;text-align:center"/>
+                    style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#22c55e;border:1px solid #21262d;border-radius:6px;font-size:22px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px;letter-spacing:8px;text-align:center;direction:ltr"/>
             </div>
 
             <div id="pjp-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
@@ -1114,7 +1123,6 @@ export default class LobbyScene extends Phaser.Scene {
         codeInput.addEventListener("keydown", e => { if (e.key === "Enter") confirm(); if (e.key === "Escape") overlay.remove(); });
     }
 
-    // ─── Player Password Prompt (legacy, may not be used) ───────────
     private showPlayerPasswordPrompt(onConfirm: (password: string) => void) {
         document.getElementById("player-pass-overlay")?.remove();
 
@@ -1124,7 +1132,7 @@ export default class LobbyScene extends Phaser.Scene {
             position: "fixed", top: "0", left: "0", right: "0", bottom: "0",
             zIndex: "9990", backgroundColor: "rgba(0,0,0,0.78)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontFamily: "'Courier New', monospace",
+            fontFamily: ARABIC_FONT_FAMILY,
         });
 
         const box = document.createElement("div");
@@ -1132,13 +1140,14 @@ export default class LobbyScene extends Phaser.Scene {
             backgroundColor: "#0d1117", border: "1px solid #22c55e",
             borderRadius: "10px", padding: "28px 26px 22px",
             width: "300px", boxShadow: "0 0 50px rgba(34,197,94,0.1)",
+            direction: "rtl",
         });
 
         box.innerHTML = `
             <div style="font-size:30px;text-align:center;margin-bottom:10px">🎮</div>
             <div style="color:#22c55e;font-size:12px;letter-spacing:3px;text-align:center;margin-bottom:4px;font-weight:bold">${ar.lobby.sessionSettings}</div>
             <div style="color:#4a5568;font-size:10px;text-align:center;margin-bottom:18px;letter-spacing:1px">${ar.lobby.setSession}</div>
-            <input id="player-pass-input" type="password" placeholder="${ar.lobby.sessionPasswordPlaceholder}" style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px"/>
+            <input id="player-pass-input" type="password" placeholder="${ar.lobby.sessionPasswordPlaceholder}" style="width:100%;padding:10px 12px;box-sizing:border-box;background:#010409;color:#f1f5f9;border:1px solid #21262d;border-radius:6px;font-size:14px;font-family:'Courier New',monospace;outline:none;margin-bottom:8px;direction:rtl"/>
             <div id="player-pass-err" style="color:#ef4444;font-size:10px;text-align:center;min-height:16px;margin-bottom:8px"></div>
             <div style="display:flex;gap:8px">
                 <button id="player-pass-cancel" style="flex:1;padding:10px;border:1px solid #21262d;border-radius:6px;background:none;color:#4a5568;font-size:10px;letter-spacing:2px;cursor:pointer;font-family:'Courier New',monospace">${ar.lobby.cancel}</button>
@@ -1210,14 +1219,14 @@ export default class LobbyScene extends Phaser.Scene {
         });
     }
 
-    // ─── Join Button ────────────────────────────────────────────────
     private createJoinButton(cx: number, cy: number, width: number) {
         const btnH = 48;
         const c = this.add.container(cx, cy).setDepth(3);
         const bg = this.add.rectangle(0, 0, width, btnH, this.C.accent);
         const lbl = this.add.text(0, 0, ar.lobby.joinQueue, {
             fontSize: "12px", color: "#ffffff",
-            fontFamily: "'Courier New', monospace", letterSpacing: 4, fontStyle: "bold"
+            fontFamily: "'Courier New', monospace", letterSpacing: 4, fontStyle: "bold",
+            align: "center"
         }).setOrigin(0.5);
         c.add([bg, lbl]);
         c.setInteractive(
@@ -1280,7 +1289,6 @@ export default class LobbyScene extends Phaser.Scene {
         });
     }
 
-    // ─── Socket Events ──────────────────────────────────────────────
     private setupSocketEvents() {
         ["game_started", "queue_update", "error", "connect", "connect_error", "waiting_for_players", "admin_joined"]
             .forEach(ev => socketService.socket.off(ev));
@@ -1315,7 +1323,7 @@ export default class LobbyScene extends Phaser.Scene {
             }
         });
 
-        socketService.socket.on("admin_joined", () => this.showToast("Admin panel ready ✓", "success"));
+        socketService.socket.on("admin_joined", () => this.showToast("لوحة الأدمن جاهزة ✓", "success"));
 
         socketService.socket.on("waiting_for_players", (data: any) => {
             this.showToast(data.message || ar.lobby.waitingForPlayers, "info");
@@ -1366,7 +1374,6 @@ export default class LobbyScene extends Phaser.Scene {
         socketService.socket.on("connect_error", () => this.showToast(ar.lobby.cannotConnect, "error"));
     }
 
-    // ─── Background & Video ────────────────────────────────────────
     private startBgVideo() {
         document.body.style.background = "transparent";
         document.body.style.margin = "0";
@@ -1414,14 +1421,13 @@ export default class LobbyScene extends Phaser.Scene {
         }
     }
 
-    // ─── Utilities ─────────────────────────────────────────────────
     private showToast(message: string, type: "success" | "error" | "info") {
         const cm = { success: { bg: 0x052e16, border: 0x22c55e, text: "#22c55e" }, error: { bg: 0x2d0a0a, border: 0xef4444, text: "#ef4444" }, info: { bg: 0x0a1628, border: 0x3b82f6, text: "#3b82f6" } }[type];
         const W = this.scale.width;
         const toast = this.add.container(W / 2, this.scale.height - 30).setDepth(10);
         const bg = this.add.rectangle(0, 0, Math.min(message.length * 8 + 40, 420), 38, cm.bg);
         bg.setStrokeStyle(1, cm.border);
-        const txt = this.add.text(0, 0, message, { fontSize: "12px", color: cm.text, fontFamily: "'Courier New', monospace" }).setOrigin(0.5);
+        const txt = this.add.text(0, 0, message, { fontSize: "12px", color: cm.text, fontFamily: ARABIC_FONT_FAMILY, align: "center" }).setOrigin(0.5);
         toast.add([bg, txt]).setAlpha(0);
         this.tweens.add({ targets: toast, alpha: 1, y: this.scale.height - 60, duration: 280 });
         this.time.delayedCall(2500, () =>
