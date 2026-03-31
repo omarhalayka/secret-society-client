@@ -1,4 +1,4 @@
-﻿import Phaser from "phaser";
+import Phaser from "phaser";
 import { socketService } from "../../socket";
 import { audioManager } from "../../AudioManager";
 import { ar, ARABIC_FONT_FAMILY } from "../../i18n";
@@ -545,9 +545,9 @@ export default class LobbyScene extends Phaser.Scene {
         });
         document.body.appendChild(mTitleEl);
 
-        this.add.text(cx, 86, "MULTIPLAYER  Â·  SOCIAL DEDUCTION", {
-            fontSize: "8px", color: "#3b82f6",
-            fontFamily: "'Courier New', monospace", letterSpacing: 2
+        this.add.text(cx, 86, "لعبة جماعية - استنتاج اجتماعي", {
+            fontSize: "10px", color: "#3b82f6",
+            fontFamily: ARABIC_FONT_FAMILY, letterSpacing: 1
         }).setOrigin(0.5).setDepth(2);
 
         // â”€â”€â”€ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© â”€â”€â”€
@@ -609,7 +609,7 @@ export default class LobbyScene extends Phaser.Scene {
         this.usernameInput = document.createElement("input");
         this.usernameInput.id = "lobby-username";
         this.usernameInput.type = "text";
-        this.usernameInput.placeholder = "Your name...";
+        this.usernameInput.placeholder = ar.game.usernamePlaceholder;
         this.usernameInput.maxLength = 20;
         this.usernameInput.autocomplete = "off";
         Object.assign(this.usernameInput.style, {

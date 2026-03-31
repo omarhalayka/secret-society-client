@@ -1,4 +1,4 @@
-﻿export const ARABIC_FONT_FAMILY = "Tajawal";
+export const ARABIC_FONT_FAMILY = "Tajawal";
 export const UI_FONT_FAMILY = ARABIC_FONT_FAMILY;
 
 export const ar = {
@@ -147,11 +147,36 @@ export const ar = {
         finalVictim: "الضحية النهائية",
         protected: "تمت الحماية",
         noValue: "—",
-        roleResultWinnerMafia: "المافيا",
+    roleResultWinnerMafia: "المافيا",
         roleResultWinnerCitizens: "المواطنون",
         roundLabel: (round: number) => `الجولة ${round}`,
+        // Mobile tabs
+        tabPlayers: "اللاعبون",
+        tabEvents: "الأحداث",
+        tabChat: "الدردشة",
+        // Event labels
+        eventEliminated: "تم الإقصاء",
+        eventVotedOut: "تم التصويت",
+        eventVote: "تصويت",
+        eventStory: "قصة",
+        eventSystem: "نظام",
+        eventGeneral: "حدث",
+        // Voting
+        voteTitle: "صوتوا لإقصاء شخص",
+        voteSub: "اختروا من \u062aعتقدون أنه هديدللمجتمع",
+        // Chat placeholders
+        chatPlaceholder: "اكتب رسالة...",
+        chatLocked: "الدردشة مغلقة أثناء الليل...",
+        mafiaTeamChat: "رسالة للفريق...",
+        send: "إرسال",
+        usernameNameLabel: "الاسم",
+        joinAsLabelMobile: "اختر طريقة الدخول",
+        usernamePlaceholder: "اكتب اسمك...",
+        queueStatus: (size: number, required: number) => `● في الطابور: ${size} / ${required}`,
+        you: "أنت",
     },
 };
+
 
 export function t(path: string) {
     const value = path.split(".").reduce<any>((acc, key) => acc?.[key], ar);
@@ -164,10 +189,10 @@ export function getPhaseLabel(phase: string) {
 
 export function applyArabicDocumentLayout() {
     document.documentElement.lang = "ar";
-    document.documentElement.dir = "rtl";
-    document.body.dir = "rtl";
-    document.body.style.direction = "rtl";
-    document.body.style.textAlign = "right";
+    // Keep LTR layout to prevent reversed UI on mobile
+    document.documentElement.dir = "ltr";
+    document.body.dir = "ltr";
+    document.body.style.direction = "ltr";
     document.documentElement.style.setProperty("--ss-font-ar", ARABIC_FONT_FAMILY);
 
     if (!document.getElementById("ss-arabic-layout")) {
@@ -177,10 +202,10 @@ export function applyArabicDocumentLayout() {
             html, body, button, input, textarea, select {
                 font-family: var(--ss-font-ar), Cairo, 'Segoe UI', Tahoma, sans-serif;
             }
-            body {
+            /* Arabic text elements use RTL, but layout stays LTR */
+            .ar-text {
                 direction: rtl;
-                text-align: right;
-                unicode-bidi: plaintext;
+                unicode-bidi: embed;
             }
         `;
         document.head.appendChild(style);
