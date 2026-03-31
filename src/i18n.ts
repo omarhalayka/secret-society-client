@@ -26,83 +26,83 @@ export const ar = {
         SPECTATOR:  "المشاهد",
     },
 
-lobby: {
-    // ─── اتصال ───
-    reconnecting:         "جارٍ إعادة الاتصال...",
-    welcomeBack:          (username: string) => `مرحباً بعودتك يا ${username}`,
-    startingNewSession:   "جارٍ بدء جلسة جديدة...",
-    connectionTimeout:    "انتهت مهلة الاتصال",
-    cannotConnect:        "تعذر الاتصال بالخادم",
+    lobby: {
+        // ─── اتصال ───
+        reconnecting:         "جارٍ إعادة الاتصال...",
+        welcomeBack:          (username: string) => `مرحباً بعودتك يا ${username}`,
+        startingNewSession:   "جارٍ بدء جلسة جديدة...",
+        connectionTimeout:    "انتهت مهلة الاتصال",
+        cannotConnect:        "تعذر الاتصال بالخادم",
 
-    // ─── شاشة البداية ───
-    enterSociety:         "الدخول إلى المنظمة السرية",
-    joinQueue:            "انضم الآن",
-    connecting:           "جارٍ الاتصال...",
-    searching:            "جارٍ البحث...",
-    joining:              "جارٍ الانضمام...",
-    waitingForPlayers:    "بانتظار بقية اللاعبين...",
-    connected:            "تم الاتصال بالخادم",
+        // ─── شاشة البداية ───
+        enterSociety:         "الدخول إلى المنظمة السرية",
+        joinQueue:            "انضم الآن",
+        connecting:           "جارٍ الاتصال...",
+        searching:            "جارٍ البحث...",
+        joining:              "جارٍ الانضمام...",
+        waitingForPlayers:    "بانتظار بقية اللاعبين...",
+        connected:            "تم الاتصال بالخادم",
 
-    // ─── أدوار ───
-    rolePlayer:           "لاعب",
-    roleSpectator:        "مشاهد",
-    roleAdmin:            "أدمن",
-    roleUnlocked:         "تم فتح اللعب، اختر لاعب",
+        // ─── أدوار ───
+        rolePlayer:           "لاعب",
+        roleSpectator:        "مشاهد",
+        roleAdmin:            "أدمن",
+        roleUnlocked:         "تم فتح اللعب، اختر لاعب",
 
-    // ─── أدمن ───
-    adminReady:           "لوحة الأدمن جاهزة",
-    adminJoining:         "جارٍ الدخول كأدمن...",
-    resetServerButton:    "إعادة ضبط الخادم",
-    resetServerConfirm:   "سيتم طرد جميع اللاعبين ومسح الجلسة بالكامل. هل أنت متأكد؟",
+        // ─── أدمن ───
+        adminReady:           "لوحة الأدمن جاهزة",
+        adminJoining:         "جارٍ الدخول كأدمن...",
+        resetServerButton:    "إعادة ضبط الخادم",
+        resetServerConfirm:   "سيتم طرد جميع اللاعبين ومسح الجلسة بالكامل. هل أنت متأكد؟",
 
-    // ─── مشاهد ───
-    spectatorJoining:     "جارٍ البحث عن لعبة نشطة...",
+        // ─── مشاهد ───
+        spectatorJoining:     "جارٍ البحث عن لعبة نشطة...",
 
-    // ─── لاعب ───
-    playerJoining:        "جارٍ الانضمام إلى الطابور...",
-    playerPasswordRequired:"اختر لاعب ثم أدخل كلمة السر أولاً",
+        // ─── لاعب ───
+        playerJoining:        "جارٍ الانضمام إلى الطابور...",
+        playerPasswordRequired:"اختر لاعب ثم أدخل كلمة السر أولاً",
 
-    // ─── طابور ───
-    queueCount:           (size: number, required: number) => `• في الطابور: ${size} / ${required}`,
+        // ─── طابور ───
+        queueCount:           (size: number, required: number) => `• في الطابور: ${size} / ${required}`,
 
-    // ─── كلمة السر ───
-    passwordSet:          (password: string) => `تم حفظ كلمة السر: ${password}`,
-    noPassword:           "لا توجد كلمة سر للجلسة",
-    sessionReset:         "تم تغيير كلمة السر، أدخل الكلمة الجديدة للمتابعة",
-    serverReset:          "تمت إعادة ضبط الخادم من الأدمن",
+        // ─── كلمة السر ───
+        passwordSet:          (password: string) => `تم حفظ كلمة السر: ${password}`,
+        noPassword:           "لا توجد كلمة سر للجلسة",
+        sessionReset:         "تم تغيير كلمة السر، أدخل الكلمة الجديدة للمتابعة",
+        serverReset:          "تمت إعادة ضبط الخادم من الأدمن",
 
-    // ─── مدخلات ───
-    usernameLabel:        "اسم المستخدم",
-    usernameMin:          "الاسم يجب أن يكون حرفين على الأقل",
-    joinAsLabel:          "طريقة الدخول",
+        // ─── مدخلات ───
+        usernameLabel:        "اسم المستخدم",
+        usernameMin:          "الاسم يجب أن يكون حرفين على الأقل",
+        joinAsLabel:          "طريقة الدخول",
 
-    // ─── بطاقة اللوبي ───
-    cardTag:              "المنظمة السرية",
-    subtitle:             "لعبة جماعية في الخداع والاستنتاج",
-    tagline:              "اخدع. استنتج. وابقَ حياً.",
-    featureHiddenRoles:   "أدوار مخفية",
-    featureStrategicVoting:"تصويت استراتيجي",
-    featureNightElimination:"إقصاء ليلي",
+        // ─── بطاقة اللوبي ───
+        cardTag:              "المنظمة السرية",
+        subtitle:             "لعبة جماعية في الخداع والاستنتاج",
+        tagline:              "اخدع. استنتج. وابقَ حياً.",
+        featureHiddenRoles:   "أدوار مخفية",
+        featureStrategicVoting:"تصويت استراتيجي",
+        featureNightElimination:"إقصاء ليلي",
 
-    // ─── ترجمات إضافية للوبي (جديدة) ───
-    playersTab:           "اللاعبون",
-    eventsTab:            "الأحداث",
-    chatTab:              "الدردشة",
-    adminAccess:          "دخول الأدمن",
-    adminPassword:        "أدخل كلمة سر الأدمن للمتابعة",
-    cancel:               "إلغاء",
-    confirm:              "تأكيد",
-    sessionSettings:      "إعدادات الجلسة",
-    setSession:           "تعيين كلمة السر وعدد اللاعبين للجلسة",
-    passwordLabel:        "كلمة السر",
-    playerCountLabel:     "عدد اللاعبين",
-    joinAsPlayer:         "الدخول كلاعب",
-    sessionPasswordPlaceholder: "كلمة سر الجلسة...",
-    rejoinCodeLabel:      "كود إعادة الانضمام",
-    rejoinNamePlaceholder:"اسم المستخدم...",
-    codePlaceholder:      "6 أرقام",
-    selectReplacementRole:"اختر دور اللاعب البديل",
-},
+        // ─── ترجمات إضافية للوبي (جديدة) ───
+        playersTab:           "اللاعبون",
+        eventsTab:            "الأحداث",
+        chatTab:              "الدردشة",
+        adminAccess:          "دخول الأدمن",
+        adminPassword:        "أدخل كلمة سر الأدمن للمتابعة",
+        cancel:               "إلغاء",
+        confirm:              "تأكيد",
+        sessionSettings:      "إعدادات الجلسة",
+        setSession:           "تعيين كلمة السر وعدد اللاعبين للجلسة",
+        passwordLabel:        "كلمة السر",
+        playerCountLabel:     "عدد اللاعبين",
+        joinAsPlayer:         "الدخول كلاعب",
+        sessionPasswordPlaceholder: "كلمة سر الجلسة...",
+        rejoinCodeLabel:      "كود إعادة الانضمام",
+        rejoinNamePlaceholder:"اسم المستخدم...",
+        codePlaceholder:      "6 أرقام",
+        selectReplacementRole:"اختر دور اللاعب البديل",
+    },
 
     night: {
         room:                 (roomId: string) => `الغرفة ${roomId}`,
@@ -251,6 +251,27 @@ lobby: {
         citizensWin:          "المواطنون يفوزون",
         rounds:               "الجولات",
         duration:             "المدة",
+    },
+
+    admin: {
+        panelTitle:          "لوحة التحكم",
+        phaseControls:       "التحكم بالمراحل",
+        startNight:          "ابدأ الليل",
+        endNight:            "أنهِ الليل",
+        startVoting:         "ابدأ التصويت",
+        endVoting:           "أوقف التصويت",
+        forceEnd:            "إنهاء فوري",
+        restart:             "إعادة التشغيل",
+        resetServer:         "إعادة ضبط الخادم",
+        nightActions:        "إجراءات الليل",
+        nightResults:        "نتائج الليل",
+        tonightStory:        "قصة الليلة",
+        writeTonightStory:   "اكتب ما حدث هذه الليلة...",
+        revealStory:         "اعرض القصة للجميع",
+        rejoinCode:          "كود إعادة الانضمام",
+        generateCode:        "توليد الكود",
+        close:               "إغلاق",
+        selectReplacementRole: "اختر دور اللاعب البديل",
     },
 };
 
