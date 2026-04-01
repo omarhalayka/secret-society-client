@@ -249,7 +249,13 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 this.actionUsed  = true;
                 isSelected = true;
 
-                this.playerCards.forEach(c => c.disableInteractive());
+                // تعطيل كل البطاقات بأمان
+                this.playerCards.forEach(card => {
+                    if (card && card.active && card.disableInteractive) {
+                        card.disableInteractive();
+                    }
+                });
+
                 drawCardBg(false, true);
                 drawBtn(true);
                 btnLabel.setColor("#ffffff").setText(ar.night.detectiveScanning);
@@ -595,6 +601,12 @@ export default class DetectiveNightScene extends Phaser.Scene {
 
     // ─── Shutdown ─────────────────────────────────────────────────────────────
     shutdown() {
+        // تنظيف البطاقات بأمان
+        this.playerCards.forEach(card => {
+            if (card && card.destroy) card.destroy();
+        });
+        this.playerCards = [];
+
         document.getElementById("mobile-night-ui")?.remove();
         document.getElementById("mobile-detective-result")?.remove();
         this.scanParticles.forEach(p => p.gfx.destroy());
