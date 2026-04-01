@@ -14,8 +14,9 @@ export default class DoctorNightScene extends Phaser.Scene {
         x: number; y: number; vy: number; alpha: number; size: number;
     }> = [];
     private isMobile: boolean = false;
-    // ✅ منع الـ double-submit
     private _submitLock: boolean = false;
+    // ✅ آخر هدف محمي (يُستقبل من السيرفر عبر night_targets)
+    private lastDoctorTarget: string | null = null;
 
     private readonly C = {
         bg: 0x08100a, surface: 0x0d1a0f, card: 0x0a1a0c,
@@ -26,18 +27,21 @@ export default class DoctorNightScene extends Phaser.Scene {
     constructor() { super("DoctorNightScene"); }
 
     init(data: any) {
-        this.roomId       = data.roomId;
-        this.players      = data.players || [];
-        this.actionUsed   = false;
-        this._submitLock  = false;
+        this.roomId        = data.roomId;
+        this.players       = data.players || [];
+        this.actionUsed    = false;
+        this._submitLock   = false;
         this.savedPlayerId = null;
         this.healParticles = [];
+        this.lastDoctorTarget = null;
+        // ✅ إزالة كل الـ listeners القديمة
         socketService.socket.off("phase_changed");
         socketService.socket.off("player_killed");
         socketService.socket.off("back_to_lobby");
         socketService.socket.off("doctor_action_registered");
         socketService.socket.off("doctor_error");
         socketService.socket.off("server_reset");
+        socketService.socket.off("night_targets");
     }
 
     create() {
@@ -55,14 +59,15 @@ export default class DoctorNightScene extends Phaser.Scene {
         this.drawBackground(W, H);
         this.drawTopBar(W);
 
+        // ✅ نستقبل night_targets أول شي قبل رسم البطاقات
+        this.setupSocketListeners();
+
         if (this.isMobile) {
             this.createMobileUI(W, H);
         } else {
             this.drawTitle(W);
             this.drawPlayerCards(W, H);
         }
-
-        this.setupSocketListeners();
     }
 
     update(_time: number, _delta: number) {
@@ -143,12 +148,11 @@ export default class DoctorNightScene extends Phaser.Scene {
         this.tweens.add({ targets: divider, alpha: 1, duration: 500, delay: 600 });
     }
 
-    // ─── Desktop: Player Cards (Improved version) ────────────────────────────
+    // ─── Desktop: Player Cards ────────────────────────────────────────────────
     private drawPlayerCards(W: number, H: number) {
         const targets = this.players.filter(p => p.alive);
         if (!targets.length) return;
 
-        // تحديد حجم البطاقات بناءً على عدد اللاعبين
         let cardW = 140, cardH = 180, gap = 24;
         const naturalW = targets.length * cardW + (targets.length - 1) * gap;
         if (naturalW > W - 40) {
@@ -163,20 +167,25 @@ export default class DoctorNightScene extends Phaser.Scene {
 
         targets.forEach((player, i) => {
             const isMe = player.id === socketService.socket.id;
-            const x    = startX + i * (cardW + gap);
+            // ✅ فحص إذا كان هذا اللاعب هو الهدف المقيّد
+            const isRestricted = this.lastDoctorTarget !== null && player.id === this.lastDoctorTarget;
+            const x = startX + i * (cardW + gap);
             const container = this.add.container(x, cardY).setDepth(5).setAlpha(0);
 
-            // ظل
             const shadow = this.add.graphics();
             shadow.fillStyle(0x000000, 0.6);
             shadow.fillRoundedRect(-cardW / 2 + 4, -cardH / 2 + 6, cardW, cardH, 12);
 
-            // خلفية البطاقة مع تدرج
             const bg = this.add.graphics();
             let isSelected = false;
             const drawCardBg = (hover: boolean, selected: boolean) => {
                 bg.clear();
-                if (selected) {
+                if (isRestricted && !selected) {
+                    // ✅ بطاقة مقيّدة — مظلمة مع حد رمادي
+                    bg.fillStyle(0x0a0a0a, 1);
+                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
+                    bg.lineStyle(1, 0x2a2a2a, 0.5);
+                } else if (selected) {
                     bg.fillGradientStyle(0x0a2a0a, 0x0a2a0a, 0x051a05, 0x051a05, 1);
                     bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
                     bg.lineStyle(2, this.C.accentGlow, 1);
@@ -193,126 +202,171 @@ export default class DoctorNightScene extends Phaser.Scene {
             };
             drawCardBg(false, false);
 
-            // أيقونة رمزية (صورة أو أيقونة الطبيب)
-            const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x1a3d20);
-            avatarBg.setStrokeStyle(1, this.C.borderDim);
-            const avatarIcon = this.add.text(0, -cardH * 0.23, "✚", {
+            const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21),
+                isRestricted ? 0x1a1a1a : 0x1a3d20);
+            avatarBg.setStrokeStyle(1, isRestricted ? 0x2a2a2a : this.C.borderDim);
+
+            const avatarIcon = this.add.text(0, -cardH * 0.23,
+                isRestricted ? "🚫" : "✚", {
                 fontSize: `${Math.floor(cardW * 0.2)}px`,
                 fontFamily: ARABIC_FONT_FAMILY,
-                color: "#22c55e",
+                color: isRestricted ? "#444444" : "#22c55e",
             }).setOrigin(0.5);
 
-            // نبض حول الأيقونة
+            // نبض (فقط للبطاقات غير المقيّدة)
             const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
-            this.tweens.add({
-                targets: pulse,
-                alpha: 0.15,
-                scaleX: 1.3,
-                scaleY: 1.3,
-                duration: 1200,
-                yoyo: true,
-                repeat: -1,
-                delay: i * 200,
-            });
+            if (!isRestricted) {
+                this.tweens.add({
+                    targets: pulse,
+                    alpha: 0.15, scaleX: 1.3, scaleY: 1.3,
+                    duration: 1200, yoyo: true, repeat: -1, delay: i * 200,
+                });
+            }
 
-            // اسم اللاعب
-            const name = this.add.text(0, cardH * 0.07, player.username.toUpperCase(), {
+            const name = this.add.text(0, cardH * 0.07,
+                player.username.toUpperCase(), {
                 fontSize: `${Math.max(10, Math.floor(cardW * 0.086))}px`,
-                color: isMe ? "#a3e6b4" : "#c8dac8",
+                color: isRestricted ? "#444444" : (isMe ? "#a3e6b4" : "#c8dac8"),
                 fontFamily: ARABIC_FONT_FAMILY,
                 fontStyle: isMe ? "bold" : "normal",
                 align: "center",
             }).setOrigin(0.5);
 
-            // زر الحماية
             const btnBg = this.add.graphics();
             const btnH = Math.max(28, Math.floor(cardH * 0.16));
-            const btnW = cardW - 20;
+            const btnW2 = cardW - 20;
             const btnY = cardH * 0.38;
             const drawBtnBg = (hover: boolean) => {
                 btnBg.clear();
-                btnBg.fillStyle(this.C.accent, hover ? 0.15 : 0);
-                btnBg.fillRoundedRect(-btnW / 2, btnY - btnH / 2, btnW, btnH, 6);
-                btnBg.lineStyle(1, this.C.accent, 1);
-                btnBg.strokeRoundedRect(-btnW / 2, btnY - btnH / 2, btnW, btnH, 6);
+                if (isRestricted) {
+                    btnBg.fillStyle(0x1a1a1a, 1);
+                    btnBg.fillRoundedRect(-btnW2 / 2, btnY - btnH / 2, btnW2, btnH, 6);
+                    btnBg.lineStyle(1, 0x2a2a2a, 0.5);
+                } else {
+                    btnBg.fillStyle(this.C.accent, hover ? 0.15 : 0);
+                    btnBg.fillRoundedRect(-btnW2 / 2, btnY - btnH / 2, btnW2, btnH, 6);
+                    btnBg.lineStyle(1, this.C.accent, 1);
+                }
+                btnBg.strokeRoundedRect(-btnW2 / 2, btnY - btnH / 2, btnW2, btnH, 6);
             };
             drawBtnBg(false);
 
-            const btnLabel = this.add.text(0, btnY, ar.night.doctorProtect, {
+            // ✅ نص الزر — يُظهر "محظور" للبطاقة المقيّدة
+            const btnLabelText = isRestricted
+                ? "محظور ⛔"
+                : ar.night.doctorProtect;
+            const btnLabel = this.add.text(0, btnY, btnLabelText, {
                 fontSize: `${Math.max(9, Math.floor(cardH * 0.075))}px`,
-                color: "#22c55e",
+                color: isRestricted ? "#444444" : "#22c55e",
                 fontFamily: ARABIC_FONT_FAMILY,
                 fontStyle: "bold",
             }).setOrigin(0.5);
 
-            container.add([shadow, bg, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel]);
+            // ✅ label "نفس الليلة الماضية" للبطاقة المقيّدة
+            let restrictedLabel: Phaser.GameObjects.Text | null = null;
+            if (isRestricted) {
+                restrictedLabel = this.add.text(0, -cardH * 0.45,
+                    "الليلة الماضية", {
+                    fontSize: "9px",
+                    color: "#ef4444",
+                    fontFamily: ARABIC_FONT_FAMILY,
+                }).setOrigin(0.5);
+            }
 
-            // تخزين دوال التحديث في container للاستخدام لاحقاً
+            const items: any[] = [shadow, bg, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel];
+            if (restrictedLabel) items.push(restrictedLabel);
+            container.add(items);
+
             container.setData("drawBg", drawCardBg);
             container.setData("drawBtnBg", drawBtnBg);
             container.setData("btnLabel", btnLabel);
+            container.setData("isRestricted", isRestricted);
 
-            // جعل البطاقة تفاعلية
-            container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
-            container.on("pointerover", () => {
-                if (this.actionUsed) return;
-                drawCardBg(true, false);
-                drawBtnBg(true);
-                btnLabel.setColor("#000000");
-                this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 });
-            });
-            container.on("pointerout", () => {
-                if (isSelected) return;
-                drawCardBg(false, false);
-                drawBtnBg(false);
-                btnLabel.setColor("#22c55e");
-                this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 });
-            });
-            container.on("pointerdown", () => {
-                if (this.actionUsed || this._submitLock) return;
-                this._submitLock = true;
-                this.actionUsed = true;
-                isSelected = true;
+            // ✅ إضافة الـ interactive فقط للبطاقات غير المقيّدة
+            if (!isRestricted) {
+                container.setInteractive(
+                    new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH),
+                    Phaser.Geom.Rectangle.Contains
+                );
 
-                this.playerCards.forEach(c => c.disableInteractive());
+                container.on("pointerover", () => {
+                    if (this.actionUsed) return;
+                    drawCardBg(true, false);
+                    drawBtnBg(true);
+                    btnLabel.setColor("#000000");
+                    this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 });
+                });
+                container.on("pointerout", () => {
+                    if (isSelected) return;
+                    drawCardBg(false, false);
+                    drawBtnBg(false);
+                    btnLabel.setColor("#22c55e");
+                    this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 });
+                });
+                container.on("pointerdown", () => {
+                    if (this.actionUsed || this._submitLock) return;
+                    this._submitLock = true;
+                    this.actionUsed  = true;
+                    isSelected = true;
 
-                drawCardBg(false, true);
-                drawBtnBg(true);
-                btnLabel.setColor("#000000").setText(ar.night.doctorSaving);
+                    // ✅ تعطيل كل البطاقات بأمان (بدون disableInteractive على non-interactive)
+                    this.playerCards.forEach(c => {
+                        if (c && c.active && c.input) {
+                            c.disableInteractive();
+                        }
+                    });
 
-                this.savedPlayerId = player.id;
-                this.cameras.main.flash(400, 0, 100, 0);
-                socketService.socket.emit("doctor_save", player.id);
-            });
+                    drawCardBg(false, true);
+                    drawBtnBg(true);
+                    btnLabel.setColor("#000000").setText(ar.night.doctorSaving);
+
+                    this.savedPlayerId = player.id;
+                    this.cameras.main.flash(400, 0, 100, 0);
+                    socketService.socket.emit("doctor_save", player.id);
+                });
+            } else {
+                // ✅ للبطاقات المقيّدة — نُظهر toast لما يضغط عليها
+                container.setInteractive(
+                    new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH),
+                    Phaser.Geom.Rectangle.Contains
+                );
+                container.on("pointerdown", () => {
+                    if (this.actionUsed) return;
+                    this.showToast(
+                        "لا يمكنك حماية نفس اللاعب ليلتين متتاليتين ⛔",
+                        "danger"
+                    );
+                });
+            }
 
             this.playerCards.push(container);
             this.tweens.add({
-                targets: container,
-                alpha: 1,
-                y: cardY - 8,
+                targets:  container,
+                alpha:    1,
+                y:        cardY - 8,
                 duration: 400,
-                ease: "Cubic.easeOut",
-                delay: 200 + i * 80,
+                ease:     "Cubic.easeOut",
+                delay:    200 + i * 80,
             });
         });
     }
 
     // ─── Mobile UI ────────────────────────────────────────────────────────────
-    private createMobileUI(W: number, H: number) {
+    private createMobileUI(_W: number, _H: number) {
         const ui = document.createElement("div");
         ui.id = "mobile-night-ui";
         Object.assign(ui.style, {
-            position:        "fixed",
-            top:             "56px",
-            left:            "0",
-            right:           "0",
-            bottom:          "0",
-            background:      "linear-gradient(180deg, #08100a 0%, #040a05 100%)",
-            display:         "flex",
-            flexDirection:   "column",
-            zIndex:          "100",
-            fontFamily:      ARABIC_FONT_FAMILY,
-            direction:       "rtl",
+            position:      "fixed",
+            top:           "56px",
+            left:          "0",
+            right:         "0",
+            bottom:        "0",
+            background:    "linear-gradient(180deg, #08100a 0%, #040a05 100%)",
+            display:       "flex",
+            flexDirection: "column",
+            zIndex:        "100",
+            fontFamily:    ARABIC_FONT_FAMILY,
+            direction:     "rtl",
         });
 
         const header = document.createElement("div");
@@ -322,13 +376,35 @@ export default class DoctorNightScene extends Phaser.Scene {
             textAlign:   "center",
         });
         header.innerHTML = `
-            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px">
+            <div style="color:#22c55e;font-size:12px;letter-spacing:3px;font-weight:bold;margin-bottom:6px;font-family:${ARABIC_FONT_FAMILY}">
                 ${ar.night.doctorRoleLabel}
             </div>
-            <div style="color:#e8f1e8;font-size:18px;font-weight:bold">${ar.night.doctorTitle}</div>
-            <div style="color:#2d6640;font-size:11px;margin-top:4px">${ar.night.doctorSubtitle}</div>
+            <div style="color:#e8f1e8;font-size:18px;font-weight:bold;font-family:${ARABIC_FONT_FAMILY}">${ar.night.doctorTitle}</div>
+            <div style="color:#2d6640;font-size:11px;margin-top:4px;font-family:${ARABIC_FONT_FAMILY}">${ar.night.doctorSubtitle}</div>
         `;
         ui.appendChild(header);
+
+        // ✅ banner تنبيه إذا كان هناك قيد
+        if (this.lastDoctorTarget !== null) {
+            const restrictedPlayer = this.players.find(p => p.id === this.lastDoctorTarget);
+            if (restrictedPlayer) {
+                const banner = document.createElement("div");
+                Object.assign(banner.style, {
+                    margin:     "8px 12px 0",
+                    padding:    "8px 12px",
+                    background: "rgba(239,68,68,0.1)",
+                    border:     "1px solid rgba(239,68,68,0.3)",
+                    borderRadius:"6px",
+                    fontSize:   "11px",
+                    color:      "#ef4444",
+                    fontFamily: ARABIC_FONT_FAMILY,
+                    direction:  "rtl",
+                    textAlign:  "center",
+                });
+                banner.textContent = `⛔ لا يمكنك حماية "${restrictedPlayer.username}" مجدداً هذه الليلة`;
+                ui.appendChild(banner);
+            }
+        }
 
         const list = document.createElement("div");
         Object.assign(list.style, {
@@ -346,89 +422,118 @@ export default class DoctorNightScene extends Phaser.Scene {
             const empty = document.createElement("div");
             empty.textContent = ar.night.noPlayers;
             Object.assign(empty.style, {
-                color:      "#2d6640",
-                textAlign:  "center",
-                marginTop:  "40px",
-                fontSize:   "14px",
+                color:     "#2d6640",
+                textAlign: "center",
+                marginTop: "40px",
+                fontSize:  "14px",
             });
             list.appendChild(empty);
         } else {
             targets.forEach(player => {
-                const isMe = player.id === socketService.socket.id;
+                const isMe         = player.id === socketService.socket.id;
+                // ✅ فحص القيد
+                const isRestricted = this.lastDoctorTarget !== null && player.id === this.lastDoctorTarget;
 
                 const row = document.createElement("div");
                 Object.assign(row.style, {
-                    display:        "flex",
-                    alignItems:     "center",
-                    gap:            "14px",
-                    padding:        "12px 16px",
-                    borderRadius:   "10px",
-                    background:     isMe
-                        ? "linear-gradient(145deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))"
-                        : "linear-gradient(145deg, rgba(10,26,12,0.9), rgba(5,13,6,0.95))",
-                    border:         `1px solid ${isMe ? "rgba(34,197,94,0.4)" : "rgba(34,197,94,0.1)"}`,
-                    boxShadow:      "0 4px 6px rgba(0,0,0,0.3)",
-                    transition:     "all 0.2s",
+                    display:      "flex",
+                    alignItems:   "center",
+                    gap:          "14px",
+                    padding:      "12px 16px",
+                    borderRadius: "10px",
+                    background:   isRestricted
+                        ? "linear-gradient(145deg, rgba(50,0,0,0.5), rgba(30,0,0,0.4))"
+                        : (isMe
+                            ? "linear-gradient(145deg, rgba(34,197,94,0.15), rgba(34,197,94,0.05))"
+                            : "linear-gradient(145deg, rgba(10,26,12,0.9), rgba(5,13,6,0.95))"),
+                    border:       `1px solid ${isRestricted ? "rgba(239,68,68,0.2)" : (isMe ? "rgba(34,197,94,0.4)" : "rgba(34,197,94,0.1)")}`,
+                    opacity:      isRestricted ? "0.7" : "1",
+                    transition:   "all 0.2s",
                 });
 
                 const nameEl = document.createElement("div");
                 nameEl.textContent = player.username + (isMe ? ` (${ar.night.you})` : "");
                 Object.assign(nameEl.style, {
                     flex:       "1",
-                    color:      isMe ? "#a3e6b4" : "#b8c8b8",
+                    color:      isRestricted ? "#664444" : (isMe ? "#a3e6b4" : "#b8c8b8"),
                     fontSize:   "15px",
                     fontWeight: isMe ? "bold" : "normal",
                     direction:  "rtl",
+                    fontFamily: ARABIC_FONT_FAMILY,
                 });
 
                 const btn = document.createElement("button");
-                btn.id          = `doctor-btn-${player.id}`;
-                btn.textContent = ar.night.doctorProtect;
-                Object.assign(btn.style, {
-                    padding:       "10px 16px",
-                    fontSize:      "11px",
-                    fontWeight:    "bold",
-                    letterSpacing: "2px",
-                    border:        "1px solid rgba(34,197,94,0.5)",
-                    borderRadius:  "6px",
-                    background:    "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)",
-                    color:         "#22c55e",
-                    cursor:        "pointer",
-                    fontFamily:    ARABIC_FONT_FAMILY,
-                    touchAction:   "manipulation",
-                    transition:    "all 0.2s",
-                    boxShadow:     "0 2px 4px rgba(0,0,0,0.5)",
-                    minWidth:      "80px",
-                });
+                btn.id = `doctor-btn-${player.id}`;
 
-                // ✅ منع double-submit بـ lock + disabled مباشرة
-                const handleAction = (e: Event) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (this.actionUsed || this._submitLock) return;
-
-                    this._submitLock = true;
-                    this.actionUsed  = true;
-
-                    // تعطيل كل الأزرار فوراً
-                    list.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
-                        b.disabled         = true;
-                        b.style.opacity    = "0.4";
-                        b.style.cursor     = "not-allowed";
-                        b.style.pointerEvents = "none";
+                if (isRestricted) {
+                    // ✅ زر مقيّد — يُظهر رسالة عند الضغط
+                    btn.textContent = "⛔ محظور";
+                    Object.assign(btn.style, {
+                        padding:      "10px 16px",
+                        fontSize:     "11px",
+                        fontWeight:   "bold",
+                        border:       "1px solid rgba(239,68,68,0.3)",
+                        borderRadius: "6px",
+                        background:   "rgba(239,68,68,0.08)",
+                        color:        "#664444",
+                        cursor:       "not-allowed",
+                        fontFamily:   ARABIC_FONT_FAMILY,
+                        minWidth:     "80px",
+                        opacity:      "0.7",
+                    });
+                    btn.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.showToast(
+                            "لا يمكنك حماية نفس اللاعب ليلتين متتاليتين ⛔",
+                            "danger"
+                        );
+                    });
+                } else {
+                    btn.textContent = ar.night.doctorProtect;
+                    Object.assign(btn.style, {
+                        padding:      "10px 16px",
+                        fontSize:     "11px",
+                        fontWeight:   "bold",
+                        letterSpacing:"2px",
+                        border:       "1px solid rgba(34,197,94,0.5)",
+                        borderRadius: "6px",
+                        background:   "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)",
+                        color:        "#22c55e",
+                        cursor:       "pointer",
+                        fontFamily:   ARABIC_FONT_FAMILY,
+                        touchAction:  "manipulation",
+                        transition:   "all 0.2s",
+                        minWidth:     "80px",
                     });
 
-                    btn.textContent       = ar.night.doctorSaving;
-                    btn.style.background  = "linear-gradient(180deg, #22c55e, #16a34a)";
-                    btn.style.color       = "#000";
+                    const handleAction = (e: Event) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (this.actionUsed || this._submitLock) return;
 
-                    this.savedPlayerId = player.id;
-                    this.cameras.main.flash(400, 0, 100, 0);
-                    socketService.socket.emit("doctor_save", player.id);
-                };
+                        this._submitLock = true;
+                        this.actionUsed  = true;
 
-                btn.addEventListener("click",    handleAction);
-                btn.addEventListener("touchend", handleAction, { passive: false });
+                        list.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
+                            b.disabled            = true;
+                            b.style.opacity       = "0.4";
+                            b.style.cursor        = "not-allowed";
+                            b.style.pointerEvents = "none";
+                        });
+
+                        btn.textContent      = ar.night.doctorSaving;
+                        btn.style.background = "linear-gradient(180deg, #22c55e, #16a34a)";
+                        btn.style.color      = "#000";
+
+                        this.savedPlayerId = player.id;
+                        this.cameras.main.flash(400, 0, 100, 0);
+                        socketService.socket.emit("doctor_save", player.id);
+                    };
+
+                    btn.addEventListener("click",    handleAction);
+                    btn.addEventListener("touchend", handleAction, { passive: false });
+                }
 
                 row.appendChild(nameEl);
                 row.appendChild(btn);
@@ -444,7 +549,6 @@ export default class DoctorNightScene extends Phaser.Scene {
     private applyAcceptedDoctorSave(targetId: string, targetUsername: string) {
         this.showToast(ar.night.doctorProtecting(targetUsername), "success");
 
-        // تحديث بطاقة اللاعب المحمي (desktop)
         const alivePlayers = this.players.filter(p => p.alive);
         const idx = alivePlayers.findIndex(p => p.id === targetId);
         if (idx >= 0 && this.playerCards[idx]) {
@@ -457,12 +561,11 @@ export default class DoctorNightScene extends Phaser.Scene {
             });
         }
 
-        // تحديث زر الموبايل
         const mobileBtn = document.getElementById(`doctor-btn-${targetId}`) as HTMLButtonElement;
         if (mobileBtn) {
-            mobileBtn.textContent    = ar.night.doctorProtected;
-            mobileBtn.style.background  = "linear-gradient(180deg, #22c55e, #16a34a)";
-            mobileBtn.style.color       = "#000";
+            mobileBtn.textContent   = ar.night.doctorProtected;
+            mobileBtn.style.background = "linear-gradient(180deg, #22c55e, #16a34a)";
+            mobileBtn.style.color   = "#000";
         }
     }
 
@@ -473,12 +576,12 @@ export default class DoctorNightScene extends Phaser.Scene {
             success: { bg: 0x051a05, border: 0x22cc22, text: "#44ff44" },
             info:    { bg: 0x05051a, border: 0x2244cc, text: "#4488ff" },
         };
-        const c    = colorMap[type];
-        const W    = this.scale.width;
-        const H    = this.scale.height;
+        const c     = colorMap[type];
+        const W     = this.scale.width;
+        const H     = this.scale.height;
         const toast = this.add.container(W / 2, H - 40).setDepth(20);
-        const msgW  = Math.min(message.length * 9 + 48, Math.min(420, W - 20));
-        const bg    = this.add.rectangle(0, 0, msgW, 40, c.bg);
+        const msgW  = Math.min(message.length * 9 + 48, Math.min(500, W - 20));
+        const bg    = this.add.rectangle(0, 0, msgW, 44, c.bg);
         bg.setStrokeStyle(1, c.border);
         const text = this.add.text(0, 0, message, {
             fontSize:   "13px",
@@ -487,20 +590,41 @@ export default class DoctorNightScene extends Phaser.Scene {
         }).setOrigin(0.5);
         toast.add([bg, text]);
         toast.setAlpha(0).setY(H - 10);
-        this.tweens.add({ targets: toast, alpha: 1, y: H - 60, duration: 300, ease: "Cubic.easeOut" });
-        this.time.delayedCall(2800, () =>
+        this.tweens.add({ targets: toast, alpha: 1, y: H - 70, duration: 300, ease: "Cubic.easeOut" });
+        this.time.delayedCall(3000, () =>
             this.tweens.add({
                 targets:    toast,
                 alpha:      0,
                 y:          H - 40,
                 duration:   300,
-                onComplete: () => toast.destroy(),
+                onComplete: () => { if (toast.active) toast.destroy(); },
             })
         );
     }
 
     // ─── Socket Listeners ─────────────────────────────────────────────────────
     private setupSocketListeners() {
+        // ✅ استقبال lastTarget من السيرفر وإعادة رسم البطاقات إذا لزم
+        socketService.socket.on("night_targets", (data: any) => {
+            if (data.lastTarget && data.lastTarget !== this.lastDoctorTarget) {
+                this.lastDoctorTarget = data.lastTarget;
+                // إعادة رسم البطاقات مع القيد الجديد
+                if (!this.isMobile) {
+                    this.playerCards.forEach(c => { if (c?.active) c.destroy(); });
+                    this.playerCards = [];
+                    const W = this.scale.width;
+                    const H = this.scale.height;
+                    this.drawPlayerCards(W, H);
+                } else {
+                    // إعادة إنشاء Mobile UI
+                    document.getElementById("mobile-night-ui")?.remove();
+                    const W = this.scale.width;
+                    const H = this.scale.height;
+                    this.createMobileUI(W, H);
+                }
+            }
+        });
+
         socketService.socket.on("phase_changed", (data: any) => {
             if (data.phase === "NIGHT" || data.phase === "NIGHT_REVIEW") return;
             this.cameras.main.fadeOut(400, 8, 16, 10);
@@ -524,31 +648,46 @@ export default class DoctorNightScene extends Phaser.Scene {
         });
 
         socketService.socket.on("doctor_error", (data: any) => {
-            // ✅ أطلق القفل عند الخطأ حتى يقدر يحاول مرة ثانية
-            this.actionUsed  = false;
-            this._submitLock = false;
+            // ✅ تحرير القفل عند الخطأ
+            this.actionUsed    = false;
+            this._submitLock   = false;
             this.savedPlayerId = null;
 
-            // إعادة تفعيل الأزرار
-            const list = document.getElementById("mobile-night-ui");
-            if (list) {
-                list.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
-                    b.disabled             = false;
-                    b.style.opacity        = "1";
-                    b.style.cursor         = "pointer";
-                    b.style.pointerEvents  = "auto";
-                    b.textContent          = ar.night.doctorProtect;
-                    b.style.background     = "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)";
-                    b.style.color          = "#22c55e";
+            // إعادة تفعيل الأزرار في الموبايل
+            const ui = document.getElementById("mobile-night-ui");
+            if (ui) {
+                ui.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
+                    // لا نُعيد تفعيل الأزرار المقيّدة
+                    if (b.textContent?.includes("⛔")) return;
+                    b.disabled            = false;
+                    b.style.opacity       = "1";
+                    b.style.cursor        = "pointer";
+                    b.style.pointerEvents = "auto";
+                    b.textContent         = ar.night.doctorProtect;
+                    b.style.background    = "linear-gradient(180deg, rgba(34,197,94,0.1), transparent)";
+                    b.style.color         = "#22c55e";
                 });
             }
-            this.playerCards.forEach(c => c.setInteractive());
+            // ✅ إعادة تفعيل البطاقات بأمان
+            this.playerCards.forEach(c => {
+                if (c?.active && !c.getData("isRestricted")) {
+                    c.setInteractive(
+                        new Phaser.Geom.Rectangle(
+                            -(c.width / 2),
+                            -(c.height / 2),
+                            c.width,
+                            c.height
+                        ),
+                        Phaser.Geom.Rectangle.Contains
+                    );
+                }
+            });
             this.showToast(data.message || ar.game.doctorSelectionError, "danger");
         });
 
         socketService.socket.on("doctor_action_registered", (data: any) => {
             if (!data?.targetId) return;
-            this._submitLock = false; // تحرير القفل بعد التأكيد
+            this._submitLock = false;
             this.applyAcceptedDoctorSave(data.targetId, data.targetUsername);
         });
 
@@ -577,15 +716,13 @@ export default class DoctorNightScene extends Phaser.Scene {
             background:rgba(239,68,68,0.1);
             border:1px solid #ef444444;
             border-right:3px solid ${color};
-            animation:eventSlideIn 0.3s ease-out;
             direction:rtl;
         `;
         card.innerHTML = `
             <div style="font-size:18px;min-width:22px;text-align:center;margin-top:1px">!</div>
             <div style="flex:1">
                 <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                    <span style="font-size:9px;font-weight:bold;letter-spacing:2px;color:${color};
-                        font-family:'Courier New',monospace">تم القضاء عليه</span>
+                    <span style="font-size:9px;font-weight:bold;color:${color};font-family:${ARABIC_FONT_FAMILY}">تم القضاء عليه</span>
                     <span style="font-size:9px;color:#374151;font-family:'Courier New',monospace">${time}</span>
                 </div>
                 <div style="font-size:13px;color:#e2e8f0;font-family:${ARABIC_FONT_FAMILY}">${msg}</div>
@@ -606,5 +743,6 @@ export default class DoctorNightScene extends Phaser.Scene {
         socketService.socket.off("server_reset");
         socketService.socket.off("doctor_error");
         socketService.socket.off("doctor_action_registered");
+        socketService.socket.off("night_targets");
     }
 }
