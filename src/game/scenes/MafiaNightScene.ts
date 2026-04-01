@@ -31,13 +31,22 @@ export default class MafiaNightScene extends Phaser.Scene {
 
     constructor() { super("MafiaNightScene"); }
 
+    private normalizePlayers(players: any[]) {
+        return (players || []).map((player) => ({
+            ...player,
+            id: player?.playerId || player?.id || null,
+            playerId: player?.playerId || player?.id || null,
+            socketId: player?.socketId || null,
+        }));
+    }
+
     init(data: any) {
         this.roomId = data.roomId;
-        this.players = data.players || [];
+        this.players = this.normalizePlayers(data.players || []);
         this.actionUsed = false;
         this.killedPlayerId = null;
         this.embers = [];
-        this.myPlayer = this.players.find(p => p.id === socketService.socket.id) || null;
+        this.myPlayer = this.players.find((p) => p.id === socketService.playerId) || null;
         socketService.socket.off("phase_changed");
         socketService.socket.off("player_killed");
         socketService.socket.off("back_to_lobby");
@@ -255,7 +264,7 @@ export default class MafiaNightScene extends Phaser.Scene {
     //  Desktop: Ø¨Ø·Ø§Ù‚Ø§Øª
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawPlayerCards(W: number, H: number) {
-        const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id && p.role !== "MAFIA");
+        const targets = this.players.filter((p) => p.alive && p.id !== socketService.playerId && p.role !== "MAFIA");
         if (!targets.length) return;
 
         let cardW = 140, cardH = 180, gap = 24;
@@ -469,7 +478,7 @@ export default class MafiaNightScene extends Phaser.Scene {
             targetHeader.textContent = ar.night.mafiaTitle;
             targetSection.appendChild(targetHeader);
 
-            const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id && p.role !== "MAFIA");
+            const targets = this.players.filter((p) => p.alive && p.id !== socketService.playerId && p.role !== "MAFIA");
 
             if (targets.length === 0) {
                 const empty = document.createElement("div");

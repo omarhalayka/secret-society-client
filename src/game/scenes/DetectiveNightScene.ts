@@ -31,9 +31,26 @@ export default class DetectiveNightScene extends Phaser.Scene {
 
     constructor() { super("DetectiveNightScene"); }
 
+    private normalizePlayers(players: any[]) {
+        return (players || []).map((player) => ({
+            ...player,
+            id: player?.playerId || player?.id || null,
+            playerId: player?.playerId || player?.id || null,
+            socketId: player?.socketId || null,
+        }));
+    }
+
+    private disableCardInteractions() {
+        this.playerCards.forEach((card) => {
+            if (card?.active && card.input) {
+                card.disableInteractive();
+            }
+        });
+    }
+
     init(data: any) {
         this.roomId       = data.roomId;
-        this.players      = data.players || [];
+        this.players      = this.normalizePlayers(data.players || []);
         this.actionUsed   = false;
         this._submitLock  = false;
         this.scanParticles = [];
@@ -156,7 +173,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
 
     // ─── Desktop: Player Cards ────────────────────────────────────────────────
     private drawPlayerCards(W: number, H: number) {
-        const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id);
+        const targets = this.players.filter((p) => p.alive && p.id !== socketService.playerId);
         if (!targets.length) return;
 
         let cardW = 140, cardH = 185, gap = 24;
@@ -244,17 +261,14 @@ export default class DetectiveNightScene extends Phaser.Scene {
                 btnLabel.setColor("#3b82f6");
             });
             container.on("pointerdown", () => {
+                if (!container.active || !this.scene.isActive()) return;
                 if (this.actionUsed || this._submitLock) return;
                 this._submitLock = true;
                 this.actionUsed  = true;
                 isSelected = true;
 
                 // تعطيل كل البطاقات بأمان
-                this.playerCards.forEach(card => {
-                    if (card && card.active && card.disableInteractive) {
-                        card.disableInteractive();
-                    }
-                });
+                this.disableCardInteractions();
 
                 drawCardBg(false, true);
                 drawBtn(true);
@@ -404,7 +418,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             gap:           "10px",
         });
 
-        const targets = this.players.filter(p => p.alive && p.id !== socketService.socket.id);
+        const targets = this.players.filter((p) => p.alive && p.id !== socketService.playerId);
 
         if (targets.length === 0) {
             const empty = document.createElement("div");
@@ -603,7 +617,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
     shutdown() {
         // تنظيف البطاقات بأمان
         this.playerCards.forEach(card => {
-            if (card && card.destroy) card.destroy();
+            if (card?.active) card.destroy();
         });
         this.playerCards = [];
 

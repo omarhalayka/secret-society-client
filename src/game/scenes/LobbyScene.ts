@@ -116,7 +116,7 @@ export default class LobbyScene extends Phaser.Scene {
         });
     }
 
-    private tryRejoin(saved: { roomId: string; username: string; role: string }) {
+    private tryRejoin(saved: { roomId: string; username: string; role: string; playerId: string | null }) {
         const W = this.scale.width;
         const H = this.scale.height;
         this.cameras.main.setBackgroundColor("#060810");
@@ -155,6 +155,7 @@ export default class LobbyScene extends Phaser.Scene {
                 roomId: saved.roomId,
                 username: saved.username,
                 role: saved.role,
+                playerId: saved.playerId,
             });
 
             const timeout = this.time.delayedCall(5000, () => {

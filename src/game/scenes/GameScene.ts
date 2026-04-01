@@ -76,6 +76,25 @@ export default class GameScene extends Phaser.Scene {
         if (this.isAdmin) socketService.isAdmin = true;
     }
 
+    private normalizePlayer(player: any) {
+        const playerId = player?.playerId || player?.id || null;
+        return {
+            ...player,
+            id: playerId,
+            playerId,
+            socketId: player?.socketId || null,
+        };
+    }
+
+    private normalizePlayers(players: any[]) {
+        return (players || []).map((player) => this.normalizePlayer(player));
+    }
+
+    private isCurrentPlayer(player: any) {
+        const playerId = player?.playerId || player?.id || null;
+        return !!playerId && playerId === socketService.playerId;
+    }
+
     create() {
         if (!this.role || !this.roomId) { this.scene.start("LobbyScene"); return; }
 
@@ -527,9 +546,9 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private drawPlayers(players: any[], phase: string) {
-        this.currentPlayers = players;
+        this.currentPlayers = this.normalizePlayers(players);
         if (this.isMobile) {
-            this.updateMobilePlayers(players);
+            this.updateMobilePlayers(this.currentPlayers);
             return;
         }
         this.playerRows.forEach(r =>
@@ -538,7 +557,7 @@ export default class GameScene extends Phaser.Scene {
         this.playerRows = [];
         const startY = this.TOPBAR_H + 50;
         const isNight = phase === "NIGHT";
-        players.forEach((p, i) =>
+        this.currentPlayers.forEach((p, i) =>
             this.time.delayedCall(i * 55, () => this.buildPlayerRow(p, startY + i * 44, isNight))
         );
     }
@@ -549,7 +568,7 @@ export default class GameScene extends Phaser.Scene {
         panel.innerHTML = "";
         players.forEach(p => {
             const row = document.createElement("div");
-            const isMe = p.id === socketService.socket.id;
+            const isMe = this.isCurrentPlayer(p);
             Object.assign(row.style, {
                 display: "flex", alignItems: "center", gap: "10px",
                 padding: "10px 12px", borderRadius: "6px",
@@ -584,7 +603,7 @@ export default class GameScene extends Phaser.Scene {
             row.appendChild(name);
 
             // تعديل: إخفاء الأدوار عن المشاهد - إزالة this.userType === "SPECTATOR"
-            const showRole = isMe || !p.alive || this.isAdmin ||
+            const showRole = isMe || this.isAdmin ||
                 (this.role === "MAFIA" && p.role === "MAFIA");
 
             if (showRole && p.role) {
@@ -609,7 +628,7 @@ export default class GameScene extends Phaser.Scene {
     private buildPlayerRow(player: any, y: number, isNight: boolean) {
         const container = this.add.container(0, y).setDepth(3).setAlpha(0);
         const isAlive = player.alive;
-        const isMe = player.id === socketService.socket.id;
+        const isMe = this.isCurrentPlayer(player);
 
         const dot = this.add.circle(16, 0, 5, isAlive ? this.C.alive : this.C.dead);
         if (isAlive) {
@@ -620,7 +639,6 @@ export default class GameScene extends Phaser.Scene {
         let tag = "";
         if (this.isAdmin || isMe) tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
         else if (this.role === "MAFIA" && player.role === "MAFIA") tag = `  [${ar.roles.MAFIA}]`;
-        else if (!isAlive) tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
 
         const avatarEmoji = player.avatar || "😎";
         const avatarText = this.add.text(30, 0, avatarEmoji, {
@@ -644,7 +662,7 @@ export default class GameScene extends Phaser.Scene {
                 this.addActionBtn(container, btnX, 0, "⚔", "#ef4444", () => {
                     socketService.socket.emit("mafia_kill", player.id);
                 });
-            if (this.role === "DOCTOR" && isNight)
+            if (this.role === "DOCTOR" && isNight && !isMe)
                 this.addActionBtn(container, btnX, 0, "✚", "#22c55e", () => {
                     socketService.socket.emit("doctor_save", player.id);
                 });
@@ -875,7 +893,7 @@ export default class GameScene extends Phaser.Scene {
         const baseY = this.TOPBAR_H + 50;
         const lineH = 22;
         const isAlive = alive !== false;
-        const isMe = username === this.currentPlayers.find(p => p.id === socketService.socket.id)?.username;
+        const isMe = username === this.currentPlayers.find((p) => this.isCurrentPlayer(p))?.username;
         let msgColor = isAlive ? "#94a3b8" : "#374151";
         if (isMe) msgColor = "#e2e8f0";
 
@@ -898,7 +916,7 @@ export default class GameScene extends Phaser.Scene {
         const msgs = document.getElementById("mobile-chat-messages");
         if (!msgs) return;
         const el = document.createElement("div");
-        const isMe = username === this.currentPlayers.find(p => p.id === socketService.socket.id)?.username;
+        const isMe = username === this.currentPlayers.find((p) => this.isCurrentPlayer(p))?.username;
         Object.assign(el.style, {
             padding: "6px 10px", borderRadius: "6px",
             backgroundColor: isMe ? "rgba(59,130,246,0.1)" : "rgba(17,24,39,0.5)",
@@ -1026,7 +1044,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private buildVotingCard(player: any, cx: number, cy: number, cardW: number, cardH: number, isSpectator: boolean): Phaser.GameObjects.Container {
-        const isMe = player.id === socketService.socket.id;
+        const isMe = this.isCurrentPlayer(player);
         const container = this.add.container(cx, cy + 24).setAlpha(0);
 
         const shadow = this.add.rectangle(4, 6, cardW, cardH, 0x000000, 0.45).setOrigin(0.5);
@@ -1222,7 +1240,7 @@ export default class GameScene extends Phaser.Scene {
 
         const alivePlayers = this.currentPlayers.filter(p => p.alive);
         if (!alivePlayers.length) return;
-        const myPlayer = alivePlayers.find(p => p.id === socketService.socket.id);
+        const myPlayer = alivePlayers.find((p) => this.isCurrentPlayer(p));
 
         const overlay = document.createElement("div");
         overlay.id = "mobile-voting-overlay";
@@ -1291,7 +1309,7 @@ export default class GameScene extends Phaser.Scene {
         });
 
         alivePlayers.forEach(p => {
-            const isMe = p.id === socketService.socket.id;
+            const isMe = this.isCurrentPlayer(p);
             const row = document.createElement("div");
             Object.assign(row.style, {
                 display: "flex", alignItems: "center", gap: "12px",
@@ -1606,6 +1624,8 @@ export default class GameScene extends Phaser.Scene {
         document.getElementById("mobile-win-overlay")?.remove();
         const isMafia = data.winner === "MAFIA";
         const accent = isMafia ? "#ef4444" : "#22c55e";
+        const revealRoles = this.userType !== "SPECTATOR";
+        const stats = data.stats || {};
 
         const overlay = document.createElement("div");
         overlay.id = "mobile-win-overlay";
@@ -1701,16 +1721,20 @@ export default class GameScene extends Phaser.Scene {
                 backgroundColor: r.color || "#1e293b",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "16px", flexShrink: "0",
-                border: `2px solid ${roleColors[r.role] || "#94a3b8"}`,
+                border: `2px solid ${revealRoles ? (roleColors[r.role] || "#94a3b8") : (r.alive === false ? "#374151" : "#22c55e")}`,
             });
             av.textContent = r.avatar || "😎";
             const nameEl = document.createElement("span");
             nameEl.textContent = r.username;
             nameEl.style.cssText = "color:#e2e8f0;font-size:12px;font-weight:bold;flex:1;text-align:right";
-            const roleEl = document.createElement("span");
-            roleEl.textContent = ar.roles[r.role as keyof typeof ar.roles] || r.role;
-            roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:9px;letter-spacing:2px;text-align:right`;
-            row.appendChild(av); row.appendChild(nameEl); row.appendChild(roleEl);
+            row.appendChild(av);
+            row.appendChild(nameEl);
+            if (revealRoles && r.role) {
+                const roleEl = document.createElement("span");
+                roleEl.textContent = ar.roles[r.role as keyof typeof ar.roles] || r.role;
+                roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:9px;letter-spacing:2px;text-align:right`;
+                row.appendChild(roleEl);
+            }
             col1content.appendChild(row);
         });
         col1.appendChild(col1content);
@@ -1720,10 +1744,10 @@ export default class GameScene extends Phaser.Scene {
         col2.appendChild(makePanelHeader(ar.game.stats));
         const col2content = document.createElement("div");
         col2content.style.cssText = "padding:10px";
-        const kills = (data.nightKills || []).filter((k: any) => !k.saved).length;
-        const saves = (data.nightKills || []).filter((k: any) => k.saved).length;
-        const eliminated = (data.votingEliminations || []).filter((v: any) => !v.tie).length;
-        const ties = (data.votingEliminations || []).filter((v: any) => v.tie).length;
+        const kills = (stats.nightKills || []).filter((k: any) => !k.saved).length;
+        const saves = (stats.nightKills || []).filter((k: any) => k.saved).length;
+        const eliminated = (stats.votingEliminations || []).filter((v: any) => !v.tie).length;
+        const ties = (stats.votingEliminations || []).filter((v: any) => v.tie).length;
         const makeStatDesktop = (label: string, value: string, color = "#94a3b8") => {
             const row = document.createElement("div");
             Object.assign(row.style, {
@@ -1758,7 +1782,7 @@ export default class GameScene extends Phaser.Scene {
         const typeColors: Record<string, string> = {
             kill: "#ef4444", save: "#22c55e", vote: "#f59e0b", tie: "#475569", quiet: "#1e3a5f",
         };
-        (data.gameLog || []).forEach((entry: any) => {
+        (stats.gameLog || []).forEach((entry: any) => {
             const row = document.createElement("div");
             Object.assign(row.style, {
                 display: "flex", gap: "8px", padding: "7px 8px", marginBottom: "5px",
@@ -1806,6 +1830,8 @@ export default class GameScene extends Phaser.Scene {
         const isMafia = data.winner === "MAFIA";
         const accent = isMafia ? "#ef4444" : "#22c55e";
         const bgColor = isMafia ? "rgba(15,5,5,0.98)" : "rgba(5,15,5,0.98)";
+        const revealRoles = this.userType !== "SPECTATOR";
+        const stats = data.stats || {};
 
         const overlay = document.createElement("div");
         overlay.id = "mobile-win-overlay";
@@ -1916,7 +1942,7 @@ export default class GameScene extends Phaser.Scene {
                     backgroundColor: r.color || "#1e293b",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: "18px", flexShrink: "0",
-                    border: `2px solid ${roleColors[r.role] || "#94a3b8"}`,
+                    border: `2px solid ${revealRoles ? (roleColors[r.role] || "#94a3b8") : (r.alive === false ? "#374151" : "#22c55e")}`,
                 });
                 avatarEl.textContent = r.avatar || "🙂";
 
@@ -1924,17 +1950,18 @@ export default class GameScene extends Phaser.Scene {
                 nameEl.textContent = r.username;
                 nameEl.style.cssText = "color:#e2e8f0;font-size:13px;font-weight:bold;flex:1;text-align:right";
 
-                const roleEl = document.createElement("span");
-                roleEl.textContent = ar.roles[r.role as keyof typeof ar.roles] || r.role;
-                roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:10px;letter-spacing:2px;text-align:right`;
-
                 const deadEl = document.createElement("span");
                 deadEl.textContent = r.alive === false ? "✖" : "";
                 deadEl.style.cssText = "color:#374151;font-size:14px";
 
                 row.appendChild(avatarEl);
                 row.appendChild(nameEl);
-                row.appendChild(roleEl);
+                if (revealRoles && r.role) {
+                    const roleEl = document.createElement("span");
+                    roleEl.textContent = ar.roles[r.role as keyof typeof ar.roles] || r.role;
+                    roleEl.style.cssText = `color:${roleColors[r.role] || "#94a3b8"};font-size:10px;letter-spacing:2px;text-align:right`;
+                    row.appendChild(roleEl);
+                }
                 row.appendChild(deadEl);
                 tabContents["roles"].appendChild(row);
             });
@@ -1959,10 +1986,10 @@ export default class GameScene extends Phaser.Scene {
             return row;
         };
 
-        const kills = (data.nightKills || []).filter((k: any) => !k.saved).length;
-        const saves = (data.nightKills || []).filter((k: any) => k.saved).length;
-        const eliminated = (data.votingEliminations || []).filter((v: any) => !v.tie).length;
-        const ties = (data.votingEliminations || []).filter((v: any) => v.tie).length;
+        const kills = (stats.nightKills || []).filter((k: any) => !k.saved).length;
+        const saves = (stats.nightKills || []).filter((k: any) => k.saved).length;
+        const eliminated = (stats.votingEliminations || []).filter((v: any) => !v.tie).length;
+        const ties = (stats.votingEliminations || []).filter((v: any) => v.tie).length;
 
         tabContents["stats"].appendChild(makeStatRow(ar.game.winner, isMafia ? ar.game.roleResultWinnerMafia : ar.game.roleResultWinnerCitizens, accent));
         tabContents["stats"].appendChild(makeStatRow(ar.game.roundsPlayed, `${data.rounds || 1}`, "#e2e8f0"));
@@ -1972,8 +1999,8 @@ export default class GameScene extends Phaser.Scene {
         tabContents["stats"].appendChild(makeStatRow(ar.game.votedOut, `${eliminated}`, "#f59e0b"));
         tabContents["stats"].appendChild(makeStatRow(ar.game.voteTies, `${ties}`, "#64748b"));
 
-        if (data.gameLog?.length) {
-            data.gameLog.forEach((entry: any) => {
+        if (stats.gameLog?.length) {
+            stats.gameLog.forEach((entry: any) => {
                 const row = document.createElement("div");
                 Object.assign(row.style, {
                     display: "flex", alignItems: "flex-start", gap: "10px",
@@ -2553,7 +2580,7 @@ export default class GameScene extends Phaser.Scene {
             if (data.phase === "NIGHT" && !this.isAdmin) {
                 const targetScene = nightSceneMap[this.role];
                 if (targetScene) {
-                    const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
+                    const myPlayer = this.currentPlayers.find((p) => this.isCurrentPlayer(p));
                     if (!myPlayer?.alive) {
                         return;
                     }
@@ -2596,7 +2623,7 @@ export default class GameScene extends Phaser.Scene {
             this.showPhaseTransition(phaseName);
             this.roundText?.setText(ar.game.round(data.round));
             this.updateChatUI(data.phase);
-            const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
+            const myPlayer = this.currentPlayers.find((p) => this.isCurrentPlayer(p));
             voiceManager.setPhase(data.phase, this.role, myPlayer?.alive ?? true);
             socketService.socket.emit("request_room_state");
         });
@@ -2604,7 +2631,7 @@ export default class GameScene extends Phaser.Scene {
         socketService.socket.on("voting_started", () => {
             this.showPhaseTransition(getPhaseLabel("VOTING"));
             socketService.socket.emit("request_room_state");
-            const myPlayer = this.currentPlayers.find(p => p.id === socketService.socket.id);
+            const myPlayer = this.currentPlayers.find((p) => this.isCurrentPlayer(p));
             const isAlivePlayer = myPlayer?.alive && this.userType === "PLAYER" && !this.isAdmin;
             if (isAlivePlayer) {
                 this.time.delayedCall(300, () => {
@@ -2651,7 +2678,7 @@ export default class GameScene extends Phaser.Scene {
             this.addChatMessage(data.username, data.message, data.alive);
             const votingMessages = document.getElementById("voting-chat-messages");
             if (votingMessages) {
-                const isMe = data.username === this.currentPlayers.find(p => p.id === socketService.socket.id)?.username
+                const isMe = data.username === this.currentPlayers.find((p) => this.isCurrentPlayer(p))?.username
                     || (this.isAdmin && data.username === "ADMIN 👑");
                 const msg = document.createElement("div");
                 Object.assign(msg.style, {

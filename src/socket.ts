@@ -1,6 +1,15 @@
 import { io, Socket } from "socket.io-client";
 
 const SESSION_KEY = "ss_session";
+const PLAYER_ID_KEY = "ss_player_id";
+
+type SavedSession = {
+    roomId: string;
+    username: string;
+    role: string;
+    playerId: string | null;
+    ts: number;
+};
 
 class SocketService {
     public socket: Socket;
@@ -8,21 +17,34 @@ class SocketService {
     public roomId: string | null = null;
     public isAdmin: boolean = false;
     public username: string | null = null;
+    public playerId: string | null = null;
 
     // أحداث معلقة تُعرض لما GameScene تفتح
     public pendingEvents: Array<{ msg: string; color: string }> = [];
 
     constructor() {
-        this.socket = io("https://secret-society-server.onrender.com");
+        this.playerId = this.getStoredPlayerId();
+        this.socket = io("https://secret-society-server.onrender.com", {
+            auth: {
+                playerId: this.playerId,
+            },
+        });
+
+        this.socket.on("player_id", (data: any) => {
+            if (typeof data?.playerId === "string" && data.playerId.trim()) {
+                this.setPlayerId(data.playerId.trim());
+            }
+        });
 
         this.socket.on("game_started", (data: any) => {
             console.log("Game started:", data);
             this.role   = data.role;
             this.roomId = data.roomId;
-
-            if (data.role === "ADMIN") {
-                this.isAdmin = true;
+            if (typeof data?.playerId === "string" && data.playerId.trim()) {
+                this.setPlayerId(data.playerId.trim());
             }
+
+            this.isAdmin = data.role === "ADMIN";
 
             // ─── احفظ الجلسة في localStorage ───
             if (this.roomId && this.username) {
@@ -30,8 +52,11 @@ class SocketService {
                     roomId:   this.roomId,
                     username: this.username,
                     role:     this.role,
+                    playerId: data?.playerId || this.playerId || null,
                     ts:       Date.now(),
                 }));
+            } else if (data?.role === "SPECTATOR" || data?.role === "ADMIN") {
+                this.clearSession();
             }
         });
 
@@ -53,18 +78,51 @@ class SocketService {
         this.username = name;
     }
 
+    private getStoredPlayerId(): string | null {
+        try {
+            const raw = localStorage.getItem(PLAYER_ID_KEY);
+            if (!raw) return null;
+            const clean = raw.trim();
+            return clean || null;
+        } catch {
+            return null;
+        }
+    }
+
+    public setPlayerId(playerId: string | null) {
+        this.playerId = playerId;
+        try {
+            if (playerId) localStorage.setItem(PLAYER_ID_KEY, playerId);
+            else localStorage.removeItem(PLAYER_ID_KEY);
+        } catch {}
+
+        const auth = (this.socket.auth || {}) as Record<string, any>;
+        auth.playerId = playerId;
+        this.socket.auth = auth;
+    }
+
     // ─── احضر بيانات الجلسة المحفوظة ───
-    public getSavedSession(): { roomId: string; username: string; role: string; ts: number } | null {
+    public getSavedSession(): SavedSession | null {
         try {
             const raw = localStorage.getItem(SESSION_KEY);
             if (!raw) return null;
-            const data = JSON.parse(raw);
+            const data = JSON.parse(raw) as Partial<SavedSession>;
+            if (!data?.roomId || !data?.username || !data?.role || !data?.ts) {
+                localStorage.removeItem(SESSION_KEY);
+                return null;
+            }
             // الجلسة صالحة بس لو أقل من 4 ساعات
             if (Date.now() - data.ts > 4 * 60 * 60 * 1000) {
                 localStorage.removeItem(SESSION_KEY);
                 return null;
             }
-            return data;
+            return {
+                roomId: data.roomId,
+                username: data.username,
+                role: data.role,
+                playerId: typeof data.playerId === "string" ? data.playerId : this.playerId,
+                ts: data.ts,
+            };
         } catch { return null; }
     }
 

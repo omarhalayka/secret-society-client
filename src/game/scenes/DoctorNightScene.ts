@@ -26,9 +26,18 @@ export default class DoctorNightScene extends Phaser.Scene {
 
     constructor() { super("DoctorNightScene"); }
 
+    private normalizePlayers(players: any[]) {
+        return (players || []).map((player) => ({
+            ...player,
+            id: player?.playerId || player?.id || null,
+            playerId: player?.playerId || player?.id || null,
+            socketId: player?.socketId || null,
+        }));
+    }
+
     init(data: any) {
         this.roomId        = data.roomId;
-        this.players       = data.players || [];
+        this.players       = this.normalizePlayers(data.players || []);
         this.actionUsed    = false;
         this._submitLock   = false;
         this.savedPlayerId = null;
@@ -166,7 +175,7 @@ export default class DoctorNightScene extends Phaser.Scene {
         const cardY  = H / 2 + 30;
 
         targets.forEach((player, i) => {
-            const isMe = player.id === socketService.socket.id;
+            const isMe = player.id === socketService.playerId;
             // ✅ فحص إذا كان هذا اللاعب هو الهدف المقيّد
             const isRestricted = this.lastDoctorTarget !== null && player.id === this.lastDoctorTarget;
             const x = startX + i * (cardW + gap);
@@ -430,7 +439,7 @@ export default class DoctorNightScene extends Phaser.Scene {
             list.appendChild(empty);
         } else {
             targets.forEach(player => {
-                const isMe         = player.id === socketService.socket.id;
+                const isMe         = player.id === socketService.playerId;
                 // ✅ فحص القيد
                 const isRestricted = this.lastDoctorTarget !== null && player.id === this.lastDoctorTarget;
 
@@ -606,6 +615,9 @@ export default class DoctorNightScene extends Phaser.Scene {
     private setupSocketListeners() {
         // ✅ استقبال lastTarget من السيرفر وإعادة رسم البطاقات إذا لزم
         socketService.socket.on("night_targets", (data: any) => {
+            if (Array.isArray(data?.players)) {
+                this.players = this.normalizePlayers(data.players);
+            }
             if (data.lastTarget && data.lastTarget !== this.lastDoctorTarget) {
                 this.lastDoctorTarget = data.lastTarget;
                 // إعادة رسم البطاقات مع القيد الجديد
@@ -670,18 +682,12 @@ export default class DoctorNightScene extends Phaser.Scene {
             }
             // ✅ إعادة تفعيل البطاقات بأمان
             this.playerCards.forEach(c => {
-                if (c?.active && !c.getData("isRestricted")) {
-                    c.setInteractive(
-                        new Phaser.Geom.Rectangle(
-                            -(c.width / 2),
-                            -(c.height / 2),
-                            c.width,
-                            c.height
-                        ),
-                        Phaser.Geom.Rectangle.Contains
-                    );
-                }
+                if (c?.active) c.destroy();
             });
+            this.playerCards = [];
+            if (!this.isMobile) {
+                this.drawPlayerCards(this.scale.width, this.scale.height);
+            }
             this.showToast(data.message || ar.game.doctorSelectionError, "danger");
         });
 
