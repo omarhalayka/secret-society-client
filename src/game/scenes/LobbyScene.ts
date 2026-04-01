@@ -61,17 +61,18 @@ export default class LobbyScene extends Phaser.Scene {
 
         socketService.socket.on("session_password_ready", (data: any) => {
             this.sessionPasswordReady = !!data.ready;
-            if (data.ready) this.unlockPlayerButton();
+            this.unlockPlayerButton();
         });
 
         socketService.socket.on("session_password_set", (data: any) => {
-            if (data.password) {
+            if (data.ready) {
                 this.sessionPasswordReady = true;
-                this.showToast(ar.lobby.passwordSet(data.password), "success");
+                this.showToast("تم تحديث كلمة سر الجلسة", "success");
             } else {
                 this.sessionPasswordReady = false;
                 this.showToast(ar.lobby.noPassword, "info");
             }
+            this.unlockPlayerButton();
         });
 
         socketService.socket.on("session_reset", (data: any) => {
@@ -79,10 +80,7 @@ export default class LobbyScene extends Phaser.Scene {
             this.selectedType = "spectator";
             const playerBtn = this.roleButtons["player"];
             if (playerBtn) {
-                playerBtn.setAlpha(0.4);
-                playerBtn.disableInteractive();
-                const icon = playerBtn.getData("icon") as Phaser.GameObjects.Text;
-                if (icon) icon.setText("🔒");
+                this.unlockPlayerButton();
             }
             const roles = [
                 { key: "player", colHex: 0x22c55e, hex: "#22c55e" },
@@ -594,7 +592,7 @@ export default class LobbyScene extends Phaser.Scene {
         roles.forEach((role, i) => {
             const bx = sx + i * (btnW + gap);
             const isActive = role.key === this.selectedType;
-            const isPlayerLocked = role.key === "player" && !this.sessionPasswordReady;
+            const isPlayerLocked = false;
 
             const c = this.add.container(bx, cy).setDepth(3);
             if (isPlayerLocked) c.setAlpha(0.4);
@@ -655,9 +653,7 @@ export default class LobbyScene extends Phaser.Scene {
             });
         });
 
-        if (this.sessionPasswordReady) {
-            this.time.delayedCall(50, () => this.unlockPlayerButton());
-        }
+        this.time.delayedCall(50, () => this.unlockPlayerButton());
     }
 
     private unlockPlayerButton() {
@@ -1097,7 +1093,7 @@ export default class LobbyScene extends Phaser.Scene {
                 socketService.socket.emit("rejoin_with_code", { code, username: rejoinName });
 
                 const onOk = (data: any) => {
-                    socketService.socket.off("rejoin_code_error", onErr);
+                    socketService.socket.off("game_error", onErr);
                     overlay.remove();
                     socketService.isAdmin = false;
                     socketService.role = data.role;
@@ -1114,7 +1110,7 @@ export default class LobbyScene extends Phaser.Scene {
                     codeInput.style.borderColor = "#ef4444";
                 };
                 socketService.socket.once("game_started", onOk);
-                socketService.socket.once("rejoin_code_error", onErr);
+                socketService.socket.once("game_error", onErr);
             }
         };
 
@@ -1291,7 +1287,7 @@ export default class LobbyScene extends Phaser.Scene {
     }
 
     private setupSocketEvents() {
-        ["game_started", "queue_update", "error", "connect", "connect_error", "waiting_for_players", "admin_joined"]
+        ["game_started", "queue_update", "game_error", "connect", "connect_error", "waiting_for_players", "admin_joined"]
             .forEach(ev => socketService.socket.off(ev));
 
         socketService.socket.on("queue_update", (data: any) => {
@@ -1302,7 +1298,7 @@ export default class LobbyScene extends Phaser.Scene {
             this.queueStatusText.setText(ar.lobby.queueCount(size, required)).setColor(color);
         });
 
-        socketService.socket.on("error", (data: any) => {
+        socketService.socket.on("game_error", (data: any) => {
             this.showToast(data.message, "error");
             if (this.joinButton?.active) {
                 this.joinBtnLabel?.setText(ar.lobby.joinQueue);
@@ -1514,7 +1510,7 @@ export default class LobbyScene extends Phaser.Scene {
 
         this.particles.forEach(p => p.gfx.destroy());
         this.particles = [];
-        ["game_started", "queue_update", "error", "connect", "connect_error", "waiting_for_players", "admin_joined", "session_password_set", "session_password_ready", "session_reset", "server_reset", "player_count_updated"]
+        ["game_started", "queue_update", "game_error", "connect", "connect_error", "waiting_for_players", "admin_joined", "session_password_set", "session_password_ready", "session_reset", "server_reset", "player_count_updated"]
             .forEach(ev => socketService.socket.off(ev));
     }
 }

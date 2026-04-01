@@ -14,6 +14,7 @@ export default class MafiaNightScene extends Phaser.Scene {
     private killedPlayerId: string | null = null;
     private isMobile: boolean = false;
     private isSoloMafia: boolean = false;
+    private mafiaTeamCount: number = 1;
     private myPlayer: any = null;
 
     // Ø¬Ø³ÙŠÙ…Ø§Øª Ø§Ù„Ø¬Ù…Ø±
@@ -47,9 +48,11 @@ export default class MafiaNightScene extends Phaser.Scene {
         this.killedPlayerId = null;
         this.embers = [];
         this.myPlayer = this.players.find((p) => p.id === socketService.playerId) || null;
+        this.mafiaTeamCount = Math.max(1, this.players.filter((p) => p.role === "MAFIA" && p.alive).length);
         socketService.socket.off("phase_changed");
         socketService.socket.off("player_killed");
         socketService.socket.off("back_to_lobby");
+        socketService.socket.off("night_targets");
         socketService.socket.off("mafia_suggestion");
         socketService.socket.off("mafia_chat_message");
         socketService.socket.off("mafia_action_registered");
@@ -66,11 +69,13 @@ export default class MafiaNightScene extends Phaser.Scene {
         this.isMobile = W < 700;
 
         // â”€â”€â”€ Ù‡Ù„ Ø§Ù„Ù…Ø§ÙÙŠØ§ Ù„Ø­Ø§Ù„Ù‡ØŸ â”€â”€â”€
-        const aliveMafia = this.players.filter(p => p.role === "MAFIA" && p.alive);
-        this.isSoloMafia = aliveMafia.length <= 1;
+        this.isSoloMafia = this.mafiaTeamCount <= 1;
 
         this.cameras.main.setBackgroundColor("#080810");
         this.cameras.main.fadeIn(700, 8, 8, 16);
+
+        this.setupSocketListeners();
+        socketService.socket.emit("request_night_targets");
 
         this.drawBackground(W, H);
         this.drawTopBar(W);
@@ -85,8 +90,6 @@ export default class MafiaNightScene extends Phaser.Scene {
                 this.createDesktopChatPanel();
             }
         }
-
-        this.setupSocketListeners();
     }
 
     update(_time: number, delta: number) {
@@ -609,6 +612,41 @@ export default class MafiaNightScene extends Phaser.Scene {
     //  Socket Listeners
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private setupSocketListeners() {
+        socketService.socket.on("night_targets", (data: any) => {
+            if (Array.isArray(data?.players)) {
+                this.players = this.normalizePlayers(data.players);
+            }
+
+            if (typeof data?.teamCount === "number") {
+                this.mafiaTeamCount = Math.max(1, data.teamCount);
+            }
+
+            if (data?.self) {
+                this.myPlayer = {
+                    ...(this.myPlayer || {}),
+                    ...this.normalizePlayers([data.self])[0],
+                };
+            }
+
+            this.isSoloMafia = this.mafiaTeamCount <= 1;
+
+            if (!this.isMobile) {
+                this.playerCards.forEach((card) => {
+                    if (card?.active) card.destroy();
+                });
+                this.playerCards = [];
+                this.drawPlayerCards(this.scale.width, this.scale.height);
+                document.getElementById("mafia-desktop-chat")?.remove();
+                if (!this.isSoloMafia && !(this.myPlayer && !this.myPlayer.alive)) {
+                    this.createDesktopChatPanel();
+                }
+                return;
+            }
+
+            document.getElementById("mobile-night-ui")?.remove();
+            this.createMobileUI(this.scale.width, this.scale.height);
+        });
+
         socketService.socket.on("phase_changed", (data: any) => {
             if (data.phase === "NIGHT" || data.phase === "NIGHT_REVIEW") return;
             // Ø§Ù…Ø³Ø­ Ø§Ù„Ù€ desktop chat Ù„Ù…Ø§ ÙŠÙ†ØªÙ‡ÙŠ Ø§Ù„Ù„ÙŠÙ„
@@ -691,6 +729,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         socketService.socket.off("phase_changed");
         socketService.socket.off("player_killed");
         socketService.socket.off("back_to_lobby");
+        socketService.socket.off("night_targets");
         socketService.socket.off("server_reset");
         socketService.socket.off("mafia_chat_message");
         socketService.socket.off("mafia_suggestion");

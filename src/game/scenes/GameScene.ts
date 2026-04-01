@@ -556,9 +556,8 @@ export default class GameScene extends Phaser.Scene {
         );
         this.playerRows = [];
         const startY = this.TOPBAR_H + 50;
-        const isNight = phase === "NIGHT";
         this.currentPlayers.forEach((p, i) =>
-            this.time.delayedCall(i * 55, () => this.buildPlayerRow(p, startY + i * 44, isNight))
+            this.time.delayedCall(i * 55, () => this.buildPlayerRow(p, startY + i * 44))
         );
     }
 
@@ -603,8 +602,7 @@ export default class GameScene extends Phaser.Scene {
             row.appendChild(name);
 
             // تعديل: إخفاء الأدوار عن المشاهد - إزالة this.userType === "SPECTATOR"
-            const showRole = isMe || this.isAdmin ||
-                (this.role === "MAFIA" && p.role === "MAFIA");
+            const showRole = this.isAdmin || (isMe && this.userType !== "SPECTATOR");
 
             if (showRole && p.role) {
                 const roleSpan = document.createElement("span");
@@ -625,7 +623,7 @@ export default class GameScene extends Phaser.Scene {
         });
     }
 
-    private buildPlayerRow(player: any, y: number, isNight: boolean) {
+    private buildPlayerRow(player: any, y: number) {
         const container = this.add.container(0, y).setDepth(3).setAlpha(0);
         const isAlive = player.alive;
         const isMe = this.isCurrentPlayer(player);
@@ -637,8 +635,9 @@ export default class GameScene extends Phaser.Scene {
 
         // تعديل: إخفاء الأدوار عن المشاهد - إزالة شرط this.userType === "SPECTATOR"
         let tag = "";
-        if (this.isAdmin || isMe) tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
-        else if (this.role === "MAFIA" && player.role === "MAFIA") tag = `  [${ar.roles.MAFIA}]`;
+        if (this.isAdmin || (isMe && this.userType !== "SPECTATOR")) {
+            tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
+        }
 
         const avatarEmoji = player.avatar || "😎";
         const avatarText = this.add.text(30, 0, avatarEmoji, {
@@ -656,39 +655,11 @@ export default class GameScene extends Phaser.Scene {
         sep.moveTo(10, 20); sep.lineTo(this.PLAYERS_W - 10, 20); sep.strokePath();
         container.add([sep, dot, avatarText, name]);
 
-        if (isAlive && !this.isAdmin && this.userType !== "SPECTATOR") {
-            const btnX = this.PLAYERS_W - 32;
-            if (this.role === "MAFIA" && isNight && !isMe)
-                this.addActionBtn(container, btnX, 0, "⚔", "#ef4444", () => {
-                    socketService.socket.emit("mafia_kill", player.id);
-                });
-            if (this.role === "DOCTOR" && isNight && !isMe)
-                this.addActionBtn(container, btnX, 0, "✚", "#22c55e", () => {
-                    socketService.socket.emit("doctor_save", player.id);
-                });
-            if (this.role === "DETECTIVE" && isNight && !isMe)
-                this.addActionBtn(container, btnX, 0, "🔍", "#3b82f6", () => {
-                    socketService.socket.emit("detective_check", player.id);
-                });
-        }
-
         this.playerRows.push(container);
         this.tweens.add({
             targets: container, alpha: 1, duration: 300, ease: "Cubic.easeOut",
             onStart: () => container.setX(-10), onComplete: () => container.setX(0)
         });
-    }
-
-    private addActionBtn(parent: Phaser.GameObjects.Container, x: number, y: number, icon: string, color: string, cb: () => void) {
-        const btn = this.add.text(x, y, icon, {
-            fontSize: "15px", color, backgroundColor: "#0f1520", padding: { x: 5, y: 2 }
-        }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-        btn.on("pointerover", () => btn.setScale(1.2));
-        btn.on("pointerout", () => btn.setScale(1));
-        btn.on("pointerdown", () =>
-            this.tweens.add({ targets: btn, scaleX: 0.85, scaleY: 0.85, duration: 70, yoyo: true, onComplete: cb })
-        );
-        parent.add(btn);
     }
 
     private getEventMeta(msg: string, color: string): { icon: string; label: string; bgAlpha: number; glowColor: number } {
@@ -2544,7 +2515,8 @@ export default class GameScene extends Phaser.Scene {
             "vote_update", "player_killed", "receive_message",
             "detective_result", "voting_result", "voting_started",
             "night_review", "night_story", "back_to_lobby", "night_action_status",
-            "doctor_error", "mafia_error",
+            "doctor_error", "mafia_error", "game_error",
+            "player_disconnected", "player_rejoined", "spectator_joined",
         ];
         evts.forEach(e => socketService.socket.off(e));
 
@@ -2674,6 +2646,11 @@ export default class GameScene extends Phaser.Scene {
             this.addEventLog(data.message || ar.game.mafiaSelectionError, "#ef4444");
         });
 
+        socketService.socket.on("game_error", (data: any) => {
+            if (!data?.message) return;
+            this.addEventLog(data.message, "#ef4444");
+        });
+
         socketService.socket.on("receive_message", (data: any) => {
             this.addChatMessage(data.username, data.message, data.alive);
             const votingMessages = document.getElementById("voting-chat-messages");
@@ -2708,6 +2685,22 @@ export default class GameScene extends Phaser.Scene {
 
         socketService.socket.on("night_story", (data: any) => {
             this.addEventLog(ar.game.nightStory(data.story), "#c084fc");
+        });
+
+        socketService.socket.on("player_disconnected", (data: any) => {
+            const username = data?.username || "لاعب";
+            this.addEventLog(`انقطع اتصال ${username}`, "#f59e0b");
+            socketService.socket.emit("request_room_state");
+        });
+
+        socketService.socket.on("player_rejoined", (data: any) => {
+            const username = data?.username || "لاعب";
+            this.addEventLog(`عاد ${username} إلى اللعبة`, "#22c55e");
+            socketService.socket.emit("request_room_state");
+        });
+
+        socketService.socket.on("spectator_joined", () => {
+            this.addEventLog("انضم مشاهد جديد", "#64748b");
         });
 
         socketService.socket.on("game_over", (data: any) => this.showWinOverlay(data));
@@ -2764,7 +2757,8 @@ export default class GameScene extends Phaser.Scene {
             "vote_update", "player_killed", "receive_message",
             "detective_result", "voting_result", "voting_started",
             "night_review", "night_story", "back_to_lobby", "night_action_status", "server_reset",
-            "doctor_error", "mafia_error",
+            "doctor_error", "mafia_error", "game_error",
+            "player_disconnected", "player_rejoined", "spectator_joined",
             "voice_peers", "voice_peer_joined", "voice_reconnect_request",
         ];
         evts.forEach(e => socketService.socket.off(e));

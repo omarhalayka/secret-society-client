@@ -57,6 +57,8 @@ export default class DetectiveNightScene extends Phaser.Scene {
         socketService.socket.off("phase_changed");
         socketService.socket.off("player_killed");
         socketService.socket.off("detective_result");
+        socketService.socket.off("game_error");
+        socketService.socket.off("night_targets");
         socketService.socket.off("back_to_lobby");
         socketService.socket.off("server_reset");
     }
@@ -84,6 +86,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
         }
 
         this.setupSocketListeners();
+        socketService.socket.emit("request_night_targets");
     }
 
     update() {
@@ -547,6 +550,24 @@ export default class DetectiveNightScene extends Phaser.Scene {
 
     // ─── Socket Listeners ─────────────────────────────────────────────────────
     private setupSocketListeners() {
+        socketService.socket.on("night_targets", (data: any) => {
+            if (!Array.isArray(data?.players)) return;
+
+            this.players = this.normalizePlayers(data.players);
+
+            if (!this.isMobile) {
+                this.playerCards.forEach((card) => {
+                    if (card?.active) card.destroy();
+                });
+                this.playerCards = [];
+                this.drawPlayerCards(this.scale.width, this.scale.height);
+                return;
+            }
+
+            document.getElementById("mobile-night-ui")?.remove();
+            this.createMobileUI(this.scale.width, this.scale.height);
+        });
+
         socketService.socket.on("phase_changed", (data: any) => {
             if (data.phase === "NIGHT" || data.phase === "NIGHT_REVIEW") return;
             this.cameras.main.fadeOut(400, 8, 8, 15);
@@ -572,6 +593,22 @@ export default class DetectiveNightScene extends Phaser.Scene {
         socketService.socket.on("detective_result", (data: any) => {
             this._submitLock = false;
             this.showResult(data);
+        });
+
+        socketService.socket.on("game_error", (data: any) => {
+            this._submitLock = false;
+            this.actionUsed = false;
+            if (!this.isMobile) {
+                this.playerCards.forEach(card => {
+                    if (card?.active) card.destroy();
+                });
+                this.playerCards = [];
+                this.drawPlayerCards(this.scale.width, this.scale.height);
+            } else {
+                document.getElementById("mobile-night-ui")?.remove();
+                this.createMobileUI(this.scale.width, this.scale.height);
+            }
+            if (data?.message) this.showToast(data.message, "danger");
         });
 
         socketService.socket.on("player_killed", (data: any) => {
@@ -628,6 +665,8 @@ export default class DetectiveNightScene extends Phaser.Scene {
         socketService.socket.off("phase_changed");
         socketService.socket.off("player_killed");
         socketService.socket.off("detective_result");
+        socketService.socket.off("game_error");
+        socketService.socket.off("night_targets");
         socketService.socket.off("back_to_lobby");
         socketService.socket.off("server_reset");
     }

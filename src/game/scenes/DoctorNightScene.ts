@@ -70,6 +70,7 @@ export default class DoctorNightScene extends Phaser.Scene {
 
         // ✅ نستقبل night_targets أول شي قبل رسم البطاقات
         this.setupSocketListeners();
+        socketService.socket.emit("request_night_targets");
 
         if (this.isMobile) {
             this.createMobileUI(W, H);
@@ -615,25 +616,28 @@ export default class DoctorNightScene extends Phaser.Scene {
     private setupSocketListeners() {
         // ✅ استقبال lastTarget من السيرفر وإعادة رسم البطاقات إذا لزم
         socketService.socket.on("night_targets", (data: any) => {
+            const playersChanged = Array.isArray(data?.players);
+            const nextLastTarget = typeof data?.lastTarget === "string" ? data.lastTarget : null;
+
             if (Array.isArray(data?.players)) {
                 this.players = this.normalizePlayers(data.players);
             }
-            if (data.lastTarget && data.lastTarget !== this.lastDoctorTarget) {
-                this.lastDoctorTarget = data.lastTarget;
-                // إعادة رسم البطاقات مع القيد الجديد
-                if (!this.isMobile) {
-                    this.playerCards.forEach(c => { if (c?.active) c.destroy(); });
-                    this.playerCards = [];
-                    const W = this.scale.width;
-                    const H = this.scale.height;
-                    this.drawPlayerCards(W, H);
-                } else {
-                    // إعادة إنشاء Mobile UI
-                    document.getElementById("mobile-night-ui")?.remove();
-                    const W = this.scale.width;
-                    const H = this.scale.height;
-                    this.createMobileUI(W, H);
-                }
+            const targetChanged = nextLastTarget !== this.lastDoctorTarget;
+            this.lastDoctorTarget = nextLastTarget;
+
+            if (!playersChanged && !targetChanged) return;
+
+            if (!this.isMobile) {
+                this.playerCards.forEach(c => { if (c?.active) c.destroy(); });
+                this.playerCards = [];
+                const W = this.scale.width;
+                const H = this.scale.height;
+                this.drawPlayerCards(W, H);
+            } else {
+                document.getElementById("mobile-night-ui")?.remove();
+                const W = this.scale.width;
+                const H = this.scale.height;
+                this.createMobileUI(W, H);
             }
         });
 
