@@ -144,135 +144,157 @@ export default class DoctorNightScene extends Phaser.Scene {
     }
 
     // ─── Desktop: Player Cards ────────────────────────────────────────────────
-    private drawPlayerCards(W: number, H: number) {
-        const targets = this.players.filter(p => p.alive);
-        if (!targets.length) return;
+private drawPlayerCards(W: number, H: number) {
+    const targets = this.players.filter(p => p.alive);
+    if (!targets.length) return;
 
-        let cardW = 140, cardH = 190, gap = 24;
-        const naturalW = targets.length * cardW + (targets.length - 1) * gap;
-        if (naturalW > W - 40) {
-            const s = (W - 40) / naturalW;
-            cardW = Math.floor(cardW * s);
-            cardH = Math.floor(cardH * s);
-            gap   = Math.floor(gap * s);
-        }
-        const totalW = targets.length * cardW + (targets.length - 1) * gap;
-        const startX = W / 2 - totalW / 2 + cardW / 2;
-        const cardY  = H / 2 + 30;
+    // زيادة حجم البطاقات الأساسي للديسكتوب
+    let cardW = 180;    // عرض أكبر
+    let cardH = 240;    // ارتفاع أكبر
+    let gap = 28;       // مسافة أكبر بين البطاقات
 
-        targets.forEach((player, i) => {
-            const isMe = player.id === socketService.socket.id;
-            const x    = startX + i * (cardW + gap);
-            const container = this.add.container(x, cardY).setDepth(5).setAlpha(0);
+    // حساب العدد القصوى في الصف بناءً على عرض الشاشة
+    const maxPerRow = Math.max(2, Math.floor((W - 80) / (cardW + gap)));
+    const rows = Math.ceil(targets.length / maxPerRow);
 
-            const shadow = this.add.graphics();
-            shadow.fillStyle(0x000000, 0.6);
-            shadow.fillRoundedRect(-cardW / 2 + 4, -cardH / 2 + 6, cardW, cardH, 12);
-
-            const bg = this.add.graphics();
-            let isSelected = false;
-            const drawCardBg = (hover: boolean, selected: boolean) => {
-                bg.clear();
-                if (selected) {
-                    bg.fillGradientStyle(0x0a2a0a, 0x0a2a0a, 0x051a05, 0x051a05, 1);
-                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
-                    bg.lineStyle(2, this.C.accentGlow, 1);
-                } else if (hover) {
-                    bg.fillGradientStyle(0x0f2a14, 0x0f2a14, 0x0a1a0c, 0x0a1a0c, 1);
-                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
-                    bg.lineStyle(1, this.C.borderBright, 0.6);
-                } else {
-                    bg.fillGradientStyle(0x0a1a0c, 0x0a1a0c, 0x060e07, 0x060e07, 1);
-                    bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
-                    bg.lineStyle(1, this.C.borderDim, 0.5);
-                }
-                bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
-            };
-            drawCardBg(false, false);
-
-            const nameText = this.add.text(0, cardH / 2 - 30, player.username, {
-                fontSize:   `${Math.max(10, Math.floor(cardW / 9))}px`,
-                color:      isMe ? "#a3e6b4" : "#c8dac8",
-                fontFamily: ARABIC_FONT_FAMILY,
-                fontStyle:  isMe ? "bold" : "normal",
-                align:      "center",
-                wordWrap:   { width: cardW - 10 },
-            }).setOrigin(0.5, 0.5);
-
-            const meLabel = isMe
-                ? this.add.text(0, cardH / 2 - 12, `(${ar.night.you})`, {
-                    fontSize: "9px", color: "#4ade80",
-                    fontFamily: ARABIC_FONT_FAMILY,
-                }).setOrigin(0.5)
-                : null;
-
-            const btnBg  = this.add.graphics();
-            const btnH   = Math.max(28, Math.floor(cardH * 0.16));
-            const btnW2  = cardW - 20;
-            const btnY   = cardH / 2 - btnH / 2 - 6;
-            const drawBtn = (active: boolean) => {
-                btnBg.clear();
-                btnBg.fillStyle(active ? 0x22c55e : 0x1a3d20, 1);
-                btnBg.fillRoundedRect(-btnW2 / 2, btnY - btnH / 2, btnW2, btnH, 6);
-            };
-            drawBtn(false);
-
-            const btnLabel = this.add.text(0, btnY, ar.night.doctorProtect, {
-                fontSize:   `${Math.max(9, Math.floor(cardH * 0.075))}px`,
-                color:      "#22c55e",
-                fontFamily: ARABIC_FONT_FAMILY,
-                fontStyle:  "bold",
-            }).setOrigin(0.5);
-
-            const items: Phaser.GameObjects.GameObject[] = [shadow, bg, nameText, btnBg, btnLabel];
-            if (meLabel) items.push(meLabel);
-            container.add(items);
-
-            // ✅ Interactive zone للكامل
-            container.setSize(cardW, cardH);
-            container.setInteractive();
-            container.on("pointerover", () => {
-                if (this.actionUsed || isSelected) return;
-                drawCardBg(true, false);
-                drawBtn(true);
-                btnLabel.setColor("#000000");
-            });
-            container.on("pointerout", () => {
-                if (isSelected) return;
-                drawCardBg(false, false);
-                drawBtn(false);
-                btnLabel.setColor("#22c55e");
-            });
-            container.on("pointerdown", () => {
-                // ✅ منع double-submit بـ lock
-                if (this.actionUsed || this._submitLock) return;
-                this._submitLock = true;
-                this.actionUsed  = true;
-                isSelected = true;
-
-                // تحديث كل الكروت
-                this.playerCards.forEach(c => c.disableInteractive());
-
-                drawCardBg(false, true);
-                drawBtn(true);
-                btnLabel.setColor("#000000").setText(ar.night.doctorSaving);
-
-                this.savedPlayerId = player.id;
-                this.cameras.main.flash(400, 0, 100, 0);
-                socketService.socket.emit("doctor_save", player.id);
-            });
-
-            this.playerCards.push(container);
-            this.tweens.add({
-                targets:  container,
-                alpha:    1,
-                y:        cardY - 8,
-                duration: 400,
-                ease:     "Cubic.easeOut",
-                delay:    200 + i * 80,
-            });
-        });
+    // إذا كان عدد اللاعبين قليلاً، نضبط العرض ليتناسب مع الشاشة
+    const totalW = Math.min(targets.length, maxPerRow) * cardW + (Math.min(targets.length, maxPerRow) - 1) * gap;
+    if (totalW > W - 80) {
+        // تقليل الحجم بنسبة تتناسب مع العرض المتاح
+        const scale = (W - 80) / totalW;
+        cardW = Math.floor(cardW * scale);
+        cardH = Math.floor(cardH * scale);
+        gap = Math.floor(gap * scale);
     }
+
+    const perRow = Math.min(targets.length, maxPerRow);
+    const totalWidth = perRow * cardW + (perRow - 1) * gap;
+    const startX = W / 2 - totalWidth / 2 + cardW / 2;
+    const startY = H / 2 - (rows * (cardH + gap)) / 2 + cardH / 2 + 20; // رفع البطاقات قليلاً
+
+    targets.forEach((player, i) => {
+        const isMe = player.id === socketService.socket.id;
+        const col = i % perRow;
+        const row = Math.floor(i / perRow);
+        const x = startX + col * (cardW + gap);
+        const y = startY + row * (cardH + gap);
+
+        const container = this.add.container(x, y).setDepth(5).setAlpha(0);
+
+        // ظل البطاقة
+        const shadow = this.add.graphics();
+        shadow.fillStyle(0x000000, 0.5);
+        shadow.fillRoundedRect(-cardW / 2 + 6, -cardH / 2 + 8, cardW, cardH, 16);
+
+        // خلفية البطاقة
+        const bg = this.add.graphics();
+        let isSelected = false;
+        const drawCardBg = (hover: boolean, selected: boolean) => {
+            bg.clear();
+            if (selected) {
+                bg.fillGradientStyle(0x0a2a0a, 0x0a2a0a, 0x051a05, 0x051a05, 1);
+                bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
+                bg.lineStyle(3, this.C.accentGlow, 1);
+            } else if (hover) {
+                bg.fillGradientStyle(0x0f2a14, 0x0f2a14, 0x0a1a0c, 0x0a1a0c, 1);
+                bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
+                bg.lineStyle(2, this.C.borderBright, 0.8);
+            } else {
+                bg.fillGradientStyle(0x0a1a0c, 0x0a1a0c, 0x060e07, 0x060e07, 1);
+                bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
+                bg.lineStyle(2, this.C.borderDim, 0.7);
+            }
+            bg.strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 16);
+        };
+        drawCardBg(false, false);
+
+        // اسم اللاعب (بحجم أكبر)
+        const nameText = this.add.text(0, -cardH * 0.15, player.username, {
+            fontSize: `${Math.max(14, Math.floor(cardW / 10))}px`,
+            color: isMe ? "#a3e6b4" : "#e8f1e8",
+            fontFamily: ARABIC_FONT_FAMILY,
+            fontStyle: isMe ? "bold" : "normal",
+            align: "center",
+            wordWrap: { width: cardW - 20 },
+        }).setOrigin(0.5, 0.5);
+
+        // علامة "أنت"
+        const meLabel = isMe
+            ? this.add.text(0, -cardH * 0.05, `(${ar.night.you})`, {
+                fontSize: `${Math.max(10, Math.floor(cardW / 14))}px`,
+                color: "#4ade80",
+                fontFamily: ARABIC_FONT_FAMILY,
+            }).setOrigin(0.5, 0.5)
+            : null;
+
+        // زر الحماية
+        const btnBg = this.add.graphics();
+        const btnH = Math.max(32, Math.floor(cardH * 0.16));
+        const btnW = cardW - 30;
+        const btnY = cardH * 0.35;
+        const drawBtn = (active: boolean) => {
+            btnBg.clear();
+            btnBg.fillStyle(active ? 0x22c55e : 0x1a3d20, 1);
+            btnBg.fillRoundedRect(-btnW / 2, btnY - btnH / 2, btnW, btnH, 8);
+        };
+        drawBtn(false);
+
+        const btnLabel = this.add.text(0, btnY, ar.night.doctorProtect, {
+            fontSize: `${Math.max(12, Math.floor(cardH * 0.085))}px`,
+            color: "#22c55e",
+            fontFamily: ARABIC_FONT_FAMILY,
+            fontStyle: "bold",
+        }).setOrigin(0.5, 0.5);
+
+        const items: Phaser.GameObjects.GameObject[] = [shadow, bg, nameText, btnBg, btnLabel];
+        if (meLabel) items.push(meLabel);
+        container.add(items);
+
+        // جعل البطاقة تفاعلية
+        container.setSize(cardW, cardH);
+        container.setInteractive();
+        container.on("pointerover", () => {
+            if (this.actionUsed || isSelected) return;
+            drawCardBg(true, false);
+            drawBtn(true);
+            btnLabel.setColor("#000000");
+            this.tweens.add({ targets: container, scale: 1.02, duration: 120, ease: "Back.easeOut" });
+        });
+        container.on("pointerout", () => {
+            if (isSelected) return;
+            drawCardBg(false, false);
+            drawBtn(false);
+            btnLabel.setColor("#22c55e");
+            this.tweens.add({ targets: container, scale: 1, duration: 120 });
+        });
+        container.on("pointerdown", () => {
+            if (this.actionUsed || this._submitLock) return;
+            this._submitLock = true;
+            this.actionUsed = true;
+            isSelected = true;
+
+            this.playerCards.forEach(c => c.disableInteractive());
+
+            drawCardBg(false, true);
+            drawBtn(true);
+            btnLabel.setColor("#000000").setText(ar.night.doctorSaving);
+
+            this.savedPlayerId = player.id;
+            this.cameras.main.flash(400, 0, 100, 0);
+            socketService.socket.emit("doctor_save", player.id);
+        });
+
+        this.playerCards.push(container);
+        this.tweens.add({
+            targets: container,
+            alpha: 1,
+            y: y - 10,
+            duration: 400,
+            ease: "Cubic.easeOut",
+            delay: 200 + i * 80,
+        });
+    });
+}
 
     // ─── Mobile UI ────────────────────────────────────────────────────────────
     private createMobileUI(W: number, H: number) {
