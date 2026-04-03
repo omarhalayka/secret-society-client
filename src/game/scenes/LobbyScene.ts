@@ -657,11 +657,18 @@ export default class LobbyScene extends Phaser.Scene {
     }
 
     private unlockPlayerButton() {
+        // Check if this scene is still active (user may have navigated away)
+        if (!this.scene.isActive()) return;
+
         const c = this.roleButtons["player"];
         if (!c) return;
+
+        // Check if container is still valid (not destroyed)
+        if (!c.active || !c.scene) return;
+
         c.setAlpha(1);
         const iconTxt = c.getData("icon") as Phaser.GameObjects.Text;
-        if (iconTxt) iconTxt.setText("⚔");
+        if (iconTxt && iconTxt.active) iconTxt.setText("⚔");
         c.setInteractive(
             new Phaser.Geom.Rectangle(
                 -this.roleBtnW / 2,

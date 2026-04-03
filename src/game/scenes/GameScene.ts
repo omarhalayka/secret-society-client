@@ -1510,6 +1510,9 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private showPhaseTransition(phase: string) {
+        // Check if this scene is still active (user may have navigated to night scene)
+        if (!this.scene.isActive()) return;
+
         const colorMap: Record<string, string> = {
             NIGHT: "#818cf8", DAY: "#fcd34d", VOTING: "#fbbf24", NIGHT_REVIEW: "#c084fc"
         };
@@ -1528,7 +1531,10 @@ export default class GameScene extends Phaser.Scene {
             onComplete: () => this.tweens.add({ targets: ov, alpha: 0, scaleX: 1.4, scaleY: 1.4, duration: 650, delay: 1100, onComplete: () => ov.destroy() })
         });
         // تحديث النص الثابت في الشريط العلوي (عرض المرحلة بالعربية)
-        this.phaseText?.setText(`•  ${phaseName}`).setColor(color);
+        // Check if phaseText is still valid before updating
+        if (this.phaseText && this.phaseText.active) {
+            this.phaseText.setText(`•  ${phaseName}`).setColor(color);
+        }
     }
 
     private showWinOverlay(data: any) {
@@ -2535,13 +2541,20 @@ if (data.phase === "NIGHT" && !this.isAdmin && !this.isNightSceneActive) {
         evts.forEach(e => socketService.socket.off(e));
 
         socketService.socket.on("room_state", (data: any) => {
-            this.roundText?.setText(ar.game.round(data.round));
+            // Check if scene is still active before updating UI elements
+            if (!this.scene.isActive()) return;
+
+            if (this.roundText && this.roundText.active) {
+                this.roundText.setText(ar.game.round(data.round));
+            }
             const colorMap: Record<string, string> = {
                 NIGHT: "#818cf8", DAY: "#fcd34d", VOTING: "#fbbf24",
                 NIGHT_REVIEW: "#c084fc", WAITING: "#64748b"
             };
             const phaseName = getPhaseLabel(data.phase);
-            this.phaseText?.setText(`•  ${phaseName}`).setColor(colorMap[data.phase] || "#64748b");
+            if (this.phaseText && this.phaseText.active) {
+                this.phaseText.setText(`•  ${phaseName}`).setColor(colorMap[data.phase] || "#64748b");
+            }
             this.drawPlayers(data.players, data.phase);
             this.updateChatUI(data.phase);
 
@@ -2623,7 +2636,9 @@ if (data.phase === "NIGHT" && !this.isAdmin && !this.isNightSceneActive) {
             if (data.phase !== "NIGHT") this.isNightSceneActive = false;
             const phaseName = getPhaseLabel(data.phase);
             this.showPhaseTransition(phaseName);
-            this.roundText?.setText(ar.game.round(data.round));
+            if (this.roundText && this.roundText.active) {
+                this.roundText.setText(ar.game.round(data.round));
+            }
             this.updateChatUI(data.phase);
             const myPlayer = this.currentPlayers.find((p) => this.isCurrentPlayer(p));
             voiceManager.setPhase(data.phase, this.role, myPlayer?.alive ?? true);
