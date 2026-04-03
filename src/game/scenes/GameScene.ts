@@ -2501,6 +2501,18 @@ export default class GameScene extends Phaser.Scene {
                 codeEl.textContent = data.code;
                 genBtn.textContent = ar.game.newCode;
                 genBtn.style.opacity = "1";
+                // حوالي سطر 2552
+if (data.phase === "NIGHT" && !this.isAdmin && !this.isNightSceneActive) {
+    console.log("🔍 NIGHT phase started, role:", this.role, "isAdmin:", this.isAdmin);
+    const nightSceneMap: Record<string, string> = {
+        MAFIA: "MafiaNightScene", 
+        DOCTOR: "DoctorNightScene", 
+        DETECTIVE: "DetectiveNightScene",
+    };
+    const targetScene = nightSceneMap[this.role];
+    console.log("🎬 Target scene:", targetScene);
+    // ...
+}
             });
         });
 
