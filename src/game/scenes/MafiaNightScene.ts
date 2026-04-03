@@ -1,10 +1,9 @@
-﻿import Phaser from "phaser";
+﻿// src/scenes/night/MafiaNightScene.ts
+// ✅ الإصلاح: منع تكرار الهدف ليلتين متتاليتين - عرض البطاقات الممنوعة مع تعطيلها
+import Phaser from "phaser";
 import { socketService } from "../../socket";
 import { ar, ARABIC_FONT_FAMILY } from "../../i18n";
 
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-//  MafiaNightScene â€” Desktop: Phaser cards | Mobile: HTML overlay
-// â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 export default class MafiaNightScene extends Phaser.Scene {
 
     private players: any[] = [];
@@ -17,7 +16,14 @@ export default class MafiaNightScene extends Phaser.Scene {
     private mafiaTeamCount: number = 1;
     private myPlayer: any = null;
 
-    // Ø¬Ø³ÙŠÙ…Ø§Øª Ø§Ù„Ø¬Ù…Ø±
+    // ✅ متغيرات منع التكرار
+    private lastTargetPlayerId: string | null = null;  // آخر هدف من الليلة الماضية
+    private restrictedPlayerIds: string[] = [];  // قائمة الأهداف الممنوعة
+
+    // ✅ متغير لlastTarget من السيرفر
+    private serverLastTarget: string | null = null;
+
+    // Effects
     private embers: Array<{
         gfx: Phaser.GameObjects.Graphics;
         x: number; y: number; vx: number; vy: number;
@@ -27,7 +33,7 @@ export default class MafiaNightScene extends Phaser.Scene {
     private readonly C = {
         bg: 0x080810, surface: 0x0f0f18, card: 0x130a0a,
         cardHover: 0x1f0f0f, borderDim: 0x2a1515, borderBright: 0xcc2222,
-        accent: 0xcc2222, accentGlow: 0xff4444,
+        accent: 0xcc2222, accentGlow: 0xff4444, restricted: 0x444444,
     };
 
     constructor() { super("MafiaNightScene"); }
@@ -47,8 +53,19 @@ export default class MafiaNightScene extends Phaser.Scene {
         this.actionUsed = false;
         this.killedPlayerId = null;
         this.embers = [];
+        this.restrictedPlayerIds = [];
+        this.lastTargetPlayerId = null;
+        this.serverLastTarget = data.lastTarget || null;
+
         this.myPlayer = this.players.find((p) => p.id === socketService.playerId) || null;
         this.mafiaTeamCount = Math.max(1, this.players.filter((p) => p.role === "MAFIA" && p.alive).length);
+
+        // ✅ إذا كان هناك lastTarget من السيرفر، نضيفه للممنوعين
+        if (this.serverLastTarget) {
+            this.restrictedPlayerIds.push(this.serverLastTarget);
+            this.lastTargetPlayerId = this.serverLastTarget;
+        }
+
         socketService.socket.off("phase_changed");
         socketService.socket.off("player_killed");
         socketService.socket.off("back_to_lobby");
@@ -57,18 +74,20 @@ export default class MafiaNightScene extends Phaser.Scene {
         socketService.socket.off("mafia_chat_message");
         socketService.socket.off("mafia_action_registered");
         socketService.socket.off("server_reset");
+        socketService.socket.off("mafia_error");
     }
 
     create() {
         document.getElementById("mobile-game-ui")?.remove();
         document.getElementById("mobile-voting-overlay")?.remove();
         document.getElementById("mobile-admin-bar")?.remove();
+        document.getElementById("mobile-night-ui")?.remove();
+        document.getElementById("mafia-desktop-chat")?.remove();
 
         const W = this.scale.width;
         const H = this.scale.height;
         this.isMobile = W < 700;
 
-        // â”€â”€â”€ Ù‡Ù„ Ø§Ù„Ù…Ø§ÙÙŠØ§ Ù„Ø­Ø§Ù„Ù‡ØŸ â”€â”€â”€
         this.isSoloMafia = this.mafiaTeamCount <= 1;
 
         this.cameras.main.setBackgroundColor("#080810");
@@ -85,7 +104,6 @@ export default class MafiaNightScene extends Phaser.Scene {
         } else {
             this.drawTitle(W);
             this.drawPlayerCards(W, H);
-            // chat Ø¨Ø³ Ù„Ùˆ ÙÙŠ Ø£ÙƒØ«Ø± Ù…Ù† Ù…Ø§ÙÙŠØ§
             if (!this.isSoloMafia && !(this.myPlayer && !this.myPlayer.alive)) {
                 this.createDesktopChatPanel();
             }
@@ -117,9 +135,11 @@ export default class MafiaNightScene extends Phaser.Scene {
         });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    //  Ø®Ù„ÙÙŠØ©
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ✅ دالة فحص إذا كان الهدف ممنوع
+    private isTargetRestricted(playerId: string): boolean {
+        return this.restrictedPlayerIds.includes(playerId);
+    }
+
     private drawBackground(W: number, H: number) {
         this.add.rectangle(0, 0, W, H, this.C.bg).setOrigin(0).setDepth(0);
         const grid = this.add.graphics().setDepth(0);
@@ -132,31 +152,37 @@ export default class MafiaNightScene extends Phaser.Scene {
         glow.fillRect(0, H * 0.55, W, H * 0.45);
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    //  Topbar
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawTopBar(W: number) {
         this.add.rectangle(0, 0, W, 56, this.C.surface).setOrigin(0).setDepth(2);
         const line = this.add.graphics().setDepth(3);
         line.lineStyle(2, this.C.accent, 0.8);
         line.moveTo(0, 56); line.lineTo(W, 56); line.strokePath();
-        this.add.text(20, 28, ar.night.mafiaRoleLabel, {
+
+        // ✅ رسالة التنبيه إذا كان هناك هدف ممنوع
+        let alertText = "";
+        if (this.lastTargetPlayerId) {
+            const lastPlayer = this.players.find(p => p.id === this.lastTargetPlayerId);
+            if (lastPlayer) {
+                alertText = ` ⛔ ${lastPlayer.username}`;
+            }
+        }
+
+        this.add.text(20, 28, ar.night.mafiaRoleLabel + alertText, {
             fontSize: "14px", color: "#cc2222",
             fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", align: "right"
         }).setOrigin(0, 0.5).setDepth(3);
+
         this.add.text(W / 2, 28, ar.night.room(this.roomId?.substring(0, 8).toUpperCase()), {
             fontSize: "11px", color: "#664444",
             fontFamily: ARABIC_FONT_FAMILY, align: "center"
         }).setOrigin(0.5, 0.5).setDepth(3);
+
         this.add.text(W - 20, 28, ar.night.nightPhase, {
             fontSize: "11px", color: "#664444",
             fontFamily: ARABIC_FONT_FAMILY, align: "right"
         }).setOrigin(1, 0.5).setDepth(3);
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    //  Desktop: Ø¹Ù†ÙˆØ§Ù†
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private drawTitle(W: number) {
         const isDead = this.myPlayer && !this.myPlayer.alive;
         const titleY = 110;
@@ -176,7 +202,6 @@ export default class MafiaNightScene extends Phaser.Scene {
         divider.lineStyle(1, this.C.accent, 0.4);
         divider.moveTo(W / 2 - 120, titleY + 58); divider.lineTo(W / 2 + 120, titleY + 58); divider.strokePath();
         this.tweens.add({ targets: divider, alpha: 1, duration: 500, delay: 600 });
-        // Ù…Ù„Ø§Ø­Ø¸Ø©: createDesktopChatPanel ØªÙ†Ø§Ø¯Ù‰ Ù…Ù† create() Ù…Ø¨Ø§Ø´Ø±Ø©
     }
 
     private createDesktopChatPanel() {
@@ -195,13 +220,12 @@ export default class MafiaNightScene extends Phaser.Scene {
             boxShadow: "0 0 30px rgba(204,34,34,0.15)",
         });
 
-        // Header
         panel.innerHTML = `
             <div style="padding:10px 14px;border-bottom:1px solid #2a1515;background:rgba(0,0,0,0.3);border-radius:10px 10px 0 0">
                 <div style="color:#cc2222;font-size:10px;font-weight:bold">${ar.night.mafiaChannel}</div>
             </div>
             <div id="mafia-suggestion-bar-d" style="display:none;padding:6px 12px;background:rgba(204,34,34,0.08);border-bottom:1px solid #2a1515;direction:rtl">
-                <span style="color:#664444;font-size:9px">????????: </span>
+                <span style="color:#664444;font-size:9px">الاقتراح الحالي: </span>
                 <span id="suggestion-name-d" style="color:#ff4444;font-size:11px;font-weight:bold"></span>
                 <span id="suggestion-by-d" style="color:#664444;font-size:9px"></span>
             </div>
@@ -210,7 +234,6 @@ export default class MafiaNightScene extends Phaser.Scene {
             </div>
         `;
 
-        // Input
         if (!isDead) {
             const inputDiv = document.createElement("div");
             inputDiv.style.cssText = "display:flex;gap:6px;padding:8px;border-top:1px solid #2a1515";
@@ -236,7 +259,6 @@ export default class MafiaNightScene extends Phaser.Scene {
         document.body.appendChild(panel);
     }
 
-    // â”€â”€â”€ Ø¥Ø¶Ø§ÙØ© Ø±Ø³Ø§Ù„Ø© Ù„Ù„Ù€ chat (desktop + mobile) â”€â”€â”€
     private addDesktopChatMessage(from: string, message: string) {
         const chatBox = document.getElementById("mafia-chat-box-d");
         if (!chatBox) return;
@@ -263,40 +285,53 @@ export default class MafiaNightScene extends Phaser.Scene {
         if (by) by.textContent = ` (${suggestedBy})`;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    //  Desktop: Ø¨Ø·Ø§Ù‚Ø§Øª
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    // ✅ تعديل دالة رسم البطاقات: عرض الممنوعين مع تعطيلهم بدلاً من استبعادهم
     private drawPlayerCards(W: number, H: number) {
-        const targets = this.players.filter((p) => p.alive && p.id !== socketService.playerId && p.role !== "MAFIA");
-        if (!targets.length) return;
+        // جميع الأهداف المحتملة (أحياء، ليسوا مافيا، ليسوا اللاعب نفسه)
+        const allTargets = this.players.filter((p) =>
+            p.alive &&
+            p.id !== socketService.playerId &&
+            p.role !== "MAFIA"
+        );
+
+        if (!allTargets.length) {
+            const noTargetsText = this.add.text(W / 2, H / 2, ar.night.noTargets || "لا توجد أهداف متاحة", {
+                fontSize: "16px", color: "#664444",
+                fontFamily: ARABIC_FONT_FAMILY, align: "center",
+            }).setOrigin(0.5).setDepth(5);
+            return;
+        }
 
         let cardW = 140, cardH = 180, gap = 24;
-        const naturalW = targets.length * cardW + (targets.length - 1) * gap;
+        const naturalW = allTargets.length * cardW + (allTargets.length - 1) * gap;
         if (naturalW > W - 40) {
             const s = (W - 40) / naturalW;
             cardW = Math.floor(cardW * s);
             cardH = Math.floor(cardH * s);
             gap = Math.floor(gap * s);
         }
-        const totalW = targets.length * cardW + (targets.length - 1) * gap;
+        const totalW = allTargets.length * cardW + (allTargets.length - 1) * gap;
         const startX = W / 2 - totalW / 2 + cardW / 2;
         const cardY = H / 2 + 30;
 
-        targets.forEach((player, i) => {
+        allTargets.forEach((player, i) => {
+            const isRestricted = this.isTargetRestricted(player.id);
             const x = startX + i * (cardW + gap);
             const container = this.add.container(x, cardY).setDepth(5).setAlpha(0);
+
             const shadow = this.add.graphics();
             shadow.fillStyle(0x000000, 0.6);
             shadow.fillRoundedRect(-cardW / 2 + 4, -cardH / 2 + 6, cardW, cardH, 12);
 
             const bg = this.add.graphics();
+            let isSelected = false;
             const drawBg = (hover: boolean, selected: boolean) => {
                 bg.clear();
                 if (selected) {
                     bg.fillGradientStyle(0x2a0a0a, 0x2a0a0a, 0x1a0505, 0x1a0505, 1);
                     bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
                     bg.lineStyle(2, this.C.accentGlow, 1);
-                } else if (hover) {
+                } else if (hover && !isRestricted) {
                     bg.fillGradientStyle(0x1f0f0f, 0x1f0f0f, 0x0f0707, 0x0f0707, 1);
                     bg.fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 12);
                     bg.lineStyle(1.5, this.C.accent, 1);
@@ -316,10 +351,12 @@ export default class MafiaNightScene extends Phaser.Scene {
             topAccent.lineTo(cardW / 2 - 12, -cardH / 2);
             topAccent.strokePath();
 
-            const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x1a0a0a); avatarBg.setStrokeStyle(1, this.C.borderDim);
+            const avatarBg = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.21), 0x1a0a0a);
+            avatarBg.setStrokeStyle(1, this.C.borderDim);
             const avatarIcon = this.add.text(0, -cardH * 0.23, "•", { fontSize: `${Math.floor(cardW * 0.2)}px`, fontFamily: ARABIC_FONT_FAMILY }).setOrigin(0.5);
             const pulse = this.add.circle(0, -cardH * 0.23, Math.floor(cardW * 0.24), this.C.accent, 0);
             this.tweens.add({ targets: pulse, alpha: 0.15, scaleX: 1.3, scaleY: 1.3, duration: 1200, yoyo: true, repeat: -1, delay: i * 200 });
+
             const name = this.add.text(0, cardH * 0.07, player.username.toUpperCase(), {
                 fontSize: `${Math.max(10, Math.floor(cardW * 0.086))}px`,
                 color: "#c8b8b8", fontFamily: ARABIC_FONT_FAMILY, fontStyle: "bold", letterSpacing: 1
@@ -328,7 +365,7 @@ export default class MafiaNightScene extends Phaser.Scene {
             const btnBg = this.add.graphics();
             const drawBtnBg = (hover: boolean) => {
                 btnBg.clear();
-                btnBg.fillStyle(this.C.accent, hover ? 0.15 : 0);
+                btnBg.fillStyle(this.C.accent, hover && !isRestricted ? 0.15 : 0);
                 btnBg.fillRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
                 btnBg.lineStyle(1, this.C.accent, 1);
                 btnBg.strokeRoundedRect(-cardW * 0.355, cardH * 0.38 - 14, cardW * 0.71, 28, 6);
@@ -338,20 +375,39 @@ export default class MafiaNightScene extends Phaser.Scene {
             const btnLabel = this.add.text(0, cardH * 0.38, ar.night.mafiaSuggest, { fontSize: "10px", color: "#cc2222", fontFamily: ARABIC_FONT_FAMILY, align: "center" }).setOrigin(0.5);
             container.add([shadow, bg, topAccent, pulse, avatarBg, avatarIcon, name, btnBg, btnLabel]);
 
-            // store helpers
             container.setData("drawBg", drawBg);
             container.setData("drawBtnBg", drawBtnBg);
 
-            container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
-            container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
-            container.on("pointerout", () => { drawBg(false, false); topAccent.setAlpha(0); drawBtnBg(false); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 }); });
-            container.on("pointerdown", () => { if (this.actionUsed) return; this.handleTarget(player); });
+            // ✅ إذا كان الهدف ممنوعاً: تعطيل التفاعل وتعتيم البطاقة
+            if (isRestricted) {
+                container.setAlpha(0.5);
+                container.disableInteractive();
+                // إضافة علامة ممنوع
+                const banIcon = this.add.text(0, -cardH * 0.23, "⛔", {
+                    fontSize: `${Math.floor(cardW * 0.22)}px`,
+                    fontFamily: "Arial",
+                    color: "#ff8888"
+                }).setOrigin(0.5);
+                container.add(banIcon);
+            } else {
+                container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
+                container.on("pointerover", () => { if (this.actionUsed) return; drawBg(true, false); topAccent.setAlpha(1); drawBtnBg(true); this.tweens.add({ targets: container, scaleX: 1.05, scaleY: 1.05, y: cardY - 4, duration: 150 }); });
+                container.on("pointerout", () => { drawBg(false, false); topAccent.setAlpha(0); drawBtnBg(false); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, y: cardY, duration: 150 }); });
+                container.on("pointerdown", () => { if (this.actionUsed) return; this.handleTarget(player); });
+            }
+
             this.playerCards.push(container);
             this.tweens.add({ targets: container, alpha: 1, y: cardY, duration: 500, delay: 200 + i * 120, ease: "Back.easeOut", onStart: () => container.setY(cardY + 40) });
         });
     }
 
     private handleTarget(player: any) {
+        // ✅ فحص إضافي قبل الإرسال
+        if (this.isTargetRestricted(player.id)) {
+            this.showToast("لا يمكنك استهداف هذا اللاعب ليلتين متتاليتين ⛔", "danger");
+            return;
+        }
+
         this.killedPlayerId = player.id;
         this.cameras.main.flash(300, 120, 0, 0);
         socketService.socket.emit("mafia_kill", player.id);
@@ -362,8 +418,8 @@ export default class MafiaNightScene extends Phaser.Scene {
         this.killedPlayerId = targetId;
 
         this.playerCards.forEach(card => {
-            const isSelected = this.players.find((p) => p.id === targetId)?.username?.toUpperCase()
-                === (card.list[6] as Phaser.GameObjects.Text | undefined)?.text;
+            const nameText = card.list.find(l => l instanceof Phaser.GameObjects.Text && l.text === this.players.find(p => p.id === targetId)?.username?.toUpperCase());
+            const isSelected = !!nameText;
             const drawBg = card.getData("drawBg");
             const drawBtnBg = card.getData("drawBtnBg");
             if (drawBg) drawBg(false, isSelected);
@@ -397,9 +453,6 @@ export default class MafiaNightScene extends Phaser.Scene {
         });
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    //  Mobile UI
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private createMobileUI(W: number, H: number) {
         const ui = document.createElement("div");
         ui.id = "mobile-night-ui";
@@ -412,7 +465,6 @@ export default class MafiaNightScene extends Phaser.Scene {
 
         const isDead = this.myPlayer && !this.myPlayer.alive;
 
-        // â”€â”€â”€ Header â”€â”€â”€
         const header = document.createElement("div");
         Object.assign(header.style, {
             padding: "12px 16px", borderBottom: "1px solid #2a1515",
@@ -427,7 +479,27 @@ export default class MafiaNightScene extends Phaser.Scene {
                <div style="color:#664444;font-size:11px;margin-top:3px">${ar.night.mafiaSubtitle}</div>`;
         ui.appendChild(header);
 
-        // â”€â”€â”€ Ø§Ù‚ØªØ±Ø§Ø­ Ø§Ù„Ø¶Ø­ÙŠØ© Ø§Ù„Ø­Ø§Ù„ÙŠ â”€â”€â”€
+        // ✅ تنبيه الأهداف الممنوعة
+        if (this.lastTargetPlayerId) {
+            const lastPlayer = this.players.find(p => p.id === this.lastTargetPlayerId);
+            if (lastPlayer) {
+                const alertBanner = document.createElement("div");
+                Object.assign(alertBanner.style, {
+                    margin: "8px 12px 0",
+                    padding: "8px 12px",
+                    background: "rgba(239,68,68,0.1)",
+                    border: "1px solid rgba(239,68,68,0.3)",
+                    borderRadius: "6px",
+                    fontSize: "11px",
+                    color: "#ef4444",
+                    direction: "rtl",
+                    textAlign: "center",
+                });
+                alertBanner.textContent = `⛔ لا يمكنك استهداف "${lastPlayer.username}" هذه الليلة`;
+                ui.appendChild(alertBanner);
+            }
+        }
+
         const suggestionBar = document.createElement("div");
         suggestionBar.id = "mafia-suggestion-bar";
         Object.assign(suggestionBar.style, {
@@ -442,13 +514,11 @@ export default class MafiaNightScene extends Phaser.Scene {
         `;
         ui.appendChild(suggestionBar);
 
-        // â”€â”€â”€ Body: chat + Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø£Ù‡Ø¯Ø§Ù â”€â”€â”€
         const body = document.createElement("div");
         Object.assign(body.style, {
             flex: "1", display: "flex", flexDirection: "column", overflow: "hidden",
         });
 
-        // Chat messages â€” Ù…Ø®ÙÙŠ Ù„Ùˆ Ù…Ø§ÙÙŠØ§ Ù„Ø­Ø§Ù„Ù‡
         const chatBox = document.createElement("div");
         chatBox.id = "mafia-chat-box";
         Object.assign(chatBox.style, {
@@ -467,7 +537,6 @@ export default class MafiaNightScene extends Phaser.Scene {
         chatBox.appendChild(welcomeMsg);
         body.appendChild(chatBox);
 
-        // â”€â”€â”€ Ù‚Ø§Ø¦Ù…Ø© Ø§Ù„Ø£Ù‡Ø¯Ø§Ù (Ù…Ø®ÙÙŠØ© Ø¨Ø§Ù„Ø¨Ø¯Ø§ÙŠØ©) â”€â”€â”€
         const targetSection = document.createElement("div");
         targetSection.id = "mafia-target-section";
         Object.assign(targetSection.style, {
@@ -481,26 +550,34 @@ export default class MafiaNightScene extends Phaser.Scene {
             targetHeader.textContent = ar.night.mafiaTitle;
             targetSection.appendChild(targetHeader);
 
-            const targets = this.players.filter((p) => p.alive && p.id !== socketService.playerId && p.role !== "MAFIA");
+            // ✅ عرض جميع الأهداف المحتملة، مع تعطيل الممنوعين
+            const allTargets = this.players.filter((p) =>
+                p.alive &&
+                p.id !== socketService.playerId &&
+                p.role !== "MAFIA"
+            );
 
-            if (targets.length === 0) {
+            if (allTargets.length === 0) {
                 const empty = document.createElement("div");
                 empty.style.cssText = "color:#664444;text-align:center;padding:16px;font-size:12px";
-                empty.textContent = ar.night.noTargets;
+                empty.textContent = ar.night.noTargets || "لا توجد أهداف متاحة";
                 targetSection.appendChild(empty);
             } else {
-                targets.forEach(player => {
+                allTargets.forEach(player => {
+                    const isRestricted = this.isTargetRestricted(player.id);
                     const row = document.createElement("div");
                     row.id = `target-row-${player.id}`;
                     Object.assign(row.style, {
                         display: "flex", alignItems: "center", gap: "10px",
                         padding: "12px 16px", borderBottom: "1px solid #1a0a0a",
-                        cursor: "pointer", transition: "all 0.2s",
+                        cursor: isRestricted ? "not-allowed" : "pointer",
+                        transition: "all 0.2s",
                         background: "linear-gradient(145deg, rgba(30,10,10,0.8), rgba(15,5,5,0.9))",
                         borderRadius: "10px",
                         boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
                         border: "1px solid rgba(255,255,255,0.05)",
-                        marginBottom: "8px"
+                        marginBottom: "8px",
+                        opacity: isRestricted ? "0.5" : "1"
                     });
 
                     row.innerHTML = `
@@ -510,12 +587,23 @@ export default class MafiaNightScene extends Phaser.Scene {
                     `;
 
                     const btn = row.querySelector<HTMLButtonElement>(`#kill-btn-${player.id}`)!;
-                    btn.addEventListener("click", () => {
-                        if (this.actionUsed) return;
-                        socketService.socket.emit("mafia_kill", player.id);
-                        this.killedPlayerId = player.id;
-                        this.cameras.main.flash(300, 120, 0, 0);
-                    });
+                    if (isRestricted) {
+                        btn.disabled = true;
+                        btn.style.opacity = "0.4";
+                        btn.style.cursor = "not-allowed";
+                        btn.textContent = "⛔ ممنوع";
+                    } else {
+                        btn.addEventListener("click", () => {
+                            if (this.actionUsed) return;
+                            if (this.isTargetRestricted(player.id)) {
+                                this.showToast("لا يمكنك استهداف هذا اللاعب ليلتين متتاليتين ⛔", "danger");
+                                return;
+                            }
+                            socketService.socket.emit("mafia_kill", player.id);
+                            this.killedPlayerId = player.id;
+                            this.cameras.main.flash(300, 120, 0, 0);
+                        });
+                    }
 
                     targetSection.appendChild(row);
                 });
@@ -525,7 +613,6 @@ export default class MafiaNightScene extends Phaser.Scene {
         body.appendChild(targetSection);
         ui.appendChild(body);
 
-        // â”€â”€â”€ Chat Input â”€â”€â”€
         if (!isDead) {
             const chatInput = document.createElement("div");
             Object.assign(chatInput.style, {
@@ -555,7 +642,6 @@ export default class MafiaNightScene extends Phaser.Scene {
         document.body.appendChild(ui);
     }
 
-    // â”€â”€â”€ Ø¥Ø¶Ø§ÙØ© Ø±Ø³Ø§Ù„Ø© Ù„Ù„Ù€ chat â”€â”€â”€
     private addMafiaChatMessage(from: string, message: string) {
         const chatBox = document.getElementById("mafia-chat-box");
         if (!chatBox) return;
@@ -575,7 +661,6 @@ export default class MafiaNightScene extends Phaser.Scene {
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
-    // â”€â”€â”€ ØªØ­Ø¯ÙŠØ« Ø§Ù‚ØªØ±Ø§Ø­ Ø§Ù„Ø¶Ø­ÙŠØ© â”€â”€â”€
     private updateSuggestion(suggestedBy: string, targetUsername: string) {
         const bar = document.getElementById("mafia-suggestion-bar");
         if (!bar) return;
@@ -586,9 +671,6 @@ export default class MafiaNightScene extends Phaser.Scene {
         if (byEl) byEl.textContent = ` (اقترحه ${suggestedBy})`;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    //  Toast
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private showToast(message: string, type: "danger" | "success" | "info") {
         const colorMap = {
             danger: { bg: 0x1a0505, border: 0xcc2222, text: "#ff4444" },
@@ -600,7 +682,8 @@ export default class MafiaNightScene extends Phaser.Scene {
         const H = this.scale.height;
         const toast = this.add.container(W / 2, H - 40).setDepth(20);
         const msgW = Math.min(message.length * 9 + 48, Math.min(420, W - 20));
-        const bg = this.add.rectangle(0, 0, msgW, 40, c.bg); bg.setStrokeStyle(1, c.border);
+        const bg = this.add.rectangle(0, 0, msgW, 40, c.bg);
+        bg.setStrokeStyle(1, c.border);
         const text = this.add.text(0, 0, message, { fontSize: "13px", color: c.text, fontFamily: "'Courier New', monospace" }).setOrigin(0.5);
         toast.add([bg, text]);
         toast.setAlpha(0).setY(H - 10);
@@ -608,10 +691,8 @@ export default class MafiaNightScene extends Phaser.Scene {
         this.time.delayedCall(2800, () => this.tweens.add({ targets: toast, alpha: 0, y: H - 40, duration: 300, onComplete: () => toast.destroy() }));
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    //  Socket Listeners
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     private setupSocketListeners() {
+        // ✅ استقبال lastTarget من السيرفر
         socketService.socket.on("night_targets", (data: any) => {
             if (Array.isArray(data?.players)) {
                 this.players = this.normalizePlayers(data.players);
@@ -628,6 +709,18 @@ export default class MafiaNightScene extends Phaser.Scene {
                 };
             }
 
+            // ✅ استقبال lastTarget وتحديث قائمة الممنوعين
+            if (data?.lastTarget) {
+                this.serverLastTarget = data.lastTarget;
+                if (!this.restrictedPlayerIds.includes(data.lastTarget)) {
+                    this.restrictedPlayerIds.push(data.lastTarget);
+                }
+                this.lastTargetPlayerId = data.lastTarget;
+
+                // تحديث الواجهة
+                this.drawTopBar(this.scale.width);
+            }
+
             this.isSoloMafia = this.mafiaTeamCount <= 1;
 
             if (!this.isMobile) {
@@ -640,38 +733,40 @@ export default class MafiaNightScene extends Phaser.Scene {
                 if (!this.isSoloMafia && !(this.myPlayer && !this.myPlayer.alive)) {
                     this.createDesktopChatPanel();
                 }
-                return;
+            } else {
+                document.getElementById("mobile-night-ui")?.remove();
+                this.createMobileUI(this.scale.width, this.scale.height);
             }
-
-            document.getElementById("mobile-night-ui")?.remove();
-            this.createMobileUI(this.scale.width, this.scale.height);
         });
 
         socketService.socket.on("phase_changed", (data: any) => {
             if (data.phase === "NIGHT" || data.phase === "NIGHT_REVIEW") return;
-            // Ø§Ù…Ø³Ø­ Ø§Ù„Ù€ desktop chat Ù„Ù…Ø§ ÙŠÙ†ØªÙ‡ÙŠ Ø§Ù„Ù„ÙŠÙ„
             document.getElementById("mafia-desktop-chat")?.remove();
             this.cameras.main.fadeOut(500, 8, 8, 16);
             this.time.delayedCall(500, () => {
                 this.scene.start("GameScene", { role: "MAFIA", roomId: this.roomId, userType: "PLAYER" });
             });
         });
+
         socketService.socket.on("back_to_lobby", () => {
             this.cameras.main.fadeOut(300, 8, 8, 16);
             this.time.delayedCall(300, () => {
                 this.scene.start("GameScene", { role: "MAFIA", roomId: this.roomId, userType: "PLAYER" });
             });
         });
+
         socketService.socket.on("server_reset", () => {
             socketService.reset();
             document.getElementById("mobile-night-ui")?.remove();
             this.cameras.main.fadeOut(400, 6, 8, 16);
             this.time.delayedCall(400, () => { this.scene.start("LobbyScene"); });
         });
+
         socketService.socket.on("mafia_chat_message", (data: any) => {
             this.addMafiaChatMessage(data.from, data.message);
             if (!this.isMobile) this.addDesktopChatMessage(data.from, data.message);
         });
+
         socketService.socket.on("mafia_suggestion", (data: any) => {
             this.updateSuggestion(data.suggestedBy, data.targetUsername);
             this.addMafiaChatMessage("النظام", ar.night.mafiaSystemSuggested(data.suggestedBy, data.targetUsername));
@@ -680,15 +775,21 @@ export default class MafiaNightScene extends Phaser.Scene {
                 this.addDesktopChatMessage("النظام", ar.night.mafiaSystemSuggested(data.suggestedBy, data.targetUsername));
             }
         });
+
+        // ✅ معالج خطأ المافيا - يُظهر رسالة ويحرر القفل مع alert و console.warn
         socketService.socket.on("mafia_error", (data: any) => {
+            console.warn("❌ Mafia error:", data.message);
+            alert(data.message);
             this.actionUsed = false;
-            this.showToast(data.message, "danger");
+            this.showToast(data.message || "حدث خطأ", "danger");
         });
+
         socketService.socket.on("mafia_action_registered", (data: any) => {
             if (!data?.targetId) return;
             this.applyAcceptedMafiaTarget(data.targetId);
             this.showToast(ar.night.mafiaSystemSuggested(ar.night.you, data.targetUsername), "success");
         });
+
         socketService.socket.on("player_killed", (data: any) => {
             const msg = ar.night.eliminatedNight(data.username);
             this.showToast(msg, "danger");
@@ -696,12 +797,9 @@ export default class MafiaNightScene extends Phaser.Scene {
         });
     }
 
-    // â”€â”€â”€ helper: Ù†Ø­ÙØ¸ Ø§Ù„Ù€ event Ø¹Ø´Ø§Ù† GameScene ØªØ¹Ø±Ø¶Ù‡ Ù„Ù…Ø§ ØªØ±Ø¬Ø¹ â”€â”€â”€
     private addNightEventToMobilePanel(msg: string, color: string) {
-        // Ù†Ø­ÙØ¸ ÙÙŠ socketService Ø¹Ø´Ø§Ù† GameScene ØªØ¹Ø±Ø¶Ù‡ Ù„Ù…Ø§ ØªÙØªØ­
         socketService.pendingEvents.push({ msg, color });
 
-        // Ù„Ùˆ Ø§Ù„Ù€ panel Ù…ÙˆØ¬ÙˆØ¯ (Ù…ÙˆØ¨Ø§ÙŠÙ„) Ù†Ø¶ÙŠÙÙ‡ Ù…Ø¨Ø§Ø´Ø±Ø©
         const panel = document.getElementById("tab-panel-events");
         if (!panel) return;
         const now = new Date();
@@ -737,4 +835,3 @@ export default class MafiaNightScene extends Phaser.Scene {
         socketService.socket.off("mafia_action_registered");
     }
 }
-

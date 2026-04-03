@@ -1,4 +1,4 @@
-﻿// GameScene.ts - النسخة النهائية مع إصلاح كامل للعربية
+﻿// GameScene.ts - النسخة النهائية مع إصلاح كامل للعربية وإصلاح showVotingOverlay
 import Phaser from "phaser";
 import { socketService } from "../../socket";
 import { voiceManager } from "../../VoiceManager";
@@ -13,6 +13,7 @@ export default class GameScene extends Phaser.Scene {
     private currentPlayers: any[] = [];
     private myVote: string | null = null;
     private isNightSceneActive: boolean = false;
+    private votingPending: boolean = false; // العلم الجديد
 
     private phaseText!: Phaser.GameObjects.Text;
     private roundText!: Phaser.GameObjects.Text;
@@ -73,6 +74,7 @@ export default class GameScene extends Phaser.Scene {
         this.myVote = null;
         this.votingCards.clear();
         this.isNightSceneActive = false;
+        this.votingPending = false; // إعادة تعيين العلم
         if (this.isAdmin) socketService.isAdmin = true;
     }
 
@@ -2531,6 +2533,22 @@ export default class GameScene extends Phaser.Scene {
             this.drawPlayers(data.players, data.phase);
             this.updateChatUI(data.phase);
 
+            // معالجة التصويت المعلق
+            if (this.votingPending && data.phase === "VOTING") {
+                this.votingPending = false;
+                const myPlayer = this.currentPlayers.find((p) => this.isCurrentPlayer(p));
+                const isAlivePlayer = myPlayer?.alive && this.userType === "PLAYER" && !this.isAdmin;
+                if (isAlivePlayer) {
+                    this.time.delayedCall(300, () => {
+                        if (this.isMobile) this.showMobileVoting();
+                        else this.showVotingOverlay();
+                    });
+                }
+                if (!this.isMobile) {
+                    this.time.delayedCall(400, () => this.showVotingChat());
+                }
+            }
+
             if (data.phase === "NIGHT" && !this.isAdmin && !this.isNightSceneActive) {
                 const nightSceneMap: Record<string, string> = {
                     MAFIA: "MafiaNightScene", DOCTOR: "DoctorNightScene", DETECTIVE: "DetectiveNightScene",
@@ -2602,18 +2620,9 @@ export default class GameScene extends Phaser.Scene {
 
         socketService.socket.on("voting_started", () => {
             this.showPhaseTransition(getPhaseLabel("VOTING"));
+            // لا نستدعي showVotingOverlay مباشرة، بل نضبط العلم ونطلب الحالة
+            this.votingPending = true;
             socketService.socket.emit("request_room_state");
-            const myPlayer = this.currentPlayers.find((p) => this.isCurrentPlayer(p));
-            const isAlivePlayer = myPlayer?.alive && this.userType === "PLAYER" && !this.isAdmin;
-            if (isAlivePlayer) {
-                this.time.delayedCall(300, () => {
-                    if (this.isMobile) this.showMobileVoting();
-                    else this.showVotingOverlay();
-                });
-            }
-            if (!this.isMobile) {
-                this.time.delayedCall(400, () => this.showVotingChat());
-            }
         });
 
         socketService.socket.on("vote_update", (v: any) => {
