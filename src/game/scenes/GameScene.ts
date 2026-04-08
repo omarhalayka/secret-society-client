@@ -1,4 +1,4 @@
-﻿// GameScene.ts - النسخة النهائية مع إصلاح كامل للعربية وإصلاح showVotingOverlay
+// GameScene.ts - النسخة النهائية مع إصلاح كامل للعربية وإصلاح showVotingOverlay
 import Phaser from "phaser";
 import { socketService } from "../../socket";
 import { voiceManager } from "../../VoiceManager";
@@ -2596,14 +2596,15 @@ if (data.phase === "NIGHT" && !this.isAdmin && !this.isNightSceneActive) {
                 const targetScene = nightSceneMap[this.role];
                 if (targetScene) {
                     const myPlayer = this.currentPlayers.find((p) => this.isCurrentPlayer(p));
-                    if (!myPlayer?.alive) {
+                    // Only transition alive players to their night scene
+                    if (myPlayer?.alive) {
+                        if (this.isNightSceneActive) return;
+                        this.isNightSceneActive = true;
+                        this.cameras.main.fadeOut(500, 10, 13, 19);
+                        this.time.delayedCall(500, () => this.scene.start(targetScene, { roomId: this.roomId, players: this.currentPlayers }));
                         return;
                     }
-                    if (this.isNightSceneActive) return;
-                    this.isNightSceneActive = true;
-                    this.cameras.main.fadeOut(500, 10, 13, 19);
-                    this.time.delayedCall(500, () => this.scene.start(targetScene, { roomId: this.roomId, players: this.currentPlayers }));
-                    return;
+                    // Dead players: don't return early — let them see the phase transition UI below
                 }
             }
             if (data.phase === "NIGHT" && this.isAdmin) {
