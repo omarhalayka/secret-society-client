@@ -779,7 +779,6 @@ export default class MafiaNightScene extends Phaser.Scene {
         // ✅ معالج خطأ المافيا - يُظهر رسالة ويحرر القفل مع alert و console.warn
         socketService.socket.on("mafia_error", (data: any) => {
             console.warn("❌ Mafia error:", data.message);
-            alert(data.message);
             this.actionUsed = false;
             this.showToast(data.message || "حدث خطأ", "danger");
         });

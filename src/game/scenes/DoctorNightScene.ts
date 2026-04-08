@@ -35,6 +35,10 @@ export default class DoctorNightScene extends Phaser.Scene {
         }));
     }
 
+    private getEligibleTargets() {
+        return this.players.filter((player) => player.alive && player.id !== socketService.playerId);
+    }
+
     init(data: any) {
         this.roomId        = data.roomId;
         this.players       = this.normalizePlayers(data.players || []);
@@ -160,7 +164,7 @@ export default class DoctorNightScene extends Phaser.Scene {
 
     // ─── Desktop: Player Cards ────────────────────────────────────────────────
     private drawPlayerCards(W: number, H: number) {
-        const targets = this.players.filter(p => p.alive);
+        const targets = this.getEligibleTargets();
         if (!targets.length) return;
 
         let cardW = 140, cardH = 180, gap = 24;
@@ -426,7 +430,7 @@ export default class DoctorNightScene extends Phaser.Scene {
             gap:           "10px",
         });
 
-        const targets = this.players.filter(p => p.alive);
+        const targets = this.getEligibleTargets();
 
         if (targets.length === 0) {
             const empty = document.createElement("div");
@@ -559,7 +563,7 @@ export default class DoctorNightScene extends Phaser.Scene {
     private applyAcceptedDoctorSave(targetId: string, targetUsername: string) {
         this.showToast(ar.night.doctorProtecting(targetUsername), "success");
 
-        const alivePlayers = this.players.filter(p => p.alive);
+        const alivePlayers = this.getEligibleTargets();
         const idx = alivePlayers.findIndex(p => p.id === targetId);
         if (idx >= 0 && this.playerCards[idx]) {
             this.tweens.add({

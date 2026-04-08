@@ -97,6 +97,42 @@ export default class GameScene extends Phaser.Scene {
         return !!playerId && playerId === socketService.playerId;
     }
 
+    private getCurrentPlayer() {
+        return this.currentPlayers.find((player) => this.isCurrentPlayer(player)) || null;
+    }
+
+    private getVisibleRole(player: any) {
+        if (player?.role) return player.role;
+        if (this.isCurrentPlayer(player) && this.role && this.role !== "SPECTATOR") {
+            return this.role;
+        }
+        return null;
+    }
+
+    private ensureVotingUI(delay = 0) {
+        const myPlayer = this.getCurrentPlayer();
+        const canVote = !!myPlayer?.alive && !this.isAdmin && this.userType !== "SPECTATOR";
+        if (!canVote) return;
+
+        this.time.delayedCall(delay, () => {
+            if (!this.scene.isActive()) return;
+
+            if (this.isMobile) {
+                if (!document.getElementById("mobile-voting-overlay")) {
+                    this.showMobileVoting();
+                }
+                return;
+            }
+
+            if (!this.votingOverlayContainer) {
+                this.showVotingOverlay();
+            }
+            if (!document.getElementById("voting-chat-panel")) {
+                this.showVotingChat();
+            }
+        });
+    }
+
     create() {
         if (!this.role || !this.roomId) { this.scene.start("LobbyScene"); return; }
 
@@ -570,6 +606,7 @@ export default class GameScene extends Phaser.Scene {
         players.forEach(p => {
             const row = document.createElement("div");
             const isMe = this.isCurrentPlayer(p);
+            const visibleRole = this.getVisibleRole(p);
             Object.assign(row.style, {
                 display: "flex", alignItems: "center", gap: "10px",
                 padding: "10px 12px", borderRadius: "6px",
@@ -604,7 +641,7 @@ export default class GameScene extends Phaser.Scene {
             row.appendChild(name);
 
             // تعتمد الرؤية على السيرفر (إذا تم إرسال الدور، فالمستخدم مسموح له برؤيته)
-            const showRole = !!p.role;
+            const showRole = !!visibleRole;
 
             if (showRole) {
                 const roleSpan = document.createElement("span");
@@ -614,10 +651,10 @@ export default class GameScene extends Phaser.Scene {
                 };
                 Object.assign(roleSpan.style, {
                     fontSize: "10px", fontFamily: ARABIC_FONT_FAMILY,
-                    color: roleColors[p.role] || "#4b5563",
+                    color: roleColors[visibleRole as string] || "#4b5563",
                     opacity: p.alive ? "1" : "0.5",
                 });
-                roleSpan.textContent = `[${ar.roles[p.role as keyof typeof ar.roles] || p.role}]`;
+                roleSpan.textContent = `[${ar.roles[visibleRole as keyof typeof ar.roles] || visibleRole}]`;
                 row.appendChild(roleSpan);
             }
 
@@ -636,9 +673,10 @@ export default class GameScene extends Phaser.Scene {
         }
 
         // تعتمد الرؤية على السيرفر
+        const visibleRole = this.getVisibleRole(player);
         let tag = "";
-        if (player.role) {
-            tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
+        if (visibleRole) {
+            tag = `  [${ar.roles[visibleRole as keyof typeof ar.roles] || visibleRole}]`;
         }
 
         const avatarEmoji = player.avatar || "😎";
@@ -2559,18 +2597,19 @@ export default class GameScene extends Phaser.Scene {
             this.updateChatUI(data.phase);
 
             // معالجة التصويت المعلق
-            if (this.votingPending && data.phase === "VOTING") {
+            if (data.phase === "VOTING") {
                 this.votingPending = false;
-                const myPlayer = this.currentPlayers.find((p) => this.isCurrentPlayer(p));
+                this.ensureVotingUI(150);
+                const myPlayer = this.getCurrentPlayer();
                 // إزالة شرط userType === "PLAYER" للخبراء أو المشرفين إن وجد
                 const isAlivePlayer = myPlayer?.alive && this.userType !== "SPECTATOR";
-                if (isAlivePlayer) {
+                if (false && isAlivePlayer) {
                     this.time.delayedCall(300, () => {
                         if (this.isMobile) this.showMobileVoting();
                         else this.showVotingOverlay();
                     });
                 }
-                if (!this.isMobile) {
+                if (false && !this.isMobile) {
                     this.time.delayedCall(400, () => this.showVotingChat());
                 }
             }
@@ -2635,6 +2674,10 @@ export default class GameScene extends Phaser.Scene {
                 const mobileStatus = document.getElementById("mobile-night-status");
                 if (mobileStatus) mobileStatus.style.display = "none";
             }
+            if (data.phase === "VOTING") {
+                this.votingPending = true;
+                this.ensureVotingUI(180);
+            }
             if (data.phase !== "NIGHT") this.isNightSceneActive = false;
             const phaseName = getPhaseLabel(data.phase);
             this.showPhaseTransition(phaseName);
@@ -2651,6 +2694,7 @@ export default class GameScene extends Phaser.Scene {
             this.showPhaseTransition(getPhaseLabel("VOTING"));
             // لا نستدعي showVotingOverlay مباشرة، بل نضبط العلم ونطلب الحالة
             this.votingPending = true;
+            this.ensureVotingUI(220);
             socketService.socket.emit("request_room_state");
         });
 
