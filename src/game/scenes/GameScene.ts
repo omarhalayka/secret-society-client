@@ -603,10 +603,10 @@ export default class GameScene extends Phaser.Scene {
             row.appendChild(avatarDiv);
             row.appendChild(name);
 
-            // تعديل: إخفاء الأدوار عن المشاهد - إزالة this.userType === "SPECTATOR"
-            const showRole = this.isAdmin || (isMe && this.userType !== "SPECTATOR");
+            // تعتمد الرؤية على السيرفر (إذا تم إرسال الدور، فالمستخدم مسموح له برؤيته)
+            const showRole = !!p.role;
 
-            if (showRole && p.role) {
+            if (showRole) {
                 const roleSpan = document.createElement("span");
                 const roleColors: Record<string, string> = {
                     MAFIA: "#ef4444", DOCTOR: "#22c55e", DETECTIVE: "#3b82f6",
@@ -635,9 +635,9 @@ export default class GameScene extends Phaser.Scene {
             this.tweens.add({ targets: dot, alpha: 0.3, duration: 900, yoyo: true, repeat: -1, delay: Math.random() * 600 });
         }
 
-        // تعديل: إخفاء الأدوار عن المشاهد - إزالة شرط this.userType === "SPECTATOR"
+        // تعتمد الرؤية على السيرفر
         let tag = "";
-        if (this.isAdmin || (isMe && this.userType !== "SPECTATOR")) {
+        if (player.role) {
             tag = `  [${ar.roles[player.role as keyof typeof ar.roles] || player.role}]`;
         }
 
@@ -2508,17 +2508,17 @@ export default class GameScene extends Phaser.Scene {
                 genBtn.textContent = ar.game.newCode;
                 genBtn.style.opacity = "1";
                 // حوالي سطر 2552
-if (data.phase === "NIGHT" && !this.isAdmin && !this.isNightSceneActive) {
-    console.log("🔍 NIGHT phase started, role:", this.role, "isAdmin:", this.isAdmin);
-    const nightSceneMap: Record<string, string> = {
-        MAFIA: "MafiaNightScene", 
-        DOCTOR: "DoctorNightScene", 
-        DETECTIVE: "DetectiveNightScene",
-    };
-    const targetScene = nightSceneMap[this.role];
-    console.log("🎬 Target scene:", targetScene);
-    // ...
-}
+                if (data.phase === "NIGHT" && !this.isAdmin && !this.isNightSceneActive) {
+                    console.log("🔍 NIGHT phase started, role:", this.role, "isAdmin:", this.isAdmin);
+                    const nightSceneMap: Record<string, string> = {
+                        MAFIA: "MafiaNightScene",
+                        DOCTOR: "DoctorNightScene",
+                        DETECTIVE: "DetectiveNightScene",
+                    };
+                    const targetScene = nightSceneMap[this.role];
+                    console.log("🎬 Target scene:", targetScene);
+                    // ...
+                }
             });
         });
 
@@ -2562,7 +2562,8 @@ if (data.phase === "NIGHT" && !this.isAdmin && !this.isNightSceneActive) {
             if (this.votingPending && data.phase === "VOTING") {
                 this.votingPending = false;
                 const myPlayer = this.currentPlayers.find((p) => this.isCurrentPlayer(p));
-                const isAlivePlayer = myPlayer?.alive && this.userType === "PLAYER" && !this.isAdmin;
+                // إزالة شرط userType === "PLAYER" للخبراء أو المشرفين إن وجد
+                const isAlivePlayer = myPlayer?.alive && this.userType !== "SPECTATOR";
                 if (isAlivePlayer) {
                     this.time.delayedCall(300, () => {
                         if (this.isMobile) this.showMobileVoting();
