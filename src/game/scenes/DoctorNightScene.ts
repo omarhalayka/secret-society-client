@@ -338,19 +338,6 @@ export default class DoctorNightScene extends Phaser.Scene {
                     this.cameras.main.flash(400, 0, 100, 0);
                     socketService.socket.emit("doctor_save", player.id);
                 });
-            } else {
-                // ✅ للبطاقات المقيّدة — نُظهر toast لما يضغط عليها
-                container.setInteractive(
-                    new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH),
-                    Phaser.Geom.Rectangle.Contains
-                );
-                container.on("pointerdown", () => {
-                    if (this.actionUsed) return;
-                    this.showToast(
-                        "لا يمكنك حماية نفس اللاعب ليلتين متتاليتين ⛔",
-                        "danger"
-                    );
-                });
             }
 
             this.playerCards.push(container);
@@ -478,6 +465,7 @@ export default class DoctorNightScene extends Phaser.Scene {
 
                 const btn = document.createElement("button");
                 btn.id = `doctor-btn-${player.id}`;
+                btn.dataset.restricted = isRestricted ? "true" : "false";
 
                 if (isRestricted) {
                     // ✅ زر مقيّد — يُظهر رسالة عند الضغط
@@ -495,14 +483,7 @@ export default class DoctorNightScene extends Phaser.Scene {
                         minWidth:     "80px",
                         opacity:      "0.7",
                     });
-                    btn.addEventListener("click", (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.showToast(
-                            "لا يمكنك حماية نفس اللاعب ليلتين متتاليتين ⛔",
-                            "danger"
-                        );
-                    });
+                    btn.disabled = true;
                 } else {
                     btn.textContent = ar.night.doctorProtect;
                     Object.assign(btn.style, {
@@ -677,8 +658,7 @@ export default class DoctorNightScene extends Phaser.Scene {
             const ui = document.getElementById("mobile-night-ui");
             if (ui) {
                 ui.querySelectorAll<HTMLButtonElement>("button").forEach(b => {
-                    // لا نُعيد تفعيل الأزرار المقيّدة
-                    if (b.textContent?.includes("⛔")) return;
+                    if (b.dataset.restricted === "true") return;
                     b.disabled            = false;
                     b.style.opacity       = "1";
                     b.style.cursor        = "pointer";

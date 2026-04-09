@@ -101,6 +101,15 @@ export default class GameScene extends Phaser.Scene {
         return this.currentPlayers.find((player) => this.isCurrentPlayer(player)) || null;
     }
 
+    private canCastVote() {
+        const myPlayer = this.getCurrentPlayer();
+        return !!myPlayer?.alive && !this.isAdmin && this.userType !== "SPECTATOR";
+    }
+
+    private shouldShowVotingUI() {
+        return !this.isAdmin;
+    }
+
     private getVisibleRole(player: any) {
         if (player?.role) return player.role;
         if (this.isCurrentPlayer(player) && this.role && this.role !== "SPECTATOR") {
@@ -110,9 +119,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     private ensureVotingUI(delay = 0) {
-        const myPlayer = this.getCurrentPlayer();
-        const canVote = !!myPlayer?.alive && !this.isAdmin && this.userType !== "SPECTATOR";
-        if (!canVote) return;
+        if (!this.shouldShowVotingUI()) return;
 
         this.time.delayedCall(delay, () => {
             if (!this.scene.isActive()) return;
@@ -1014,6 +1021,7 @@ export default class GameScene extends Phaser.Scene {
         this.votingCards.clear();
         const alivePlayers = this.currentPlayers.filter(p => p.alive);
         if (!alivePlayers.length) return;
+        const canVote = this.canCastVote();
 
         const overlay = this.add.container(0, 0).setDepth(50);
         const dim = this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.75).setOrigin(0);
@@ -1031,7 +1039,6 @@ export default class GameScene extends Phaser.Scene {
         }).setOrigin(0.5);
         overlay.add([titleTxt, subTxt]);
 
-        const isSpectator = this.userType === "SPECTATOR";
         const cardW = 148, cardH = 196, gap = 16;
         const perRow = Math.min(alivePlayers.length, 4);
         const rows = Math.ceil(alivePlayers.length / perRow);
@@ -1040,11 +1047,12 @@ export default class GameScene extends Phaser.Scene {
         const startY = this.H / 2 - (rows * (cardH + gap)) / 2 + cardH / 2 + 18;
 
         alivePlayers.forEach((player, i) => {
-            const col = i % perRow, row = Math.floor(i / perRow);
+            const col = i % perRow;
+            const row = Math.floor(i / perRow);
             const cx = startX + col * (cardW + gap);
             const cy = startY + row * (cardH + gap);
             this.time.delayedCall(60 + i * 70, () => {
-                const card = this.buildVotingCard(player, cx, cy, cardW, cardH, isSpectator);
+                const card = this.buildVotingCard(player, cx, cy, cardW, cardH, canVote);
                 overlay.add(card);
             });
         });
@@ -1054,14 +1062,18 @@ export default class GameScene extends Phaser.Scene {
         this.votingOverlayContainer = overlay;
     }
 
-    private buildVotingCard(player: any, cx: number, cy: number, cardW: number, cardH: number, isSpectator: boolean): Phaser.GameObjects.Container {
+    private buildVotingCard(player: any, cx: number, cy: number, cardW: number, cardH: number, canVote: boolean): Phaser.GameObjects.Container {
         const isMe = this.isCurrentPlayer(player);
+        const canSelect = canVote && !isMe;
         const container = this.add.container(cx, cy + 24).setAlpha(0);
 
         const shadow = this.add.rectangle(4, 6, cardW, cardH, 0x000000, 0.45).setOrigin(0.5);
-        const bg = this.add.rectangle(0, 0, cardW, cardH, 0x0d1117); bg.setStrokeStyle(1, this.C.border); bg.setOrigin(0.5);
-        const topBar = this.add.rectangle(0, -(cardH / 2) + 2, cardW - 2, 3, 0xf59e0b, 0); topBar.setOrigin(0.5, 0);
-        const avatarBg = this.add.circle(0, -60, 27, 0x0a0d13); avatarBg.setStrokeStyle(1, this.C.border);
+        const bg = this.add.rectangle(0, 0, cardW, cardH, 0x0d1117);
+        bg.setStrokeStyle(1, this.C.border);
+        bg.setOrigin(0.5);
+        const topBar = this.add.rectangle(0, -(cardH / 2) + 2, cardW - 2, 3, 0xf59e0b, 0).setOrigin(0.5, 0);
+        const avatarBg = this.add.circle(0, -60, 27, 0x0a0d13);
+        avatarBg.setStrokeStyle(1, this.C.border);
         const avatarIcon = this.add.text(0, -60, isMe ? "🧑" : "👤", { fontSize: "24px" }).setOrigin(0.5);
         const pulse = this.add.circle(0, -60, 34, 0xf59e0b, 0);
         this.tweens.add({ targets: pulse, alpha: 0.1, scaleX: 1.3, scaleY: 1.3, duration: 1000, yoyo: true, repeat: -1, delay: Math.random() * 500 });
@@ -1074,9 +1086,10 @@ export default class GameScene extends Phaser.Scene {
         const barBg = this.add.rectangle(0, 34, cardW - 24, 6, 0x111827).setOrigin(0.5);
         const barFill = this.add.rectangle(-(cardW - 24) / 2, 34, 0, 6, 0xf59e0b, 0.8).setOrigin(0, 0.5);
         const voteLabel = this.add.text(0, 50, `${ar.game.votes} 0`, { fontSize: "10px", color: "#64748b", fontFamily: "'Courier New', monospace", letterSpacing: 1, align: "center" }).setOrigin(0.5);
-        const btnBg = this.add.rectangle(0, 74, cardW - 24, 26, 0x0a0d13); btnBg.setStrokeStyle(1, isSpectator ? 0x1e2d45 : 0xf59e0b, isSpectator ? 0.3 : 0.45).setOrigin(0.5);
-        const btnLabel = this.add.text(0, 74, isSpectator ? ar.game.watching : (isMe ? "—" : ar.game.vote), {
-            fontSize: "10px", color: isSpectator ? "#334155" : (isMe ? "#374151" : "#f59e0b"),
+        const btnBg = this.add.rectangle(0, 74, cardW - 24, 26, 0x0a0d13).setOrigin(0.5);
+        btnBg.setStrokeStyle(1, canSelect ? 0xf59e0b : 0x1e2d45, canSelect ? 0.45 : 0.3);
+        const btnLabel = this.add.text(0, 74, canVote ? (isMe ? "-" : ar.game.vote) : ar.game.watching, {
+            fontSize: "10px", color: canSelect ? "#f59e0b" : "#334155",
             fontFamily: "'Courier New', monospace", fontStyle: "bold", letterSpacing: 3,
             align: "center"
         }).setOrigin(0.5);
@@ -1085,7 +1098,7 @@ export default class GameScene extends Phaser.Scene {
         if (youLbl) items.push(youLbl);
         container.add(items);
 
-        if (!isSpectator && !isMe) {
+        if (canSelect) {
             container.setInteractive(new Phaser.Geom.Rectangle(-cardW / 2, -cardH / 2, cardW, cardH), Phaser.Geom.Rectangle.Contains);
             container.on("pointerover", () => { if (this.myVote) return; bg.setFillStyle(0x111827); bg.setStrokeStyle(1, 0xf59e0b); topBar.setAlpha(1); this.tweens.add({ targets: container, scaleX: 1.04, scaleY: 1.04, duration: 120 }); });
             container.on("pointerout", () => { if (this.myVote === player.id) return; bg.setFillStyle(0x0d1117); bg.setStrokeStyle(1, this.C.border); topBar.setAlpha(0); this.tweens.add({ targets: container, scaleX: 1, scaleY: 1, duration: 120 }); });
@@ -1105,7 +1118,7 @@ export default class GameScene extends Phaser.Scene {
         });
         bg.setFillStyle(0x150c00); bg.setStrokeStyle(2, 0xef4444);
         topBar.setFillStyle(0xef4444); topBar.setAlpha(1);
-        btnLabel.setText("VOTED ✓").setColor("#f87171");
+        btnLabel.setText("VOTED").setColor("#f87171");
         this.cameras.main.flash(220, 50, 20, 0);
     }
 
@@ -1251,7 +1264,7 @@ export default class GameScene extends Phaser.Scene {
 
         const alivePlayers = this.currentPlayers.filter(p => p.alive);
         if (!alivePlayers.length) return;
-        const myPlayer = alivePlayers.find((p) => this.isCurrentPlayer(p));
+        const canVote = this.canCastVote();
 
         const overlay = document.createElement("div");
         overlay.id = "mobile-voting-overlay";
@@ -1298,7 +1311,7 @@ export default class GameScene extends Phaser.Scene {
         chatInput.innerHTML = `
             <input id="mvoting-chat-input" type="text" placeholder="${ar.game.yourOpinion}"
                 style="flex:1;padding:7px 10px;background:#060a04;color:#f1f5f9;border:1px solid rgba(245,158,11,0.2);border-radius:5px;font-size:13px;font-family:'Courier New',monospace;outline:none;direction:rtl"/>
-            <button id="mvoting-chat-send" style="padding:7px 12px;border:1px solid rgba(245,158,11,0.4);border-radius:5px;background:transparent;color:#f59e0b;font-size:13px;cursor:pointer;touch-action:manipulation">➤</button>
+            <button id="mvoting-chat-send" style="padding:7px 12px;border:1px solid rgba(245,158,11,0.4);border-radius:5px;background:transparent;color:#f59e0b;font-size:13px;cursor:pointer;touch-action:manipulation">SEND</button>
         `;
         overlay.appendChild(chatInput);
 
@@ -1321,13 +1334,14 @@ export default class GameScene extends Phaser.Scene {
 
         alivePlayers.forEach(p => {
             const isMe = this.isCurrentPlayer(p);
+            const canSelect = canVote && !isMe;
             const row = document.createElement("div");
             Object.assign(row.style, {
                 display: "flex", alignItems: "center", gap: "12px",
                 padding: "10px 14px", borderRadius: "8px",
                 backgroundColor: "rgba(17,24,39,0.9)",
                 border: `1px solid ${isMe ? "rgba(245,158,11,0.3)" : "#1e2d45"}`,
-                opacity: isMe ? "0.6" : "1",
+                opacity: canSelect ? "1" : "0.6",
                 direction: "rtl",
             });
 
@@ -1340,16 +1354,16 @@ export default class GameScene extends Phaser.Scene {
                     </div>
                     <div id="mvote-label-${p.id}" style="color:#4b5563;font-size:10px;margin-top:3px">0 ${ar.game.votes}</div>
                 </div>
-                <button id="mvote-btn-${p.id}" style="padding:8px 16px;font-size:11px;font-weight:bold;letter-spacing:2px;border:1px solid #f59e0b;border-radius:5px;background:transparent;color:#f59e0b;cursor:${isMe ? "default" : "pointer"};font-family:'Courier New',monospace;touch-action:manipulation;pointer-events:${isMe ? "none" : "auto"}">${isMe ? "—" : ar.game.vote}</button>
+                <button id="mvote-btn-${p.id}" style="padding:8px 16px;font-size:11px;font-weight:bold;letter-spacing:2px;border:1px solid ${canSelect ? "#f59e0b" : "#334155"};border-radius:5px;background:transparent;color:${canSelect ? "#f59e0b" : "#334155"};cursor:${canSelect ? "pointer" : "default"};font-family:'Courier New',monospace;touch-action:manipulation;pointer-events:${canSelect ? "auto" : "none"}">${canVote ? (isMe ? "-" : ar.game.vote) : ar.game.watching}</button>
             `;
 
-            if (!isMe) {
+            if (canSelect) {
                 const btn = row.querySelector<HTMLButtonElement>(`#mvote-btn-${p.id}`)!;
                 btn.addEventListener("click", () => {
                     if (this.myVote) return;
                     this.myVote = p.id;
                     socketService.socket.emit("vote", p.id);
-                    btn.textContent = "✓ VOTED";
+                    btn.textContent = "VOTED";
                     btn.style.backgroundColor = "#f59e0b";
                     btn.style.color = "#000";
                     row.style.borderColor = "#f59e0b";
@@ -2596,22 +2610,13 @@ export default class GameScene extends Phaser.Scene {
             this.drawPlayers(data.players, data.phase);
             this.updateChatUI(data.phase);
 
-            // معالجة التصويت المعلق
             if (data.phase === "VOTING") {
                 this.votingPending = false;
                 this.ensureVotingUI(150);
-                const myPlayer = this.getCurrentPlayer();
-                // إزالة شرط userType === "PLAYER" للخبراء أو المشرفين إن وجد
-                const isAlivePlayer = myPlayer?.alive && this.userType !== "SPECTATOR";
-                if (false && isAlivePlayer) {
-                    this.time.delayedCall(300, () => {
-                        if (this.isMobile) this.showMobileVoting();
-                        else this.showVotingOverlay();
-                    });
-                }
-                if (false && !this.isMobile) {
-                    this.time.delayedCall(400, () => this.showVotingChat());
-                }
+            } else {
+                this.closeVotingOverlay(false);
+                document.getElementById("voting-chat-panel")?.remove();
+                document.getElementById("voting-chat-toggle")?.remove();
             }
 
             if (data.phase === "NIGHT" && !this.isAdmin && !this.isNightSceneActive) {

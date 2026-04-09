@@ -11,6 +11,7 @@ export default class MafiaNightScene extends Phaser.Scene {
     private actionUsed: boolean = false;
     private playerCards: Phaser.GameObjects.Container[] = [];
     private killedPlayerId: string | null = null;
+    private submitLock: boolean = false;
     private isMobile: boolean = false;
     private isSoloMafia: boolean = false;
     private mafiaTeamCount: number = 1;
@@ -51,6 +52,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         this.roomId = data.roomId;
         this.players = this.normalizePlayers(data.players || []);
         this.actionUsed = false;
+        this.submitLock = false;
         this.killedPlayerId = null;
         this.embers = [];
         this.restrictedPlayerIds = [];
@@ -403,11 +405,13 @@ export default class MafiaNightScene extends Phaser.Scene {
 
     private handleTarget(player: any) {
         // ✅ فحص إضافي قبل الإرسال
+        if (this.actionUsed || this.submitLock) return;
         if (this.isTargetRestricted(player.id)) {
             this.showToast("لا يمكنك استهداف هذا اللاعب ليلتين متتاليتين ⛔", "danger");
             return;
         }
 
+        this.submitLock = true;
         this.killedPlayerId = player.id;
         this.cameras.main.flash(300, 120, 0, 0);
         socketService.socket.emit("mafia_kill", player.id);
@@ -415,6 +419,7 @@ export default class MafiaNightScene extends Phaser.Scene {
 
     private applyAcceptedMafiaTarget(targetId: string) {
         this.actionUsed = true;
+        this.submitLock = false;
         this.killedPlayerId = targetId;
 
         this.playerCards.forEach(card => {
@@ -594,11 +599,12 @@ export default class MafiaNightScene extends Phaser.Scene {
                         btn.textContent = "⛔ ممنوع";
                     } else {
                         btn.addEventListener("click", () => {
-                            if (this.actionUsed) return;
+                            if (this.actionUsed || this.submitLock) return;
                             if (this.isTargetRestricted(player.id)) {
                                 this.showToast("لا يمكنك استهداف هذا اللاعب ليلتين متتاليتين ⛔", "danger");
                                 return;
                             }
+                            this.submitLock = true;
                             socketService.socket.emit("mafia_kill", player.id);
                             this.killedPlayerId = player.id;
                             this.cameras.main.flash(300, 120, 0, 0);
@@ -710,15 +716,14 @@ export default class MafiaNightScene extends Phaser.Scene {
             }
 
             // ✅ استقبال lastTarget وتحديث قائمة الممنوعين
-            if (data?.lastTarget) {
+            if (typeof data?.lastTarget === "string" && data.lastTarget) {
                 this.serverLastTarget = data.lastTarget;
-                if (!this.restrictedPlayerIds.includes(data.lastTarget)) {
-                    this.restrictedPlayerIds.push(data.lastTarget);
-                }
+                this.restrictedPlayerIds = [data.lastTarget];
                 this.lastTargetPlayerId = data.lastTarget;
-
-                // تحديث الواجهة
-                this.drawTopBar(this.scale.width);
+            } else {
+                this.serverLastTarget = null;
+                this.restrictedPlayerIds = [];
+                this.lastTargetPlayerId = null;
             }
 
             this.isSoloMafia = this.mafiaTeamCount <= 1;
@@ -768,6 +773,9 @@ export default class MafiaNightScene extends Phaser.Scene {
         });
 
         socketService.socket.on("mafia_suggestion", (data: any) => {
+            if (data?.targetId && !this.actionUsed) {
+                this.applyAcceptedMafiaTarget(data.targetId);
+            }
             this.updateSuggestion(data.suggestedBy, data.targetUsername);
             this.addMafiaChatMessage("النظام", ar.night.mafiaSystemSuggested(data.suggestedBy, data.targetUsername));
             if (!this.isMobile) {
@@ -780,6 +788,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         socketService.socket.on("mafia_error", (data: any) => {
             console.warn("❌ Mafia error:", data.message);
             this.actionUsed = false;
+            this.submitLock = false;
             this.showToast(data.message || "حدث خطأ", "danger");
         });
 
