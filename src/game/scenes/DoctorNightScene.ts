@@ -35,8 +35,19 @@ export default class DoctorNightScene extends Phaser.Scene {
         }));
     }
 
+    private isCurrentPlayer(player: any) {
+        const playerId = player?.playerId || player?.id || null;
+        if (socketService.playerId && playerId === socketService.playerId) return true;
+        const socketId = player?.socketId || null;
+        return !!socketId && socketId === socketService.socket.id;
+    }
+
+    private isRestrictedTarget(player: any) {
+        return !!player?.restricted || (!!this.lastDoctorTarget && player?.id === this.lastDoctorTarget);
+    }
+
     private getEligibleTargets() {
-        return this.players.filter((player) => player.alive && player.id !== socketService.playerId);
+        return this.players.filter((player) => player.alive && !this.isCurrentPlayer(player));
     }
 
     init(data: any) {
@@ -180,9 +191,9 @@ export default class DoctorNightScene extends Phaser.Scene {
         const cardY  = H / 2 + 30;
 
         targets.forEach((player, i) => {
-            const isMe = player.id === socketService.playerId;
+            const isMe = this.isCurrentPlayer(player);
             // ✅ فحص إذا كان هذا اللاعب هو الهدف المقيّد
-            const isRestricted = this.lastDoctorTarget !== null && player.id === this.lastDoctorTarget;
+            const isRestricted = this.isRestrictedTarget(player);
             const x = startX + i * (cardW + gap);
             const container = this.add.container(x, cardY).setDepth(5).setAlpha(0);
 
@@ -387,7 +398,7 @@ export default class DoctorNightScene extends Phaser.Scene {
 
         // ✅ banner تنبيه إذا كان هناك قيد
         if (this.lastDoctorTarget !== null) {
-            const restrictedPlayer = this.players.find(p => p.id === this.lastDoctorTarget);
+            const restrictedPlayer = this.players.find((p) => this.isRestrictedTarget(p));
             if (restrictedPlayer) {
                 const banner = document.createElement("div");
                 Object.assign(banner.style, {
@@ -431,9 +442,9 @@ export default class DoctorNightScene extends Phaser.Scene {
             list.appendChild(empty);
         } else {
             targets.forEach(player => {
-                const isMe         = player.id === socketService.playerId;
+                const isMe         = this.isCurrentPlayer(player);
                 // ✅ فحص القيد
-                const isRestricted = this.lastDoctorTarget !== null && player.id === this.lastDoctorTarget;
+                const isRestricted = this.isRestrictedTarget(player);
 
                 const row = document.createElement("div");
                 Object.assign(row.style, {
@@ -601,11 +612,13 @@ export default class DoctorNightScene extends Phaser.Scene {
     private setupSocketListeners() {
         // ✅ استقبال lastTarget من السيرفر وإعادة رسم البطاقات إذا لزم
         socketService.socket.on("night_targets", (data: any) => {
-            const playersChanged = Array.isArray(data?.players);
-            const nextLastTarget = typeof data?.lastTarget === "string" ? data.lastTarget : null;
+            const nextPlayers = Array.isArray(data?.players) ? this.normalizePlayers(data.players) : null;
+            const playersChanged = Array.isArray(nextPlayers);
+            const restrictedFromPlayers = nextPlayers?.find((player) => player.restricted)?.id || null;
+            const nextLastTarget = typeof data?.lastTarget === "string" ? data.lastTarget : restrictedFromPlayers;
 
-            if (Array.isArray(data?.players)) {
-                this.players = this.normalizePlayers(data.players);
+            if (nextPlayers) {
+                this.players = nextPlayers;
             }
             const targetChanged = nextLastTarget !== this.lastDoctorTarget;
             this.lastDoctorTarget = nextLastTarget;

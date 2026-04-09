@@ -24,6 +24,7 @@ export default class GameScene extends Phaser.Scene {
     private voteEntries: Phaser.GameObjects.GameObject[] = [];
     private voteTitle?: Phaser.GameObjects.Text;
     private votingOverlayContainer?: Phaser.GameObjects.Container;
+    private votingUIKey: string | null = null;
     private votingCards: Map<string, {
         container: Phaser.GameObjects.Container;
         barFill: Phaser.GameObjects.Rectangle;
@@ -75,6 +76,7 @@ export default class GameScene extends Phaser.Scene {
         this.votingCards.clear();
         this.isNightSceneActive = false;
         this.votingPending = false; // إعادة تعيين العلم
+        this.votingUIKey = null;
         if (this.isAdmin) socketService.isAdmin = true;
     }
 
@@ -94,7 +96,9 @@ export default class GameScene extends Phaser.Scene {
 
     private isCurrentPlayer(player: any) {
         const playerId = player?.playerId || player?.id || null;
-        return !!playerId && playerId === socketService.playerId;
+        if (socketService.playerId && playerId === socketService.playerId) return true;
+        const socketId = player?.socketId || null;
+        return !!socketId && socketId === socketService.socket.id;
     }
 
     private getCurrentPlayer() {
@@ -110,6 +114,22 @@ export default class GameScene extends Phaser.Scene {
         return !this.isAdmin;
     }
 
+    private getVotingUIKey() {
+        const aliveIds = this.currentPlayers
+            .filter((player) => player.alive)
+            .map((player) => player.id)
+            .filter(Boolean)
+            .sort()
+            .join("|");
+        const currentPlayer = this.getCurrentPlayer();
+        return [
+            this.userType,
+            this.canCastVote() ? "can-vote" : "watch-only",
+            currentPlayer?.id || socketService.playerId || socketService.socket.id || "unknown",
+            aliveIds,
+        ].join(":");
+    }
+
     private getVisibleRole(player: any) {
         if (player?.role) return player.role;
         if (this.isCurrentPlayer(player) && this.role && this.role !== "SPECTATOR") {
@@ -123,15 +143,16 @@ export default class GameScene extends Phaser.Scene {
 
         this.time.delayedCall(delay, () => {
             if (!this.scene.isActive()) return;
+            const desiredKey = this.getVotingUIKey();
 
             if (this.isMobile) {
-                if (!document.getElementById("mobile-voting-overlay")) {
+                if (!document.getElementById("mobile-voting-overlay") || this.votingUIKey !== desiredKey) {
                     this.showMobileVoting();
                 }
                 return;
             }
 
-            if (!this.votingOverlayContainer) {
+            if (!this.votingOverlayContainer || this.votingUIKey !== desiredKey) {
                 this.showVotingOverlay();
             }
             if (!document.getElementById("voting-chat-panel")) {
@@ -1020,8 +1041,12 @@ export default class GameScene extends Phaser.Scene {
         this.myVote = null;
         this.votingCards.clear();
         const alivePlayers = this.currentPlayers.filter(p => p.alive);
-        if (!alivePlayers.length) return;
+        if (!alivePlayers.length) {
+            this.votingUIKey = null;
+            return;
+        }
         const canVote = this.canCastVote();
+        this.votingUIKey = this.getVotingUIKey();
 
         const overlay = this.add.container(0, 0).setDepth(50);
         const dim = this.add.rectangle(0, 0, this.W, this.H, 0x000000, 0.75).setOrigin(0);
@@ -1234,6 +1259,7 @@ export default class GameScene extends Phaser.Scene {
 
     private closeVotingOverlay(showResult: boolean, result?: { eliminated?: string; tie?: boolean }) {
         document.getElementById("mobile-voting-overlay")?.remove();
+        this.votingUIKey = null;
 
         if (!this.votingOverlayContainer) return;
         const ov = this.votingOverlayContainer;
@@ -1263,8 +1289,12 @@ export default class GameScene extends Phaser.Scene {
         this.myVote = null;
 
         const alivePlayers = this.currentPlayers.filter(p => p.alive);
-        if (!alivePlayers.length) return;
+        if (!alivePlayers.length) {
+            this.votingUIKey = null;
+            return;
+        }
         const canVote = this.canCastVote();
+        this.votingUIKey = this.getVotingUIKey();
 
         const overlay = document.createElement("div");
         overlay.id = "mobile-voting-overlay";
@@ -2614,6 +2644,7 @@ export default class GameScene extends Phaser.Scene {
                 this.votingPending = false;
                 this.ensureVotingUI(150);
             } else {
+                this.votingUIKey = null;
                 this.closeVotingOverlay(false);
                 document.getElementById("voting-chat-panel")?.remove();
                 document.getElementById("voting-chat-toggle")?.remove();
@@ -2713,6 +2744,7 @@ export default class GameScene extends Phaser.Scene {
             const msg = data.tie ? ar.game.voteTie : ar.game.voteEliminated(data.eliminated);
             this.addEventLog(msg, data.tie ? "#fbbf24" : "#f87171");
             this.cameras.main.shake(data.tie ? 150 : 350, 0.006);
+            this.votingUIKey = null;
             this.closeVotingOverlay(true, { eliminated: data.eliminated, tie: data.tie });
             document.getElementById("voting-chat-panel")?.remove();
             document.getElementById("voting-chat-toggle")?.remove();
@@ -2837,6 +2869,7 @@ export default class GameScene extends Phaser.Scene {
 
     shutdown() {
         this.cleanupAllHTML();
+        this.votingUIKey = null;
         this.votingOverlayContainer?.destroy();
         this.nightResultOverlay?.destroy();
         const evts = [

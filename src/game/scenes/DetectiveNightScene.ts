@@ -40,6 +40,13 @@ export default class DetectiveNightScene extends Phaser.Scene {
         }));
     }
 
+    private isCurrentPlayer(player: any) {
+        const playerId = player?.playerId || player?.id || null;
+        if (socketService.playerId && playerId === socketService.playerId) return true;
+        const socketId = player?.socketId || null;
+        return !!socketId && socketId === socketService.socket.id;
+    }
+
     private disableCardInteractions() {
         this.playerCards.forEach((card) => {
             if (card?.active && card.input) {
@@ -176,7 +183,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
 
     // ─── Desktop: Player Cards ────────────────────────────────────────────────
     private drawPlayerCards(W: number, H: number) {
-        const targets = this.players.filter((p) => p.alive && p.id !== socketService.playerId);
+        const targets = this.players.filter((p) => p.alive && !this.isCurrentPlayer(p));
         if (!targets.length) return;
 
         let cardW = 140, cardH = 185, gap = 24;
@@ -421,7 +428,7 @@ export default class DetectiveNightScene extends Phaser.Scene {
             gap:           "10px",
         });
 
-        const targets = this.players.filter((p) => p.alive && p.id !== socketService.playerId);
+        const targets = this.players.filter((p) => p.alive && !this.isCurrentPlayer(p));
 
         if (targets.length === 0) {
             const empty = document.createElement("div");

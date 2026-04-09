@@ -48,6 +48,13 @@ export default class MafiaNightScene extends Phaser.Scene {
         }));
     }
 
+    private isCurrentPlayer(player: any) {
+        const playerId = player?.playerId || player?.id || null;
+        if (socketService.playerId && playerId === socketService.playerId) return true;
+        const socketId = player?.socketId || null;
+        return !!socketId && socketId === socketService.socket.id;
+    }
+
     init(data: any) {
         this.roomId = data.roomId;
         this.players = this.normalizePlayers(data.players || []);
@@ -59,7 +66,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         this.lastTargetPlayerId = null;
         this.serverLastTarget = data.lastTarget || null;
 
-        this.myPlayer = this.players.find((p) => p.id === socketService.playerId) || null;
+        this.myPlayer = this.players.find((p) => this.isCurrentPlayer(p)) || null;
         this.mafiaTeamCount = Math.max(1, this.players.filter((p) => p.role === "MAFIA" && p.alive).length);
 
         // ✅ إذا كان هناك lastTarget من السيرفر، نضيفه للممنوعين
@@ -139,7 +146,8 @@ export default class MafiaNightScene extends Phaser.Scene {
 
     // ✅ دالة فحص إذا كان الهدف ممنوع
     private isTargetRestricted(playerId: string): boolean {
-        return this.restrictedPlayerIds.includes(playerId);
+        return this.restrictedPlayerIds.includes(playerId)
+            || this.players.some((player) => player.id === playerId && player.restricted === true);
     }
 
     private drawBackground(W: number, H: number) {
@@ -292,7 +300,7 @@ export default class MafiaNightScene extends Phaser.Scene {
         // جميع الأهداف المحتملة (أحياء، ليسوا مافيا، ليسوا اللاعب نفسه)
         const allTargets = this.players.filter((p) =>
             p.alive &&
-            p.id !== socketService.playerId &&
+            !this.isCurrentPlayer(p) &&
             p.role !== "MAFIA"
         );
 
@@ -558,7 +566,7 @@ export default class MafiaNightScene extends Phaser.Scene {
             // ✅ عرض جميع الأهداف المحتملة، مع تعطيل الممنوعين
             const allTargets = this.players.filter((p) =>
                 p.alive &&
-                p.id !== socketService.playerId &&
+                !this.isCurrentPlayer(p) &&
                 p.role !== "MAFIA"
             );
 
@@ -700,8 +708,9 @@ export default class MafiaNightScene extends Phaser.Scene {
     private setupSocketListeners() {
         // ✅ استقبال lastTarget من السيرفر
         socketService.socket.on("night_targets", (data: any) => {
-            if (Array.isArray(data?.players)) {
-                this.players = this.normalizePlayers(data.players);
+            const nextPlayers = Array.isArray(data?.players) ? this.normalizePlayers(data.players) : null;
+            if (nextPlayers) {
+                this.players = nextPlayers;
             }
 
             if (typeof data?.teamCount === "number") {
@@ -716,10 +725,18 @@ export default class MafiaNightScene extends Phaser.Scene {
             }
 
             // ✅ استقبال lastTarget وتحديث قائمة الممنوعين
-            if (typeof data?.lastTarget === "string" && data.lastTarget) {
-                this.serverLastTarget = data.lastTarget;
-                this.restrictedPlayerIds = [data.lastTarget];
-                this.lastTargetPlayerId = data.lastTarget;
+            const restrictedIds = (nextPlayers || this.players)
+                .filter((player) => player.restricted)
+                .map((player) => player.id)
+                .filter(Boolean);
+            const nextLastTarget = typeof data?.lastTarget === "string" && data.lastTarget
+                ? data.lastTarget
+                : (restrictedIds[0] || null);
+
+            if (nextLastTarget) {
+                this.serverLastTarget = nextLastTarget;
+                this.restrictedPlayerIds = restrictedIds.length ? restrictedIds : [nextLastTarget];
+                this.lastTargetPlayerId = nextLastTarget;
             } else {
                 this.serverLastTarget = null;
                 this.restrictedPlayerIds = [];
